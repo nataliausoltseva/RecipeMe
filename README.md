@@ -41,5 +41,7 @@ example of possible data for API
     1. Name
     2. Portion
     3. Create Date
-9. Filter out the recipes by ingredients. Being able to uncheck the ingredients and hide the recipes.
+9. Filter out the reipecs by ingredients. Being able to uncheck the ingredients and hide the recipes.
 10. Look into Gemini integration so that when asking to look for a recipe, it looks through this app first.
+11. Ability to have "Cooking mode" so that the phone screen does not turn off.
+    1. Look into this feature on the watch as well.
