@@ -16,21 +16,21 @@ type Portion struct {
 	Measurement string `json:"measurement"`
 }
 
-type Ingredients struct {
+type Ingerdient struct {
 	Name        string `json:"name"`
 	Measurement string `json:"measurement"`
 	Value       string `json:"value"`
 }
 
 type Recipe struct {
-	ID          string      `json:"id"`
-	Name        string      `json:"name"`
-	Portion     Portion     `json:"portion"`
-	Url         string      `json:"url"`
-	ImageUrl    string      `json:"imageUrl"`
-	Ingredients Ingredients `json:"ingredients"`
-	Methods     []string    `json:"methods"`
-	CreatedAt   string      `json:"createdAt"`
+	ID          string       `json:"id"`
+	Name        string       `json:"name"`
+	Portion     Portion      `json:"portion"`
+	Url         string       `json:"url"`
+	ImageUrl    string       `json:"imageUrl"`
+	Ingredients []Ingerdient `json:"ingredients"`
+	Methods     []string     `json:"methods"`
+	CreatedAt   string       `json:"createdAt"`
 }
 
 var recipes []Recipe
@@ -82,12 +82,12 @@ func createRecipe(w http.ResponseWriter, r *http.Request) {
 	// json.NewEncoder(w).Encode(recipe)
 
 	// TODO need to add portion, ingredients, methods later
-	stmt, err := db.Prepare("INSERT INTO recipes(name, url, imageUrl, createdAt) VALUES(?)")
+	stmt, err := db.Prepare("INSERT INTO recipes(name) VALUES(?)")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	_, err = stmt.Exec(recipe.Name, recipe.Url, recipe.ImageUrl, recipe.CreatedAt)
+	_, err = stmt.Exec(recipe.Name)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
