@@ -86,8 +86,8 @@ func getRecipes(w http.ResponseWriter, r *http.Request) {
 			&ingredient.RecipeID,
 			&method.ID,
 			&method.SortOrder,
-			&ingredient.Value,
-			&ingredient.RecipeID,
+			&method.Value,
+			&method.RecipeID,
 		)
 
 		if portion.ID != 0 {
@@ -118,15 +118,7 @@ func getRecipe(w http.ResponseWriter, r *http.Request) {
 	id, _ := strconv.Atoi(idStr)
 
 	row := db.QueryRow(`
-		SELECT
-			recipe.*,
-			COALESCE(portion.id, 0) AS portion_id,
-			portion.value,
-			portion.measurement,
-			portion.recipe_id,
-			ingredient.*,
-			method.*
-		FROM recipe
+		SELECT * FROM recipe
 		LEFT JOIN ingredient ON recipe.id = ingredient.recipe_id
 		LEFT JOIN portion ON recipe.id = portion.recipe_id
 		LEFT JOIN method ON recipe.id = method.recipe_id
@@ -139,7 +131,6 @@ func getRecipe(w http.ResponseWriter, r *http.Request) {
 	var method Method
 	recipe.Ingredients = []Ingerdient{}
 	recipe.Methods = []Method{}
-	var portionId int
 
 	err := row.Scan(
 		&recipe.ID,
@@ -160,14 +151,9 @@ func getRecipe(w http.ResponseWriter, r *http.Request) {
 		&method.SortOrder,
 		&method.Value,
 		&method.RecipeID,
-		portionId,
 	)
 
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-
-	if portionId != 0 {
+	if portion.ID != 0 {
 		recipe.Portion = &portion
 	}
 
@@ -177,6 +163,13 @@ func getRecipe(w http.ResponseWriter, r *http.Request) {
 
 	if method.ID != 0 {
 		recipe.Methods = append(recipe.Methods, method)
+	}
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			json.NewEncoder(w).Encode(nil)
+			return
+		}
 	}
 
 	json.NewEncoder(w).Encode(recipe)
@@ -328,6 +321,33 @@ func updatePortion(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+func deletePortion(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	idStr, ok := params["id"]
+	if !ok {
+		http.Error(w, "Missing ID parameter", http.StatusInternalServerError)
+		return
+	}
+
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, "Invalid ID parameter", http.StatusInternalServerError)
+		return
+	}
+
+	stmt, err := db.Prepare("DELETE FROM portion WHERE id = ?")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	_, err = stmt.Exec(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
 func createIngredient(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	idStr := params["recipe_id"]
@@ -391,6 +411,33 @@ func updateIngredient(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+func deleteIngredient(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	idStr, ok := params["id"]
+	if !ok {
+		http.Error(w, "Missing ID parameter", http.StatusInternalServerError)
+		return
+	}
+
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, "Invalid ID parameter", http.StatusInternalServerError)
+		return
+	}
+
+	stmt, err := db.Prepare("DELETE FROM ingredient WHERE id = ?")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	_, err = stmt.Exec(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
 func createMethod(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	idStr := params["recipe_id"]
@@ -452,6 +499,33 @@ func updateMethod(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+func deleteMethod(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	idStr, ok := params["id"]
+	if !ok {
+		http.Error(w, "Missing ID parameter", http.StatusInternalServerError)
+		return
+	}
+
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, "Invalid ID parameter", http.StatusInternalServerError)
+		return
+	}
+
+	stmt, err := db.Prepare("DELETE FROM method WHERE id = ?")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	_, err = stmt.Exec(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
 func main() {
 	var err error
 	db, err = sql.Open("sqlite3", "./database/database.db")
@@ -471,14 +545,17 @@ func main() {
 	// Portion routes
 	router.HandleFunc("/portion/{recipe_id}", createPortion).Methods("POST")
 	router.HandleFunc("/portion/{id}", updatePortion).Methods("PUT")
+	router.HandleFunc("/recipe/{id}", deletePortion).Methods("DELETE")
 
 	// Ingredient routes
 	router.HandleFunc("/ingredient/{recipe_id}", createIngredient).Methods("POST")
 	router.HandleFunc("/ingredient/{id}", updateIngredient).Methods("PUT")
+	router.HandleFunc("/recipe/{id}", deleteIngredient).Methods("DELETE")
 
 	// Method routes
 	router.HandleFunc("/mehthod/{recipe_id}", createMethod).Methods("POST")
 	router.HandleFunc("/method/{id}", updateMethod).Methods("PUT")
+	router.HandleFunc("/recipe/{id}", deleteMethod).Methods("DELETE")
 
 	fmt.Println("Starting server on :8080...")
 	http.ListenAndServe(":8080", router)

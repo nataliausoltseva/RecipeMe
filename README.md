@@ -53,12 +53,53 @@ CREATE TABLE method(
 
 The **recipe** table has a relationsip `has_one` **portion** and `has_many` **ingredient**s, **method**s.
 
+### Endpoints:
+#### Recipe
+- POST: http://localhost/recipe
+- GET: http://localhost/recipes
+- GET: http://localhost/recipe/{id}
+- PUT: http://localhost/recipe/{id}
+- DELETE: http://localhost/recipe/{id}
+
+#### Portion
+- POST: http://localhost/portion/{recipe_id}
+- PUT: http://localhost/portion/{id}
+- DELETE: http://localhost/portion/{id}
+
+#### Ingredient
+- POST: http://localhost/ingredient/{recipe_id}
+- PUT: http://localhost/ingredient/{id}
+- DELETE: http://localhost/ingredient/{id}
+
+#### Method
+- POST: http://localhost/method/{recipe_id}
+- PUT: http://localhost/method/{id}
+- DELETE: http://localhost/method/{id}
 
 ## Idea:
 A way to host the storage on your machine and have full control over where the data is saved, how manipulated. No ads, all features available.
 
 ## Roadmap:
-- Create API in Go. Basic CRUD will do for now. The data should be saved to the locally stored database.
+- Setup basic mobile app using Kotlin. The app should be able to connect to the API and the CRUD functionality works as expected.
+- Implement and update the design of the application.
+- Add functionality of increasing or decreasing the portion which results in the updated list of ingredients. 
+- Exporting functionality of the recipe as a long screenshot.
+- Make a companion watch app.
+- Add Sort functionality in the app by:
+    1. Name
+    2. Portion
+    3. Create Date
+- Filter out the reipecs by ingredients. Being able to uncheck the ingredients and hide the recipes.
+- Look into Gemini integration so that when asking to look for a recipe, it looks through this app first.
+- Ability to have "Cooking mode" so that the phone screen does not turn off.
+    1. Look into this feature on the watch as well.
+<details>
+    <summary><strong>Completed items</strong></summary>
+
+- Setup docker container for backend (goLang is going to be used) ✅
+
+- Create API in Go. Basic CRUD will do for now. The data should be saved to the locally stored database. ✅
+
 ```json
 example of possible data for API
 {
@@ -104,20 +145,4 @@ example of possible data for API
     "createdAt": "",
 }
 ```
-- Setup basic mobile app using Kotlin. The app should be able to connect to the API and the CRUD functionality works as expected.
-- Implement and update the design of the application.
-- Add functionality of increasing or decreasing the portion which results in the updated list of ingredients. 
-- Exporting functionality of the recipe as a long screenshot.
-- Make a companion watch app.
-- Add Sort functionality in the app by:
-    1. Name
-    2. Portion
-    3. Create Date
-- Filter out the reipecs by ingredients. Being able to uncheck the ingredients and hide the recipes.
-- Look into Gemini integration so that when asking to look for a recipe, it looks through this app first.
-- Ability to have "Cooking mode" so that the phone screen does not turn off.
-    1. Look into this feature on the watch as well.
-<details>
-    <summary><strong>Completed items</strong></summary>
-- Setup docker container for backend (goLang is going to be used) ✅
 </details>
