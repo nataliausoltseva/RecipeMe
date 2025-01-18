@@ -23,6 +23,7 @@ CREATE TABLE portion(
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     value TEXT,
     measurement TEXT,
+    recipe_id INTEGER,
     FOREIGN KEY (recipe_id) REFERENCES recipe(id) ON DELETE CASCADE ON UPDATE NO ACTION
 );
 ```
@@ -39,7 +40,18 @@ CREATE TABLE ingredient(
 );
 ```
 
-The **recipe** table has a relationsip `has_one` **portion** and `has_many` **ingredient**s.
+4. The **method** table:
+```sqlite
+CREATE TABLE method(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    value TEXT,
+    sortOrder INTEGER,
+    recipe_id INTEGER,
+    FOREIGN KEY (recipe_id) REFERENCES recipe(id) ON DELETE CASCADE ON UPDATE NO ACTION
+);
+```
+
+The **recipe** table has a relationsip `has_one` **portion** and `has_many` **ingredient**s, **method**s.
 
 
 ## Idea:
@@ -50,8 +62,10 @@ A way to host the storage on your machine and have full control over where the d
 ```json
 example of possible data for API
 {
+    "id": 1,
     "name": "Test",
     "portion": {
+        "id": 1,
         "value": 2,
         "measurement": "days", // can be just "days" for now
     },
@@ -59,16 +73,33 @@ example of possible data for API
     "image": "",
     "ingredients":  [
         {
+            "id": 1,
             "name": "Onion",
             "measurement": "items", // can be items, grams, kgs, ml, cups, cans 
             "value": 1,
         }
     ],
     "methods": [
-        "Turn the stove on",
-        "Crack an egg",
-        "Tun off the stove",
-        "Clean the stove"
+        {
+            "id": 1,
+            "sortOrder": 1,
+            "value": "Turn the stove on"
+        },
+        {
+            "id": 3,
+            "sortOrder":2,
+            "value": "Crack an egg",
+        },
+        {
+            "id": 2,
+            "sortOrder":3,
+            "value": "Tun off the stove",
+        },
+        {
+            "id": 4,
+            "sortOrder":4,
+            "value": "Clean the stove"
+        },
     ],
     "createdAt": "",
 }

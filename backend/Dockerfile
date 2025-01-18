@@ -22,9 +22,10 @@ RUN go build -o backend ./main.go
 
 RUN mkdir -p ./database
 # Create the SQLite database and tables
-RUN sqlite3 ./database/database.db "CREATE TABLE recipe (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, url TEXT, imageUrl TEXT, createdAt TEXT, methods TEXT);"
-RUN sqlite3 ./database/database.db "CREATE TABLE portion (id INTEGER PRIMARY KEY AUTOINCREMENT, value TEXT, measurement TEXT, FOREIGN KEY (recipe_id) REFERENCES recipe(id) ON DELETE CASCADE ON UPDATE NO ACTION);"
-RUN sqlite3 ./database/database.db "CREATE TABLE ingeredient (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, measurement TEXT, value TEXT, recipe_id INTEGER, FOREIGN KEY (recipe_id) REFERENCES recipe(id) ON DELETE CASCADE ON UPDATE NO ACTION);"
+RUN sqlite3 ./database/database.db "CREATE TABLE recipe (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, url TEXT, imageUrl TEXT, createdAt TEXT);"
+RUN sqlite3 ./database/database.db "CREATE TABLE portion (id INTEGER PRIMARY KEY AUTOINCREMENT, value TEXT, measurement TEXT, recipe_id INTEGER, FOREIGN KEY (recipe_id) REFERENCES recipe(id) ON DELETE CASCADE ON UPDATE NO ACTION);"
+RUN sqlite3 ./database/database.db "CREATE TABLE ingredient (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, measurement TEXT, value TEXT, recipe_id INTEGER, FOREIGN KEY (recipe_id) REFERENCES recipe(id) ON DELETE CASCADE ON UPDATE NO ACTION);"
+RUN sqlite3 ./database/database.db "CREATE TABLE method (id INTEGER PRIMARY KEY AUTOINCREMENT, value TEXT, sortOrder INTEGER, recipe_id INTEGER, FOREIGN KEY (recipe_id) REFERENCES recipe(id) ON DELETE CASCADE ON UPDATE NO ACTION);"
 
 # Debugging step to check if the database file is created
 RUN ls -l ./database
