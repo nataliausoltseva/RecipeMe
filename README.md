@@ -12,7 +12,6 @@ CREATE TABLE recipe(
     name TEXT,
     url TEXT,
     imageUrl TEXT,
-    methods TEXT,
     createdAt TEXT
 );
 ```
