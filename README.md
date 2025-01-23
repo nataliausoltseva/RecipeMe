@@ -79,7 +79,6 @@ The **recipe** table has a relationsip `has_one` **portion** and `has_many` **in
 A way to host the storage on your machine and have full control over where the data is saved, how manipulated. No ads, all features available.
 
 ## Roadmap:
-- Setup basic mobile app using Kotlin. The app should be able to connect to the API and the CRUD functionality works as expected.
 - Implement and update the design of the application.
 - Add functionality of increasing or decreasing the portion which results in the updated list of ingredients. 
 - Exporting functionality of the recipe as a long screenshot.
@@ -144,4 +143,7 @@ example of possible data for API
     "createdAt": "",
 }
 ```
+
+- Setup basic mobile app using Kotlin. The app should be able to connect to the API and the CRUD functionality works as expected.
+
 </details>

@@ -1,4 +1,4 @@
-package data
+package com.example.recipe.data
 
 data class Portion(
     val id: Number,

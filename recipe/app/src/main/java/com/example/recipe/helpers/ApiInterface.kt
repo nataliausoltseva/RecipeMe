@@ -1,9 +1,9 @@
 package com.example.recipe.helpers
 
-import data.Ingredient
-import data.Method
-import data.Portion
-import data.Recipe
+import com.example.recipe.data.Ingredient
+import com.example.recipe.data.Method
+import com.example.recipe.data.Portion
+import com.example.recipe.data.Recipe
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE

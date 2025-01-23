@@ -1,7 +1,6 @@
-package helpers
+package com.example.recipe.helpers
 
-import com.example.recipe.helpers.ApiInterface
-import data.Recipe
+import com.example.recipe.data.Recipe
 
 class Endpoints {
     private var apiInterface: ApiInterface = RetrofitInstance.getInstance().create(ApiInterface::class.java)

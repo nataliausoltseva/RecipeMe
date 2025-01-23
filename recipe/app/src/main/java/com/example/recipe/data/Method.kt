@@ -1,4 +1,4 @@
-package data
+package com.example.recipe.data
 
 data class Method(
     val id: Number,
