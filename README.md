@@ -78,6 +78,19 @@ The **recipe** table has a relationsip `has_one` **portion** and `has_many` **in
 ## Idea:
 A way to host the storage on your machine and have full control over where the data is saved, how manipulated. No ads, all features available.
 
+## Wireframe
+### Initial
+<img src="./wireframe/Initial design for RecipeMe.png" style="height: '500px';"  alt=""/>
+On the left screen: at the top have a search bar and filter/sort icon. The recipe cards are placed 2 per row. Each recipe card will have support to show:
+
+- image
+- name
+- portion
+- number of ingredients
+- time (currently it is not suported)
+
+The right screen represents the modal for filter/sort dropdown. The ingredients' dropdown will offer multi checkbox and in sort dropdown a user can only select 1 item.
+
 ## Roadmap:
 - Implement and update the design of the application.
 - Add functionality of increasing or decreasing the portion which results in the updated list of ingredients. 
