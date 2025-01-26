@@ -3,12 +3,12 @@ package com.example.recipe.data
 data class Recipe (
     val id: Number,
     val name: String,
-    val portion: Portion,
+    val portion: Portion?,
     val imageUrl: String,
     val url: String,
     val image: String,
     val ingredients: Array<Ingredient>,
-    val methods: Array<Method>,
+    val methods: Array<Method>?,
     val createdAt: String
 ) {
     override fun equals(other: Any?): Boolean {
