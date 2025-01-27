@@ -36,6 +36,32 @@ class RecipeViewModel: ViewModel() {
         }
     }
 
+    fun viewRecipe(recipe: Recipe) {
+        _uiState.update {
+            it.copy(
+                isFullScreen = true,
+                selectedRecipe = recipe
+            )
+        }
+    }
+
+    fun createRecipe() {
+        _uiState.update {
+            it.copy(
+                isFullScreen = true,
+            )
+        }
+    }
+
+    fun backToListView() {
+        _uiState.update {
+            it.copy(
+                isFullScreen = false,
+                selectedRecipe = null
+            )
+        }
+    }
+
     init {
         getRecipes()
     }
