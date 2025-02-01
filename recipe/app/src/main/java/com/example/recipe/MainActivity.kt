@@ -27,16 +27,21 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -46,11 +51,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.example.recipe.data.RecipeViewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.example.recipe.data.Ingredient
 import com.example.recipe.data.Recipe
+import com.example.recipe.helpers.RecipeRequest
 import com.example.recipe.helpers.getResizedBitmap
 
 class MainActivity : ComponentActivity() {
@@ -86,7 +94,9 @@ fun Main(recipeViewModel: RecipeViewModel) {
                     recipesUIState.selectedRecipe!!
                 )
             } else {
-                CreateRecipe()
+                CreateRecipe(
+                    onSave = { recipeViewModel.saveRecipe(it) }
+                )
             }
         } else {
             CustomSearchView(
@@ -101,6 +111,13 @@ fun Main(recipeViewModel: RecipeViewModel) {
 
             ) {
                 Text("Reload")
+            }
+            Button(
+                onClick = { recipeViewModel.createRecipe() },
+                modifier = Modifier
+                    .align(Alignment.End),
+            ) {
+                Text("New")
             }
             ListOfRecipes(
                 recipesUIState.recipes,
@@ -135,6 +152,7 @@ fun ListOfRecipes(
     recipes: List<Recipe>,
     onView: (recipe: Recipe) -> Unit
 ) {
+    val context = LocalContext.current as ComponentActivity
     for (recipe in recipes) {
         Row {
             Column(
@@ -193,14 +211,94 @@ fun ViewRecipe(
 
 @Composable
 fun CreateRecipe(
+    onSave: (recipeRequest: RecipeRequest) -> Unit
 ) {
+    var name by remember { mutableStateOf("") }
+    val recipeRequest by remember {
+        mutableStateOf(RecipeRequest(
+            name = "",
+            imageUrl = ""
+        ))
+    }
+
+    // portion handlers
+    var isExpandedPortionSelector by remember { mutableStateOf(false) }
+    var portionSelection by remember { mutableStateOf("") }
+    var portionValue by remember { mutableIntStateOf(1) }
+
+    // ingredients handlers
+    var ingredients = remember { mutableStateListOf<Ingredient>() }
+
     Column {
-        ImageUploader()
+        ImageUploader(
+            onImageUpload = { recipeRequest.imageUrl = it.toString() }
+        )
+        TextField(
+            value = name,
+            onValueChange = {
+                name = it
+                recipeRequest.name = it
+            },
+            label = { Text("Name") },
+        )
+        Text("Portion")
+        Row {
+            TextField(
+                value = portionValue.toString(),
+                onValueChange = {
+                    portionValue = it.toInt()
+                },
+                keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
+            )
+
+            DropdownMenuItem(
+                text = { Text("Choose") },
+                onClick = {
+                    isExpandedPortionSelector = !isExpandedPortionSelector
+                }
+            )
+            DropdownMenu(
+                expanded = isExpandedPortionSelector,
+                onDismissRequest = { isExpandedPortionSelector = !isExpandedPortionSelector }
+            ) {
+                for (portion in arrayOf("day", "portion")) {
+                    DropdownMenuItem(
+                        text = { Text(portion) },
+                        onClick = {
+                            portionSelection = portion
+                            isExpandedPortionSelector = false
+                        }
+                    )
+                }
+            }
+        }
+        Text("Ingredients")
+        for (ingredient in ingredients) {
+            Ingredient(
+                ingredient,
+                onAdd = { }
+            )
+        }
+        Ingredient(
+            ingredient = null,
+            onAdd = { ingredients.add(it) }
+        )
+
+        Button(
+            onClick = { onSave(recipeRequest) },
+            modifier = Modifier
+                .align(Alignment.End),
+            enabled = recipeRequest.name !== "" || recipeRequest.imageUrl !== ""
+        ) {
+            Text("Save")
+        }
     }
 }
 
 @Composable
-fun ImageUploader() {
+fun ImageUploader(
+    onImageUpload: (imageUri: Uri) -> Unit
+) {
     val context = LocalContext.current as ComponentActivity
     var imageUri by remember { mutableStateOf<Uri?>(null) }
     var bitmapState by remember { mutableStateOf<Bitmap?>(null) }
@@ -212,6 +310,8 @@ fun ImageUploader() {
                 imageUri = it
                 val resizedBitmap = getResizedBitmap(context, it, 800, 800)
                 bitmapState = resizedBitmap
+                println(resizedBitmap)
+                onImageUpload(it)
             }
         }
     )
@@ -242,3 +342,59 @@ fun ImageUploader() {
         }
     }
 }
+
+@Composable
+fun Ingredient(
+    ingredient: Ingredient?,
+    onAdd: (ingredient: Ingredient) -> Unit
+) {
+    var isExpandedIngredientPortionSelector by remember { mutableStateOf(false) }
+    val newIngredient by remember { mutableStateOf(Ingredient(
+        name = ingredient?.name ?: "",
+        measurement = ingredient?.measurement ?: "",
+        value = ingredient?.value ?: 1,
+    )) }
+    TextField(
+        value = newIngredient.name,
+        onValueChange = {
+            newIngredient.name = it
+        },
+    )
+    Row {
+        TextField(
+            value = newIngredient.value.toString(),
+            onValueChange = {
+                newIngredient.value = it.toFloat()
+            },
+            keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
+        )
+
+        DropdownMenuItem(
+            text = { Text("Choose") },
+            onClick = {
+                isExpandedIngredientPortionSelector = !isExpandedIngredientPortionSelector
+            }
+        )
+        DropdownMenu(
+            expanded = isExpandedIngredientPortionSelector,
+            onDismissRequest = { isExpandedIngredientPortionSelector = !isExpandedIngredientPortionSelector }
+        ) {
+            for (portion in arrayOf("bottle", "can", "item", "g", "kg", "mL", "L", "tbsp", "tsp", "cup")) {
+                DropdownMenuItem(
+                    text = { Text(portion) },
+                    onClick = {
+                        newIngredient.measurement = portion
+                        isExpandedIngredientPortionSelector = false
+                    }
+                )
+            }
+        }
+    }
+    Button(
+        onClick = {
+            onAdd(newIngredient)
+        },
+        enabled = newIngredient.name !== ""
+    ) {
+        Text("Add ingredient")
+    }}

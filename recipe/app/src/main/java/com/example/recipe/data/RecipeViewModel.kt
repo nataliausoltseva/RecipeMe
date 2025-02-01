@@ -3,6 +3,7 @@ package com.example.recipe.data
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.recipe.helpers.Endpoints
+import com.example.recipe.helpers.RecipeRequest
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -50,6 +51,19 @@ class RecipeViewModel: ViewModel() {
             it.copy(
                 isFullScreen = true,
             )
+        }
+    }
+
+    fun saveRecipe(recipe: RecipeRequest) {
+        viewModelScope.launch {
+            try {
+                val endpoints = Endpoints()
+                endpoints.createRecipe(recipe)
+                getRecipes()
+                backToListView()
+            } catch (e: Exception) {
+                println("Error: ${e.message}")
+            }
         }
     }
 

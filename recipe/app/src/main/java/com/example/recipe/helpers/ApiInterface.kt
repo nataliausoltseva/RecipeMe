@@ -13,10 +13,8 @@ import retrofit2.http.PUT
 import retrofit2.http.Path
 
 data class RecipeRequest(
-    val name: String,
-    val url: String,
-    val imageUrl: String,
-    val createdAt: String
+    var name: String,
+    var imageUrl: String,
 )
 
 data class PortionRequest(

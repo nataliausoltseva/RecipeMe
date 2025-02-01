@@ -5,7 +5,6 @@ data class Recipe (
     val name: String,
     val portion: Portion?,
     val imageUrl: String,
-    val url: String,
     val image: String,
     val ingredients: Array<Ingredient>,
     val methods: Array<Method>?,
@@ -21,7 +20,6 @@ data class Recipe (
         if (name != other.name) return false
         if (portion != other.portion) return false
         if (imageUrl != other.imageUrl) return false
-        if (url != other.url) return false
         if (image != other.image) return false
         if (!ingredients.contentEquals(other.ingredients)) return false
         if (!methods.contentEquals(other.methods)) return false
@@ -35,7 +33,6 @@ data class Recipe (
         result = 31 * result + name.hashCode()
         result = 31 * result + portion.hashCode()
         result = 31 * result + imageUrl.hashCode()
-        result = 31 * result + url.hashCode()
         result = 31 * result + image.hashCode()
         result = 31 * result + ingredients.contentHashCode()
         result = 31 * result + methods.contentHashCode()

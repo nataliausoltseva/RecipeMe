@@ -20,4 +20,12 @@ class Endpoints {
             return null
         }
     }
+
+    suspend fun createRecipe(recipe: RecipeRequest) {
+        try {
+            apiInterface.createRecipe(recipe)
+        } catch (e: Exception) {
+            println("Exception error getSpecies: ${e.message}. ${e.printStackTrace()}")
+        }
+    }
 }
