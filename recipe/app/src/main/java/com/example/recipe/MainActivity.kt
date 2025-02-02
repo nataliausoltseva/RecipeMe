@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -31,11 +32,13 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -228,6 +231,8 @@ fun CreateRecipe(
 
     // ingredients handlers
     var ingredients = remember { mutableStateListOf<Ingredient>() }
+    var showIngredientModal by remember { mutableStateOf(false) }
+    var selectedIngredient = remember { mutableStateOf<Ingredient?>(null) }
 
     Column {
         ImageUploader(
@@ -272,17 +277,40 @@ fun CreateRecipe(
                 }
             }
         }
-        Text("Ingredients")
+        Row {
+            Text("Ingredients")
+            TextButton(
+                onClick = {
+                    showIngredientModal = true
+                    selectedIngredient.value = null
+                }
+            ) {
+                Text("+")
+            }
+        }
         for (ingredient in ingredients) {
-            Ingredient(
-                ingredient,
-                onAdd = { }
+            Row {
+                Text(ingredient.name)
+                Text(" - ")
+                Text(ingredient.value.toString())
+                Text(ingredient.measurement)
+                TextButton(
+                    onClick = {
+                        showIngredientModal = true
+                        selectedIngredient.value = ingredient
+                    }
+                ) { }
+            }
+        }
+
+        if (showIngredientModal) {
+            AddOrEditIngredient(
+                ingredient = selectedIngredient.value,
+                onConfirmation = { ingredients.add(it) },
+                onDismissRequest = { showIngredientModal = false },
+                dialogTitle = "New ingredient"
             )
         }
-        Ingredient(
-            ingredient = null,
-            onAdd = { ingredients.add(it) }
-        )
 
         Button(
             onClick = { onSave(recipeRequest) },
@@ -344,57 +372,88 @@ fun ImageUploader(
 }
 
 @Composable
-fun Ingredient(
+fun AddOrEditIngredient(
     ingredient: Ingredient?,
-    onAdd: (ingredient: Ingredient) -> Unit
+    onDismissRequest: () -> Unit,
+    onConfirmation: (ingredient: Ingredient) -> Unit,
+    dialogTitle: String,
 ) {
+    var name by remember { mutableStateOf(ingredient?.name ?: "") }
     var isExpandedIngredientPortionSelector by remember { mutableStateOf(false) }
     val newIngredient by remember { mutableStateOf(Ingredient(
         name = ingredient?.name ?: "",
         measurement = ingredient?.measurement ?: "",
         value = ingredient?.value ?: 1,
     )) }
-    TextField(
-        value = newIngredient.name,
-        onValueChange = {
-            newIngredient.name = it
+    AlertDialog(
+        title = {
+            Text(text = dialogTitle)
         },
-    )
-    Row {
-        TextField(
-            value = newIngredient.value.toString(),
-            onValueChange = {
-                newIngredient.value = it.toFloat()
-            },
-            keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
-        )
-
-        DropdownMenuItem(
-            text = { Text("Choose") },
-            onClick = {
-                isExpandedIngredientPortionSelector = !isExpandedIngredientPortionSelector
-            }
-        )
-        DropdownMenu(
-            expanded = isExpandedIngredientPortionSelector,
-            onDismissRequest = { isExpandedIngredientPortionSelector = !isExpandedIngredientPortionSelector }
-        ) {
-            for (portion in arrayOf("bottle", "can", "item", "g", "kg", "mL", "L", "tbsp", "tsp", "cup")) {
-                DropdownMenuItem(
-                    text = { Text(portion) },
-                    onClick = {
-                        newIngredient.measurement = portion
-                        isExpandedIngredientPortionSelector = false
-                    }
+        text = {
+            Column {
+                TextField(
+                    value = name,
+                    onValueChange = {
+                        newIngredient.name = it
+                        name = it
+                    },
                 )
+                Row {
+                    Box (
+                        Modifier.width(100.dp)
+                    ) {
+                        TextField(
+                            value = newIngredient.value.toString(),
+                            onValueChange = {
+                                newIngredient.value = it.toFloat()
+                            },
+                            keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
+                        )
+                    }
+
+                    DropdownMenuItem(
+                        text = { Text(if (newIngredient.measurement !== "") newIngredient.measurement else "Choose") },
+                        onClick = {
+                            isExpandedIngredientPortionSelector = !isExpandedIngredientPortionSelector
+                        }
+                    )
+                    DropdownMenu(
+                        expanded = isExpandedIngredientPortionSelector,
+                        onDismissRequest = { isExpandedIngredientPortionSelector = !isExpandedIngredientPortionSelector }
+                    ) {
+                        for (portion in arrayOf("bottle", "can", "item", "g", "kg", "mL", "L", "tbsp", "tsp", "cup")) {
+                            DropdownMenuItem(
+                                text = { Text(portion) },
+                                onClick = {
+                                    newIngredient.measurement = portion
+                                    isExpandedIngredientPortionSelector = false
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        onDismissRequest = {
+            onDismissRequest()
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    onConfirmation(newIngredient)
+                }
+            ) {
+                Text("Save")
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = {
+                    onDismissRequest()
+                }
+            ) {
+                Text("Cancel")
             }
         }
-    }
-    Button(
-        onClick = {
-            onAdd(newIngredient)
-        },
-        enabled = newIngredient.name !== ""
-    ) {
-        Text("Add ingredient")
-    }}
+    )
+}
