@@ -60,6 +60,7 @@ import com.example.recipe.data.RecipeViewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.recipe.data.Ingredient
+import com.example.recipe.data.Method
 import com.example.recipe.data.Recipe
 import com.example.recipe.helpers.RecipeRequest
 import com.example.recipe.helpers.getResizedBitmap
@@ -234,6 +235,11 @@ fun CreateRecipe(
     var showIngredientModal by remember { mutableStateOf(false) }
     var selectedIngredient = remember { mutableStateOf<Ingredient?>(null) }
 
+    // ingredients handlers
+    var methods = remember { mutableStateListOf<Method>() }
+    var showMethodModal by remember { mutableStateOf(false) }
+    var selectedMethod = remember { mutableStateOf<Method?>(null) }
+
     Column {
         ImageUploader(
             onImageUpload = { recipeRequest.imageUrl = it.toString() }
@@ -308,7 +314,28 @@ fun CreateRecipe(
                 ingredient = selectedIngredient.value,
                 onConfirmation = { ingredients.add(it) },
                 onDismissRequest = { showIngredientModal = false },
-                dialogTitle = "New ingredient"
+                dialogTitle = if (selectedIngredient.value != null) "Edit ingredient" else "New ingredient"
+            )
+        }
+
+        for (method in methods) {
+            Row {
+                Text(method.value)
+                TextButton(
+                    onClick = {
+                        showMethodModal = true
+                        selectedMethod.value = method
+                    }
+                ) { }
+            }
+        }
+
+        if (showIngredientModal) {
+            AddOrEditMethodStep(
+                method = selectedMethod.value,
+                onConfirmation = { methods.add(it) },
+                onDismissRequest = { showMethodModal = false },
+                dialogTitle = if (selectedMethod.value != null) "Edit method step" else "New method step"
             )
         }
 
@@ -441,6 +468,56 @@ fun AddOrEditIngredient(
             TextButton(
                 onClick = {
                     onConfirmation(newIngredient)
+                }
+            ) {
+                Text("Save")
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = {
+                    onDismissRequest()
+                }
+            ) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+@Composable
+fun AddOrEditMethodStep(
+    method: Method?,
+    onDismissRequest: () -> Unit,
+    onConfirmation: (method: Method) -> Unit,
+    dialogTitle: String,
+) {
+    var value by remember { mutableStateOf(method?.value ?: "") }
+    val newMethod by remember { mutableStateOf(Method(
+        value = method?.value ?: "",
+    )) }
+    AlertDialog(
+        title = {
+            Text(text = dialogTitle)
+        },
+        text = {
+            Column {
+                TextField(
+                    value = value,
+                    onValueChange = {
+                        newMethod.value = it
+                        value = it
+                    },
+                )
+            }
+        },
+        onDismissRequest = {
+            onDismissRequest()
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    onConfirmation(newMethod)
                 }
             ) {
                 Text("Save")
