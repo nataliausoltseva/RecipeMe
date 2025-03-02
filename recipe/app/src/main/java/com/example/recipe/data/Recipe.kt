@@ -1,7 +1,7 @@
 package com.example.recipe.data
 
 data class Recipe (
-    val id: Number,
+    val id: Int,
     val name: String,
     val portion: Portion?,
     val imageUrl: String,

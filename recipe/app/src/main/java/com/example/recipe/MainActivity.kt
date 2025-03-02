@@ -229,6 +229,7 @@ fun CreateRecipe(
     var isExpandedPortionSelector by remember { mutableStateOf(false) }
     var portionSelection by remember { mutableStateOf("") }
     var portionValue by remember { mutableIntStateOf(1) }
+    var placeholderPortionValue by remember { mutableStateOf("1") }
 
     // ingredients handlers
     var ingredients = remember { mutableStateListOf<Ingredient>() }
@@ -255,9 +256,12 @@ fun CreateRecipe(
         Text("Portion")
         Row {
             TextField(
-                value = portionValue.toString(),
+                value = placeholderPortionValue,
                 onValueChange = {
-                    portionValue = it.toInt()
+                    if (it != "") {
+                        portionValue = it.toInt()
+                    }
+                    placeholderPortionValue = it
                 },
                 keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
             )
@@ -312,15 +316,31 @@ fun CreateRecipe(
         if (showIngredientModal) {
             AddOrEditIngredient(
                 ingredient = selectedIngredient.value,
-                onConfirmation = { ingredients.add(it) },
+                onConfirmation = {
+                    ingredients.add(it)
+                    showIngredientModal = false
+                },
                 onDismissRequest = { showIngredientModal = false },
                 dialogTitle = if (selectedIngredient.value != null) "Edit ingredient" else "New ingredient"
             )
         }
 
+        Row {
+            Text("Methods")
+            TextButton(
+                onClick = {
+                    showMethodModal = true
+                    selectedMethod.value = null
+                }
+            ) {
+                Text("+")
+            }
+        }
+
         for (method in methods) {
+            val methodDivider = if (method.sortOrder != null) method.sortOrder.inc().toString() + ". " else "- "
             Row {
-                Text(method.value)
+                Text(methodDivider + method.value)
                 TextButton(
                     onClick = {
                         showMethodModal = true
@@ -330,10 +350,13 @@ fun CreateRecipe(
             }
         }
 
-        if (showIngredientModal) {
+        if (showMethodModal) {
             AddOrEditMethodStep(
                 method = selectedMethod.value,
-                onConfirmation = { methods.add(it) },
+                onConfirmation = {
+                    methods.add(it)
+                    showMethodModal = false
+                },
                 onDismissRequest = { showMethodModal = false },
                 dialogTitle = if (selectedMethod.value != null) "Edit method step" else "New method step"
             )
@@ -495,6 +518,8 @@ fun AddOrEditMethodStep(
     var value by remember { mutableStateOf(method?.value ?: "") }
     val newMethod by remember { mutableStateOf(Method(
         value = method?.value ?: "",
+        id = 0,
+        sortOrder = 0,
     )) }
     AlertDialog(
         title = {

@@ -1,7 +1,7 @@
 package com.example.recipe.data
 
 data class Method(
-    val id: Number,
-    val sortOrder: Number,
-    val value: String
+    val id: Int?,
+    val sortOrder: Int?,
+    var value: String
 )

@@ -1,7 +1,7 @@
 package com.example.recipe.data
 
 data class Portion(
-    val id: Number,
-    val value: Number,
+    val id: Int,
+    val value: Float,
     val measurement: String,
 )
