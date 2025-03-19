@@ -7,7 +7,7 @@ All backend logic is located in the `/backend` directory. It also includes the `
 
 1. The **recipe** table:
 ```sqlite
-CREATE TABLE recipe(
+CREATE TABLE recipes(
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT,
     url TEXT,
@@ -18,35 +18,35 @@ CREATE TABLE recipe(
 
 2. The **portion** table:
 ```sqlite
-CREATE TABLE portion(
+CREATE TABLE portions(
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     value TEXT,
     measurement TEXT,
     recipe_id INTEGER,
-    FOREIGN KEY (recipe_id) REFERENCES recipe(id) ON DELETE CASCADE ON UPDATE NO ACTION
+    FOREIGN KEY (recipe_id) REFERENCES recipes(id) ON DELETE CASCADE ON UPDATE NO ACTION
 );
 ```
 
 3. The **ingredient** table:
 ```sqlite
-CREATE TABLE ingredient(
+CREATE TABLE ingredients(
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT,
     measurement TEXT,
     value TEXT,
     recipe_id INTEGER,
-    FOREIGN KEY (recipe_id) REFERENCES recipe(id) ON DELETE CASCADE ON UPDATE NO ACTION
+    FOREIGN KEY (recipe_id) REFERENCES recipes(id) ON DELETE CASCADE ON UPDATE NO ACTION
 );
 ```
 
 4. The **method** table:
 ```sqlite
-CREATE TABLE method(
+CREATE TABLE methods(
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     value TEXT,
     sortOrder INTEGER,
     recipe_id INTEGER,
-    FOREIGN KEY (recipe_id) REFERENCES recipe(id) ON DELETE CASCADE ON UPDATE NO ACTION
+    FOREIGN KEY (recipe_id) REFERENCES recipes(id) ON DELETE CASCADE ON UPDATE NO ACTION
 );
 ```
 
@@ -79,6 +79,19 @@ The **recipe** table has a relationsip `has_one` **portion** and `has_many` **in
 A way to host the storage on your machine and have full control over where the data is saved, how manipulated. No ads, all features available.
 
 ## Wireframe
+### March 2025
+#### Landing page 
+<img src="./wireframe/HomePage.png" style="height:500px;"  alt=""/>
+
+#### Landing page with filter open
+<img src="./wireframe/HomePageWithFilterOpen.png" style="height:500px;"  alt=""/>
+
+#### Recipe view page
+<img src="./wireframe/RecipeViewPage.png" style="height:500px;"  alt=""/>
+
+#### Recipe edit page
+<img src="./wireframe/RecipeEditPage.png" style="height:500px;"  alt=""/>
+
 ### Initial
 <img src="./wireframe/Initial design for RecipeMe.png" style="height: '500px';"  alt=""/>
 On the left screen: at the top have a search bar and filter/sort icon. The recipe cards are placed 2 per row. Each recipe card will have support to show:
