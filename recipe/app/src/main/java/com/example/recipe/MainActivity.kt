@@ -18,25 +18,32 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
@@ -103,10 +110,20 @@ fun Main(recipeViewModel: RecipeViewModel) {
                 )
             }
         } else {
-            CustomSearchView(
-                search = search,
-                onValueChange = { search = it }
-            )
+            Row (
+                modifier = Modifier.fillMaxWidth().padding(20.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                SearchInput(
+                    search = search,
+                    onValueChange = { search = it }
+                )
+                Filter (
+                    onToggle = { },
+                    isOpen = true
+                )
+            }
 
             Button(
                 onClick = { recipeViewModel.reloadRecipes() },
@@ -116,37 +133,64 @@ fun Main(recipeViewModel: RecipeViewModel) {
             ) {
                 Text("Reload")
             }
-            Button(
-                onClick = { recipeViewModel.createRecipe() },
-                modifier = Modifier
-                    .align(Alignment.End),
-            ) {
-                Text("New")
-            }
             ListOfRecipes(
                 recipesUIState.recipes,
                 onView = { recipeViewModel.viewRecipe(it) }
+            )
+            Add(
+                onAdd = { recipeViewModel.createRecipe() }
             )
         }
     }
 }
 
 @Composable
-fun CustomSearchView(
+fun SearchInput(
     search: String,
     onValueChange: (String) -> Unit
 ) {
-    Box(
+    OutlinedTextField(value = search,
+        onValueChange = onValueChange,
+        leadingIcon = { Icon(imageVector = Icons.Default.Search, contentDescription = "") },
+        placeholder = { Text(text = "Search") },
+        shape = RoundedCornerShape(50),
         modifier = Modifier
-            .padding(20.dp)
-            .clip(CircleShape)
-            .background(Color(0XFF101921))
+            .fillMaxWidth(0.85F)
+    )
+}
 
+@Composable
+fun Filter(
+    onToggle: (Boolean) -> Unit,
+    isOpen: Boolean
+) {
+    Icon(
+        imageVector = Icons.Filled.Settings,
+        contentDescription = "Settings Icon",
+        modifier = Modifier.size(45.dp)
+            .clickable { onToggle(!isOpen) }
+    )
+}
+
+@Composable
+fun Add(
+    onAdd: () -> Unit
+) {
+    Box (
+        modifier = Modifier
+            .clip(CircleShape)
+            .border(
+                width = 1.dp,
+                color = Color.Black,
+                shape = RoundedCornerShape(50.dp)
+            )
     ) {
-        TextField(value = search,
-            onValueChange = onValueChange,
-            leadingIcon = { Icon(imageVector = Icons.Default.Search, contentDescription = "") },
-            placeholder = { Text(text = "Search") },
+        Icon(
+            imageVector = Icons.Filled.Add,
+            contentDescription = "Settings Icon",
+            modifier = Modifier.size(45.dp)
+                .clickable { onAdd() }
+                .align(Alignment.BottomEnd)
         )
     }
 }
@@ -156,7 +200,6 @@ fun ListOfRecipes(
     recipes: List<Recipe>,
     onView: (recipe: Recipe) -> Unit
 ) {
-    val context = LocalContext.current as ComponentActivity
     for (recipe in recipes) {
         Row {
             Column(
