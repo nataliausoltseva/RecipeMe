@@ -31,6 +31,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
@@ -68,7 +69,6 @@ import com.example.recipe.data.Method
 import com.example.recipe.data.Recipe
 import com.example.recipe.helpers.RecipeRequest
 import com.example.recipe.helpers.getResizedBitmap
-import java.nio.file.WatchEvent
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -93,11 +93,12 @@ fun Main(recipeViewModel: RecipeViewModel) {
             .windowInsetsPadding(WindowInsets.systemBars)
     ) {
         if (recipesUIState.isFullScreen) {
-            Button(
-                onClick = { recipeViewModel.backToListView() },
-            ) {
-                Text("Back")
-            }
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                contentDescription = "Arrow Left",
+                modifier = Modifier.clickable{ recipeViewModel.backToListView() }
+                    .size(50.dp, 50.dp)
+            )
             if (recipesUIState.selectedRecipe != null) {
                 ViewRecipe(
                     recipesUIState.selectedRecipe!!
@@ -269,9 +270,47 @@ fun ViewRecipe(
     recipe: Recipe
 ) {
     Column {
+        if (recipe.imageUrl != "") {
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(recipe.imageUrl)
+                    .crossfade(true)
+                    .build(),
+                contentDescription = recipe.name,
+                modifier = Modifier.height(150.dp)
+            )
+        }
+
         Text(
             text = recipe.name,
         )
+
+        if (recipe.portion?.value != null) {
+            Text(
+                text = recipe.portion.value.toString() + " " + recipe.portion.measurement,
+            )
+        }
+
+        Text(
+            text = "Ingredients:",
+        )
+
+        for (ingredient in recipe.ingredients) {
+            Text(
+                text = ingredient.name + " " + ingredient.value + " " + ingredient.measurement,
+            )
+        }
+
+        Text(
+            text = "Methods:",
+        )
+
+        for (method in recipe.methods) {
+            val indicator = if (method.sortOrder != null) (method.sortOrder + 1) else 1;
+            Text(
+                text =  indicator.toString() + ". " +method.value,
+            )
+        }
     }
 }
 
@@ -297,11 +336,13 @@ fun CreateRecipe(
     var ingredients = remember { mutableStateListOf<Ingredient>() }
     var showIngredientModal by remember { mutableStateOf(false) }
     var selectedIngredient = remember { mutableStateOf<Ingredient?>(null) }
+    val selectedIngredientIndex = remember { mutableIntStateOf(0) }
 
     // ingredients handlers
     var methods = remember { mutableStateListOf<Method>() }
     var showMethodModal by remember { mutableStateOf(false) }
     var selectedMethod = remember { mutableStateOf<Method?>(null) }
+    val selectedMethodIndex = remember { mutableIntStateOf(0) }
 
     Column {
         ImageUploader(
@@ -360,18 +401,18 @@ fun CreateRecipe(
                 Text("+")
             }
         }
-        for (ingredient in ingredients) {
-            Row {
+        for ((index, ingredient) in ingredients.withIndex()) {
+            Row(
+                modifier = Modifier.clickable{
+                    showIngredientModal = true
+                    selectedIngredient.value = ingredient
+                    selectedIngredientIndex.intValue = index
+                }
+            ) {
                 Text(ingredient.name)
                 Text(" - ")
                 Text(ingredient.value.toString())
                 Text(ingredient.measurement)
-                TextButton(
-                    onClick = {
-                        showIngredientModal = true
-                        selectedIngredient.value = ingredient
-                    }
-                ) { }
             }
         }
 
@@ -379,7 +420,12 @@ fun CreateRecipe(
             AddOrEditIngredient(
                 ingredient = selectedIngredient.value,
                 onConfirmation = {
-                    ingredients.add(it)
+                    if (selectedIngredient.value != null) {
+                        ingredients[selectedIngredientIndex.intValue] = it
+                    } else {
+                        ingredients.add(it)
+                    }
+                    selectedIngredient.value = null
                     showIngredientModal = false
                 },
                 onDismissRequest = { showIngredientModal = false },
@@ -399,16 +445,16 @@ fun CreateRecipe(
             }
         }
 
-        for (method in methods) {
+        for ((index, method) in methods.withIndex()) {
             val methodDivider = if (method.sortOrder != null) method.sortOrder.inc().toString() + ". " else "- "
-            Row {
+            Row(
+                modifier = Modifier.clickable{
+                    showMethodModal = true
+                    selectedMethod.value = method
+                    selectedMethodIndex.intValue = index
+                }
+            ) {
                 Text(methodDivider + method.value)
-                TextButton(
-                    onClick = {
-                        showMethodModal = true
-                        selectedMethod.value = method
-                    }
-                ) { }
             }
         }
 
@@ -416,7 +462,12 @@ fun CreateRecipe(
             AddOrEditMethodStep(
                 method = selectedMethod.value,
                 onConfirmation = {
-                    methods.add(it)
+                    if (selectedIngredient.value != null) {
+                        methods[selectedMethodIndex.intValue] = it
+                    } else {
+                        methods.add(it)
+                    }
+                    selectedMethod.value = null
                     showMethodModal = false
                 },
                 onDismissRequest = { showMethodModal = false },
