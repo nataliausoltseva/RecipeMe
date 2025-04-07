@@ -5,9 +5,9 @@ import com.example.recipe.data.Recipe
 class Endpoints {
     private var apiInterface: ApiInterface = RetrofitInstance.getInstance().create(ApiInterface::class.java)
 
-    suspend fun getRecipes(): List<Recipe>? {
+    suspend fun getRecipes(search: String?): List<Recipe>? {
         try {
-            val response = apiInterface.getRecipes()
+            val response = apiInterface.getRecipes(search)
             if (response.isSuccessful) {
                 val data = response.body()
                 return data

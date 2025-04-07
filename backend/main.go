@@ -49,13 +49,31 @@ var recipes []Recipe
 var db *sql.DB
 
 func getRecipes(w http.ResponseWriter, r *http.Request) {
-	rows, err := db.Query(`
+	queryParams := r.URL.Query()
+	searchString := queryParams.Get("search")
+	var rows *sql.Rows
+	var err error
+
+	if searchString == "" {
+		rows, err = db.Query(`
 		SELECT *
 		FROM recipe
 		LEFT JOIN ingredient ON recipe.id = ingredient.recipe_id
 		LEFT JOIN portion ON recipe.id = portion.recipe_id
 		LEFT JOIN method ON recipe.id = method.recipe_id
 	`)
+	} else {
+		searchPattern := "%" + searchString + "%"
+		rows, err = db.Query(`
+			SELECT *
+			FROM recipe
+			LEFT JOIN ingredient ON recipe.id = ingredient.recipe_id
+			LEFT JOIN portion ON recipe.id = portion.recipe_id
+			LEFT JOIN method ON recipe.id = method.recipe_id
+			WHERE recipe.name LIKE ? OR ingredient.name LIKE ?
+		`, searchPattern, searchPattern)
+	}
+
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -104,6 +122,7 @@ func getRecipes(w http.ResponseWriter, r *http.Request) {
 
 		recipes = append(recipes, recipe)
 	}
+
 	json.NewEncoder(w).Encode(recipes)
 }
 

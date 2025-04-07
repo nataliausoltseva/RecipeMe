@@ -11,6 +11,7 @@ import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Path
+import retrofit2.http.Query
 
 data class RecipeRequest(
     var name: String,
@@ -36,7 +37,7 @@ data class IngredientRequest(
 interface ApiInterface {
     // Recipe endpoints
     @GET("/recipes")
-    suspend fun getRecipes(): Response<List<Recipe>>
+    suspend fun getRecipes(@Query("search") search: String? = null): Response<List<Recipe>>
 
     @GET("/recipe/{id}")
     suspend fun getRecipe(@Path("id") id: Int): Response<Recipe>

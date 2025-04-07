@@ -18,11 +18,11 @@ class RecipeViewModel: ViewModel() {
         getRecipes()
     }
 
-    private fun getRecipes() {
+    private fun getRecipes(search: String? = null) {
         viewModelScope.launch {
             try {
                 val endpoints = Endpoints()
-                val recipes: List<Recipe>? = endpoints.getRecipes()
+                val recipes: List<Recipe>? = endpoints.getRecipes(search)
                 if (recipes != null) {
                     _uiState.update {
                         it.copy(
@@ -74,6 +74,10 @@ class RecipeViewModel: ViewModel() {
                 selectedRecipe = null
             )
         }
+    }
+
+    fun onSearch(search: String) {
+        getRecipes(search)
     }
 
     init {

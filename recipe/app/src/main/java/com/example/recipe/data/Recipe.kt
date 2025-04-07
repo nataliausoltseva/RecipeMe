@@ -7,7 +7,7 @@ data class Recipe (
     val imageUrl: String,
     val image: String,
     val ingredients: Array<Ingredient>,
-    val methods: Array<Method>?,
+    val methods: Array<Method>,
     val createdAt: String
 ) {
     override fun equals(other: Any?): Boolean {

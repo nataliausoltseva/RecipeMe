@@ -4,12 +4,11 @@ import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -18,17 +17,14 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -40,6 +36,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -71,6 +68,7 @@ import com.example.recipe.data.Method
 import com.example.recipe.data.Recipe
 import com.example.recipe.helpers.RecipeRequest
 import com.example.recipe.helpers.getResizedBitmap
+import java.nio.file.WatchEvent
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -117,7 +115,10 @@ fun Main(recipeViewModel: RecipeViewModel) {
             ) {
                 SearchInput(
                     search = search,
-                    onValueChange = { search = it }
+                    onValueChange = {
+                        search = it
+                        recipeViewModel.onSearch(it)
+                    }
                 )
                 Filter (
                     onToggle = { },
@@ -201,10 +202,11 @@ fun ListOfRecipes(
     onView: (recipe: Recipe) -> Unit
 ) {
     for (recipe in recipes) {
-        Row {
+        Card(
+            modifier = Modifier.padding(0.dp, 0.dp, 0.dp, 20.dp)
+        ) {
             Column(
                 modifier = Modifier
-                    .border(BorderStroke(1.dp, Color.Black))
                     .padding(0.dp, 10.dp)
             ) {
                 Box(
@@ -212,36 +214,53 @@ fun ListOfRecipes(
                         .fillMaxWidth(0.5f)
                         .clickable { onView(recipe) }
                 ) {
-                    if (recipe.imageUrl != "") {
-                        AsyncImage(
-                            model = ImageRequest.Builder(LocalContext.current)
-                                .data(recipe.imageUrl)
-                                .crossfade(true)
-                                .build(),
-                            contentDescription = recipe.name,
-                            modifier = Modifier.height(150.dp)
-                        )
-                    }
+                    Column {
+                        if (recipe.imageUrl != "") {
+                            AsyncImage(
+                                model = ImageRequest.Builder(LocalContext.current)
+                                    .data(recipe.imageUrl)
+                                    .crossfade(true)
+                                    .build(),
+                                contentDescription = recipe.name,
+                                modifier = Modifier.height(150.dp)
+                            )
+                        }
 
-                    Text(
-                        text = recipe.name,
-                    )
-
-                    if (recipe.portion?.value != null) {
                         Text(
-                            text = recipe.portion.value.toString() + " " + recipe.portion.measurement,
+                            text = recipe.name,
                         )
-                    }
 
-                    if (recipe.ingredients.isNotEmpty()) {
-                        val ingredientsLabel = if (recipe.ingredients.size > 1) "ingredients" else "ingredient"
+                        if (recipe.portion?.value != null) {
+                            Text(
+                                text = recipe.portion.value.toString() + " " + recipe.portion.measurement,
+                            )
+                        }
+
                         Text(
-                            text = recipe.ingredients.size.toString() + " " + ingredientsLabel,
+                            text = "Ingredients:",
                         )
+
+                        for (ingredient in recipe.ingredients) {
+                            Text(
+                                text = ingredient.name + " " + ingredient.value + " " + ingredient.measurement,
+                            )
+                        }
+
+                        Text(
+                            text = "Methods:",
+                        )
+
+                        for (method in recipe.methods) {
+                            val indicator = if (method.sortOrder != null) (method.sortOrder + 1) else 1;
+                            Text(
+                                text =  indicator.toString() + ". " +method.value,
+                            )
+                        }
                     }
                 }
             }
         }
+
     }
 }
 
@@ -420,7 +439,7 @@ fun CreateRecipe(
 fun ImageUploader(
     onImageUpload: (imageUri: Uri) -> Unit
 ) {
-    val context = LocalContext.current as ComponentActivity
+    val context = LocalActivity.current
     var imageUri by remember { mutableStateOf<Uri?>(null) }
     var bitmapState by remember { mutableStateOf<Bitmap?>(null) }
 
@@ -429,7 +448,7 @@ fun ImageUploader(
         onResult = { uri: Uri? ->
             uri?.let {
                 imageUri = it
-                val resizedBitmap = getResizedBitmap(context, it, 800, 800)
+                val resizedBitmap = getResizedBitmap(context!!, it, 800, 800)
                 bitmapState = resizedBitmap
                 println(resizedBitmap)
                 onImageUpload(it)
