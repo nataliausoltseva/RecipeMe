@@ -269,6 +269,21 @@ fun ListOfRecipes(
 fun ViewRecipe(
     recipe: Recipe
 ) {
+    var newRecipe = remember { mutableStateOf(Recipe(
+        id = recipe.id,
+        name = recipe.name,
+        portion = recipe.portion,
+        imageUrl = recipe.imageUrl,
+        image = recipe.image,
+        ingredients = recipe.ingredients,
+        methods = recipe.methods,
+        createdAt = recipe.createdAt
+    )) }
+
+    var showModal by remember { mutableStateOf(false)}
+    var modalTitle by remember { mutableStateOf("") }
+    var modalValue by remember { mutableStateOf("") }
+
     Column {
         if (recipe.imageUrl != "") {
             AsyncImage(
@@ -283,6 +298,11 @@ fun ViewRecipe(
 
         Text(
             text = recipe.name,
+            modifier = Modifier.clickable{
+                showModal = true
+                modalTitle = "Name"
+                modalValue = recipe.name
+            }
         )
 
         if (recipe.portion?.value != null) {
@@ -309,6 +329,15 @@ fun ViewRecipe(
             val indicator = if (method.sortOrder != null) (method.sortOrder + 1) else 1;
             Text(
                 text =  indicator.toString() + ". " +method.value,
+            )
+        }
+
+        if (showModal) {
+            EditModal(
+                title = modalTitle,
+                value = modalValue,
+                onSave = { newRecipe.name = it },
+                onClose = {}
             )
         }
     }
@@ -542,12 +571,14 @@ fun AddOrEditIngredient(
     dialogTitle: String,
 ) {
     var name by remember { mutableStateOf(ingredient?.name ?: "") }
+    var amount by remember { mutableStateOf(ingredient?.value?.toString() ?: "1")}
     var isExpandedIngredientPortionSelector by remember { mutableStateOf(false) }
     val newIngredient by remember { mutableStateOf(Ingredient(
         name = ingredient?.name ?: "",
         measurement = ingredient?.measurement ?: "",
         value = ingredient?.value ?: 1,
     )) }
+
     AlertDialog(
         title = {
             Text(text = dialogTitle)
@@ -566,9 +597,9 @@ fun AddOrEditIngredient(
                         Modifier.width(100.dp)
                     ) {
                         TextField(
-                            value = newIngredient.value.toString(),
+                            value = amount,
                             onValueChange = {
-                                newIngredient.value = it.toFloat()
+                                amount = it
                             },
                             keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
                         )
@@ -603,6 +634,7 @@ fun AddOrEditIngredient(
         confirmButton = {
             TextButton(
                 onClick = {
+                    newIngredient.value = amount.toDouble()
                     onConfirmation(newIngredient)
                 }
             ) {
@@ -665,6 +697,52 @@ fun AddOrEditMethodStep(
             TextButton(
                 onClick = {
                     onDismissRequest()
+                }
+            ) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+@Composable
+fun EditModal(
+    title: String,
+    value: String,
+    onSave: (value: String) -> Unit,
+    onClose: () -> Unit,
+) {
+    var newValue  by remember { mutableStateOf(value) }
+    AlertDialog(
+        title = {
+            Text(text = title)
+        },
+        text = {
+            Column {
+                TextField(
+                    value = value,
+                    onValueChange = {
+                        newValue = it
+                    },
+                )
+            }
+        },
+        onDismissRequest = {
+            onClose()
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    onSave(newValue)
+                }
+            ) {
+                Text("Save")
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = {
+                    onClose()
                 }
             ) {
                 Text("Cancel")
