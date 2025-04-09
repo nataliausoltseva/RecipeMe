@@ -5,4 +5,5 @@ data class State(
     val isLoading: Boolean = false,
     val isFullScreen: Boolean = false,
     val selectedRecipe: Recipe? = null,
+    val isEditingRecipe: Boolean = false
 )

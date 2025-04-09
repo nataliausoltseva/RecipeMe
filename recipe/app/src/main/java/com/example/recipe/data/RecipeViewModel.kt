@@ -76,6 +76,22 @@ class RecipeViewModel: ViewModel() {
         }
     }
 
+    fun onEditRecipe() {
+        _uiState.update {
+            it.copy(
+                isEditingRecipe = true
+            )
+        }
+    }
+
+    fun onSaveRecipe() {
+        _uiState.update {
+            it.copy(
+                isEditingRecipe = false,
+            )
+        }
+    }
+
     fun onSearch(search: String) {
         getRecipes(search)
     }

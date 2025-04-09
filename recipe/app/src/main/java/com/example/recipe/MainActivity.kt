@@ -33,6 +33,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
@@ -100,11 +102,32 @@ fun Main(recipeViewModel: RecipeViewModel) {
                     .size(50.dp, 50.dp)
             )
             if (recipesUIState.selectedRecipe != null) {
-                ViewRecipe(
-                    recipesUIState.selectedRecipe!!
-                )
+                if (recipesUIState.isEditingRecipe) {
+                    CreateOrEditRecipe(
+                        onSave = { recipeViewModel.saveRecipe(it) },
+                        recipe = recipesUIState.selectedRecipe
+
+                    )
+                    Icon(
+                        imageVector = Icons.Filled.CheckCircle,
+                        contentDescription = "Edit button",
+                        modifier = Modifier.clickable{ recipeViewModel.onSaveRecipe() }
+                            .size(50.dp, 50.dp)
+                    )
+                } else {
+                    ViewRecipe(
+                        recipesUIState.selectedRecipe!!
+                    )
+                    Icon(
+                        imageVector = Icons.Filled.Edit,
+                        contentDescription = "Edit button",
+                        modifier = Modifier.clickable{ recipeViewModel.onEditRecipe() }
+                            .size(50.dp, 50.dp)
+                    )
+                }
+
             } else {
-                CreateRecipe(
+                CreateOrEditRecipe(
                     onSave = { recipeViewModel.saveRecipe(it) }
                 )
             }
@@ -269,21 +292,6 @@ fun ListOfRecipes(
 fun ViewRecipe(
     recipe: Recipe
 ) {
-    var newRecipe = remember { mutableStateOf(Recipe(
-        id = recipe.id,
-        name = recipe.name,
-        portion = recipe.portion,
-        imageUrl = recipe.imageUrl,
-        image = recipe.image,
-        ingredients = recipe.ingredients,
-        methods = recipe.methods,
-        createdAt = recipe.createdAt
-    )) }
-
-    var showModal by remember { mutableStateOf(false)}
-    var modalTitle by remember { mutableStateOf("") }
-    var modalValue by remember { mutableStateOf("") }
-
     Column {
         if (recipe.imageUrl != "") {
             AsyncImage(
@@ -298,11 +306,6 @@ fun ViewRecipe(
 
         Text(
             text = recipe.name,
-            modifier = Modifier.clickable{
-                showModal = true
-                modalTitle = "Name"
-                modalValue = recipe.name
-            }
         )
 
         if (recipe.portion?.value != null) {
@@ -331,44 +334,36 @@ fun ViewRecipe(
                 text =  indicator.toString() + ". " +method.value,
             )
         }
-
-        if (showModal) {
-            EditModal(
-                title = modalTitle,
-                value = modalValue,
-                onSave = { newRecipe.name = it },
-                onClose = {}
-            )
-        }
     }
 }
 
 @Composable
-fun CreateRecipe(
-    onSave: (recipeRequest: RecipeRequest) -> Unit
+fun CreateOrEditRecipe(
+    onSave: (recipeRequest: RecipeRequest) -> Unit,
+    recipe: Recipe? = null
 ) {
-    var name by remember { mutableStateOf("") }
+    var name by remember { mutableStateOf(recipe?.name ?: "") }
     val recipeRequest by remember {
         mutableStateOf(RecipeRequest(
-            name = "",
-            imageUrl = ""
+            name = recipe?.name ?: "",
+            imageUrl =  recipe?.imageUrl ?: ""
         ))
     }
 
     // portion handlers
     var isExpandedPortionSelector by remember { mutableStateOf(false) }
-    var portionSelection by remember { mutableStateOf("") }
-    var portionValue by remember { mutableIntStateOf(1) }
-    var placeholderPortionValue by remember { mutableStateOf("1") }
+    var portionSelection by remember { mutableStateOf(recipe?.portion?.measurement ?: "") }
+    var portionValue by remember { mutableStateOf(recipe?.portion?.value ?: 1) }
+    var placeholderPortionValue by remember { mutableStateOf(recipe?.portion?.value?.toString() ?: "1") }
 
     // ingredients handlers
-    var ingredients = remember { mutableStateListOf<Ingredient>() }
+    var ingredients = remember { mutableStateListOf<Ingredient>(*recipe?.ingredients.orEmpty()) }
     var showIngredientModal by remember { mutableStateOf(false) }
     var selectedIngredient = remember { mutableStateOf<Ingredient?>(null) }
     val selectedIngredientIndex = remember { mutableIntStateOf(0) }
 
     // ingredients handlers
-    var methods = remember { mutableStateListOf<Method>() }
+    var methods = remember { mutableStateListOf<Method>(*recipe?.methods.orEmpty()) }
     var showMethodModal by remember { mutableStateOf(false) }
     var selectedMethod = remember { mutableStateOf<Method?>(null) }
     val selectedMethodIndex = remember { mutableIntStateOf(0) }
@@ -697,52 +692,6 @@ fun AddOrEditMethodStep(
             TextButton(
                 onClick = {
                     onDismissRequest()
-                }
-            ) {
-                Text("Cancel")
-            }
-        }
-    )
-}
-
-@Composable
-fun EditModal(
-    title: String,
-    value: String,
-    onSave: (value: String) -> Unit,
-    onClose: () -> Unit,
-) {
-    var newValue  by remember { mutableStateOf(value) }
-    AlertDialog(
-        title = {
-            Text(text = title)
-        },
-        text = {
-            Column {
-                TextField(
-                    value = value,
-                    onValueChange = {
-                        newValue = it
-                    },
-                )
-            }
-        },
-        onDismissRequest = {
-            onClose()
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    onSave(newValue)
-                }
-            ) {
-                Text("Save")
-            }
-        },
-        dismissButton = {
-            TextButton(
-                onClick = {
-                    onClose()
                 }
             ) {
                 Text("Cancel")
