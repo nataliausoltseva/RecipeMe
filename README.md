@@ -18,7 +18,7 @@ CREATE TABLE recipes(
 
 2. The **portion** table:
 ```sqlite
-CREATE TABLE portions(
+CREATE TABLE portion(
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     value TEXT,
     measurement TEXT,
@@ -29,7 +29,7 @@ CREATE TABLE portions(
 
 3. The **ingredient** table:
 ```sqlite
-CREATE TABLE ingredients(
+CREATE TABLE ingredient(
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT,
     measurement TEXT,
@@ -42,7 +42,7 @@ CREATE TABLE ingredients(
 
 4. The **method** table:
 ```sqlite
-CREATE TABLE methods(
+CREATE TABLE method(
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     value TEXT,
     sortOrder INTEGER,
@@ -62,8 +62,8 @@ The **recipe** table has a relationsip `has_one` **portion** and `has_many` **in
 - DELETE: http://localhost/recipe/{id}
 
 #### Portion
+- GET: http://localhost/portions
 - POST: http://localhost/portion/{recipe_id}
-- PUT: http://localhost/portion/{id}
 - DELETE: http://localhost/portion/{id}
 
 #### Ingredient
@@ -106,6 +106,7 @@ The right screen represents the modal for filter/sort dropdown. The ingredients'
 
 ## Roadmap:
 - Implement and update the design of the application.
+- DB should not be wiped if rebuilding image. If any new columns, they should just be aded to the DB rather than removing all data.
 - Add functionality of increasing or decreasing the portion which results in the updated list of ingredients. 
 - Exporting functionality of the recipe as a long screenshot.
 - Make a companion watch app.
