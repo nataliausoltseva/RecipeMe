@@ -14,24 +14,29 @@ import retrofit2.http.Path
 import retrofit2.http.Query
 
 data class RecipeRequest(
+    var id: Int,
     var name: String,
     var imageUrl: String,
 )
 
 data class PortionRequest(
-    val value: String,
-    val measurement: String,
+    var id: Int,
+    var value: Number,
+    var measurement: String,
 )
 
 data class MethodRequest(
+    var id: Int,
     val value: String,
-    val sortOrder: Number,
+    val sortOrder: Int,
 )
 
 data class IngredientRequest(
+    var id: Int,
     val name: String,
     val measurement: String,
-    val value: String,
+    val value: Number,
+    val sortOrder: Int,
 )
 
 interface ApiInterface {
@@ -53,22 +58,22 @@ interface ApiInterface {
 
     // Portion endpoints
     @POST("/portion/{recipeId}")
-    suspend fun createPortion(@Path("recipeId") id: Int, @Body request: PortionRequest): Response<Portion>
+    suspend fun addOrUpdate(@Path("recipeId") id: Int, @Body request: PortionRequest): Response<Portion>
 
     @DELETE("/portion/{id}")
     suspend fun deletePortion(@Path("id") id: Int): Response<Void>
 
-    // Method endpoints
-    @POST("/method/{recipeId}")
-    suspend fun createMethod(@Path("recipeId") id: Int, @Body request: MethodRequest): Response<Method>
-
-    @DELETE("/method/{id}")
-    suspend fun deleteMethod(@Path("id") id: Int): Response<Void>
-
     // Ingredient endpoints
-    @POST("/ingredient/{recipeId}")
-    suspend fun createIngredient(@Path("recipeId") id: Int, @Body request: IngredientRequest): Response<Ingredient>
+    @POST("/ingredients/{recipeId}")
+    suspend fun addIngredients(@Path("recipeId") id: Int, @Body request: List<IngredientRequest>): Response<Ingredient>
 
     @DELETE("/ingredient/{id}")
     suspend fun deleteIngredient(@Path("id") id: Int): Response<Void>
+
+    // Method endpoints
+    @POST("/method/{recipeId}")
+    suspend fun addMethods(@Path("recipeId") id: Int, @Body request: List<MethodRequest>): Response<Method>
+
+    @DELETE("/method/{id}")
+    suspend fun deleteMethod(@Path("id") id: Int): Response<Void>
 }

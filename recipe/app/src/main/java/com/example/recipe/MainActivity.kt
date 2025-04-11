@@ -69,6 +69,9 @@ import coil.request.ImageRequest
 import com.example.recipe.data.Ingredient
 import com.example.recipe.data.Method
 import com.example.recipe.data.Recipe
+import com.example.recipe.helpers.IngredientRequest
+import com.example.recipe.helpers.MethodRequest
+import com.example.recipe.helpers.PortionRequest
 import com.example.recipe.helpers.RecipeRequest
 import com.example.recipe.helpers.getResizedBitmap
 
@@ -104,7 +107,9 @@ fun Main(recipeViewModel: RecipeViewModel) {
             if (recipesUIState.selectedRecipe != null) {
                 if (recipesUIState.isEditingRecipe) {
                     CreateOrEditRecipe(
-                        onSave = { recipeViewModel.saveRecipe(it) },
+                        onSave = { recipe, portion, ingredients, methods ->
+                            recipeViewModel.saveRecipe(recipe, portion, ingredients, methods)
+                        },
                         recipe = recipesUIState.selectedRecipe
 
                     )
@@ -128,7 +133,9 @@ fun Main(recipeViewModel: RecipeViewModel) {
 
             } else {
                 CreateOrEditRecipe(
-                    onSave = { recipeViewModel.saveRecipe(it) }
+                    onSave = { recipe, portion, ingredients, methods ->
+                        recipeViewModel.saveRecipe(recipe, portion, ingredients, methods)
+                    }
                 )
             }
         } else {
@@ -264,21 +271,25 @@ fun ListOfRecipes(
                             text = "Ingredients:",
                         )
 
-                        for (ingredient in recipe.ingredients) {
-                            Text(
-                                text = ingredient.name + " " + ingredient.value + " " + ingredient.measurement,
-                            )
+                        if (recipe.ingredients != null) {
+                            for (ingredient in recipe.ingredients) {
+                                Text(
+                                    text = ingredient.name + " " + ingredient.value + " " + ingredient.measurement,
+                                )
+                            }
                         }
 
                         Text(
                             text = "Methods:",
                         )
 
-                        for (method in recipe.methods) {
-                            val indicator = if (method.sortOrder != null) (method.sortOrder + 1) else 1;
-                            Text(
-                                text =  indicator.toString() + ". " +method.value,
-                            )
+                        if (recipe.methods != null) {
+                            for (method in recipe.methods) {
+                                val indicator = if (method.sortOrder != null) (method.sortOrder + 1) else 1;
+                                Text(
+                                    text =  indicator.toString() + ". " +method.value,
+                                )
+                            }
                         }
                     }
                 }
@@ -318,65 +329,75 @@ fun ViewRecipe(
             text = "Ingredients:",
         )
 
-        for (ingredient in recipe.ingredients) {
-            Text(
-                text = ingredient.name + " " + ingredient.value + " " + ingredient.measurement,
-            )
+        if (recipe.ingredients != null) {
+            for (ingredient in recipe.ingredients) {
+                Text(
+                    text = ingredient.name + " " + ingredient.value + " " + ingredient.measurement,
+                )
+            }
         }
 
         Text(
             text = "Methods:",
         )
 
-        for (method in recipe.methods) {
-            val indicator = if (method.sortOrder != null) (method.sortOrder + 1) else 1;
-            Text(
-                text =  indicator.toString() + ". " +method.value,
-            )
+        if (recipe.methods != null) {
+            for (method in recipe.methods) {
+                val indicator = if (method.sortOrder != null) (method.sortOrder + 1) else 1;
+                Text(
+                    text =  indicator.toString() + ". " +method.value,
+                )
+            }
         }
     }
 }
 
 @Composable
 fun CreateOrEditRecipe(
-    onSave: (recipeRequest: RecipeRequest) -> Unit,
+    onSave: (
+        recipeRequest: RecipeRequest,
+        portionRequest: PortionRequest,
+        ingredientRequests: List<IngredientRequest>,
+        methodRequests: List<MethodRequest>
+    ) -> Unit,
     recipe: Recipe? = null
 ) {
     var name by remember { mutableStateOf(recipe?.name ?: "") }
-    val recipeRequest by remember {
-        mutableStateOf(RecipeRequest(
-            name = recipe?.name ?: "",
-            imageUrl =  recipe?.imageUrl ?: ""
-        ))
-    }
-
+    var imageUrl by remember { mutableStateOf(recipe?.imageUrl ?: "") }
     // portion handlers
     var isExpandedPortionSelector by remember { mutableStateOf(false) }
-    var portionSelection by remember { mutableStateOf(recipe?.portion?.measurement ?: "") }
+    var portionSelection by remember { mutableStateOf(recipe?.portion?.measurement ?: "Choose") }
     var portionValue by remember { mutableStateOf(recipe?.portion?.value ?: 1) }
     var placeholderPortionValue by remember { mutableStateOf(recipe?.portion?.value?.toString() ?: "1") }
 
     // ingredients handlers
-    var ingredients = remember { mutableStateListOf<Ingredient>(*recipe?.ingredients.orEmpty()) }
+    val ingredients = remember { mutableStateListOf<Ingredient>(*recipe?.ingredients.orEmpty()) }
     var showIngredientModal by remember { mutableStateOf(false) }
-    var selectedIngredient = remember { mutableStateOf<Ingredient?>(null) }
+    val selectedIngredient = remember { mutableStateOf<Ingredient?>(null) }
     val selectedIngredientIndex = remember { mutableIntStateOf(0) }
 
+    val ingredientRequests = remember {
+        mutableStateListOf<IngredientRequest>()
+    }
+
     // ingredients handlers
-    var methods = remember { mutableStateListOf<Method>(*recipe?.methods.orEmpty()) }
+    val methods = remember { mutableStateListOf<Method>(*recipe?.methods.orEmpty()) }
     var showMethodModal by remember { mutableStateOf(false) }
-    var selectedMethod = remember { mutableStateOf<Method?>(null) }
+    val selectedMethod = remember { mutableStateOf<Method?>(null) }
     val selectedMethodIndex = remember { mutableIntStateOf(0) }
+
+    val methodRequests = remember {
+        mutableStateListOf<MethodRequest>()
+    }
 
     Column {
         ImageUploader(
-            onImageUpload = { recipeRequest.imageUrl = it.toString() }
+            onImageUpload = { imageUrl = it.toString() }
         )
         TextField(
             value = name,
             onValueChange = {
                 name = it
-                recipeRequest.name = it
             },
             label = { Text("Name") },
         )
@@ -385,8 +406,8 @@ fun CreateOrEditRecipe(
             TextField(
                 value = placeholderPortionValue,
                 onValueChange = {
-                    if (it != "") {
-                        portionValue = it.toInt()
+                    if (it.toFloatOrNull() != null) {
+                        portionValue = it.toFloat()
                     }
                     placeholderPortionValue = it
                 },
@@ -394,7 +415,7 @@ fun CreateOrEditRecipe(
             )
 
             DropdownMenuItem(
-                text = { Text("Choose") },
+                text = { Text(portionSelection) },
                 onClick = {
                     isExpandedPortionSelector = !isExpandedPortionSelector
                 }
@@ -444,10 +465,19 @@ fun CreateOrEditRecipe(
             AddOrEditIngredient(
                 ingredient = selectedIngredient.value,
                 onConfirmation = {
+                    val ingredientRequest = IngredientRequest(
+                        id = it.id,
+                        name = it.name,
+                        measurement = it.measurement,
+                        value = it.value,
+                        sortOrder = it.sortOrder ?: (ingredients.size + 1)
+                    )
                     if (selectedIngredient.value != null) {
                         ingredients[selectedIngredientIndex.intValue] = it
+                        ingredientRequests[selectedIngredientIndex.intValue] = ingredientRequest
                     } else {
                         ingredients.add(it)
+                        ingredientRequests.add(ingredientRequest)
                     }
                     selectedIngredient.value = null
                     showIngredientModal = false
@@ -486,10 +516,17 @@ fun CreateOrEditRecipe(
             AddOrEditMethodStep(
                 method = selectedMethod.value,
                 onConfirmation = {
+                    val methodRequest = MethodRequest(
+                        id = it.id,
+                        value = it.value,
+                        sortOrder = it.sortOrder ?: (methodRequests.size + 1)
+                    )
                     if (selectedIngredient.value != null) {
                         methods[selectedMethodIndex.intValue] = it
+                        methodRequests[selectedMethodIndex.intValue] = methodRequest
                     } else {
                         methods.add(it)
+                        methodRequests.add(methodRequest)
                     }
                     selectedMethod.value = null
                     showMethodModal = false
@@ -500,10 +537,23 @@ fun CreateOrEditRecipe(
         }
 
         Button(
-            onClick = { onSave(recipeRequest) },
+            onClick = { onSave(
+                RecipeRequest(
+                    id = recipe?.id ?: 0,
+                    name = name,
+                    imageUrl =  imageUrl
+                ),
+                PortionRequest(
+                    id = recipe?.portion?.id ?: 0,
+                    value = portionValue,
+                    measurement = if (portionSelection === "Choose") "days" else portionSelection
+                ),
+                ingredientRequests,
+                methodRequests
+            ) },
             modifier = Modifier
                 .align(Alignment.End),
-            enabled = recipeRequest.name !== "" || recipeRequest.imageUrl !== ""
+            enabled = name !== "" || imageUrl !== ""
         ) {
             Text("Save")
         }
@@ -569,9 +619,11 @@ fun AddOrEditIngredient(
     var amount by remember { mutableStateOf(ingredient?.value?.toString() ?: "1")}
     var isExpandedIngredientPortionSelector by remember { mutableStateOf(false) }
     val newIngredient by remember { mutableStateOf(Ingredient(
+        id = ingredient?.id ?: 0,
         name = ingredient?.name ?: "",
         measurement = ingredient?.measurement ?: "",
         value = ingredient?.value ?: 1,
+        sortOrder = ingredient?.sortOrder ?: 1
     )) }
 
     AlertDialog(
@@ -629,7 +681,7 @@ fun AddOrEditIngredient(
         confirmButton = {
             TextButton(
                 onClick = {
-                    newIngredient.value = amount.toDouble()
+                    newIngredient.value = amount.toFloat()
                     onConfirmation(newIngredient)
                 }
             ) {

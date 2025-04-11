@@ -3,6 +3,9 @@ package com.example.recipe.data
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.recipe.helpers.Endpoints
+import com.example.recipe.helpers.IngredientRequest
+import com.example.recipe.helpers.MethodRequest
+import com.example.recipe.helpers.PortionRequest
 import com.example.recipe.helpers.RecipeRequest
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -54,13 +57,29 @@ class RecipeViewModel: ViewModel() {
         }
     }
 
-    fun saveRecipe(recipe: RecipeRequest) {
+    fun saveRecipe(
+        recipe: RecipeRequest,
+        portion: PortionRequest,
+        ingredients: List<IngredientRequest>,
+        methods: List<MethodRequest>,
+    ) {
         viewModelScope.launch {
             try {
                 val endpoints = Endpoints()
-                endpoints.createRecipe(recipe)
+                val recipeResponse = endpoints.updateOrCreateRecipe(recipe)
+                if (recipeResponse != null) {
+                    endpoints.updateOrCreatePortion(portion, recipeResponse.id)
+                    endpoints.addOrUpdateIngredients(ingredients, recipeResponse.id)
+                    endpoints.addOrUpdateMethods(methods, recipeResponse.id)
+                }
+
                 getRecipes()
-                backToListView()
+
+                if (recipe.id != 0 && recipeResponse != null) {
+                    viewRecipe(recipeResponse)
+                } else {
+                    backToListView()
+                }
             } catch (e: Exception) {
                 println("Error: ${e.message}")
             }
