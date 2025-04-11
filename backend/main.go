@@ -409,16 +409,28 @@ func addIngredients(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	recipe := getRecipeById(recipeId)
+	if recipe.ID == 0 {
+		json.NewEncoder(w).Encode(nil)
+		return
+	}
+
 	var existingIngredients = getRecipeIngredients(recipeId, "")
 	var passedIngredients []Ingredient
 	json.NewDecoder(r.Body).Decode(&passedIngredients)
 
-	for _, passedIngredient := range passedIngredients {
+	for passedIngredientIndex, passedIngredient := range passedIngredients {
 		found := false
-
-		for _, existingIngredient := range existingIngredients {
+		for existingIngredientIndex, existingIngredient := range existingIngredients {
 			if passedIngredient.ID == existingIngredient.ID {
-				_, err := db.Exec("UPDATE ingredient SET name = ?, measurement = ?, value = ?, sortOrder = ? WHERE id = ?", passedIngredient.Name, passedIngredient.Measurement, passedIngredient.Value, passedIngredient.SortOrder, passedIngredient.ID)
+				sortOrder := passedIngredient.SortOrder
+				if existingIngredientIndex == 0 && passedIngredient.SortOrder == 0 {
+					sortOrder += 1
+				} else if existingIngredientIndex != 0 && passedIngredient.SortOrder == 0 {
+					sortOrder = existingIngredientIndex + 1
+				}
+
+				_, err := db.Exec("UPDATE ingredient SET name = ?, measurement = ?, value = ?, sortOrder = ? WHERE id = ?", passedIngredient.Name, passedIngredient.Measurement, passedIngredient.Value, sortOrder, passedIngredient.ID)
 				if err != nil {
 					fmt.Println("Error updating ingredient:", err)
 					http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -428,9 +440,10 @@ func addIngredients(w http.ResponseWriter, r *http.Request) {
 				break
 			}
 		}
-
 		if !found {
-			_, err := db.Exec("INSERT INTO ingredient(name, measurement, value, sortOrder, recipe_id) VALUES(?,?,?,?)", passedIngredient.Name, passedIngredient.Measurement, passedIngredient.Value, passedIngredient.SortOrder, recipeId)
+			sortOrder := passedIngredientIndex + 1 + len(existingIngredients)
+
+			_, err := db.Exec("INSERT INTO ingredient(name, measurement, value, sortOrder, recipe_id) VALUES(?,?,?,?,?)", passedIngredient.Name, passedIngredient.Measurement, passedIngredient.Value, sortOrder, recipeId)
 			if err != nil {
 				fmt.Println("Error inserting ingredient:", err)
 				http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -543,6 +556,12 @@ func addMethods(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	recipe := getRecipeById(recipeId)
+	if recipe.ID == 0 {
+		json.NewEncoder(w).Encode(nil)
+		return
+	}
+
 	rows, err := db.Query(`
 		SELECT * FROM method WHERE recipe_id = ?
 	`, recipeId)
@@ -554,13 +573,18 @@ func addMethods(w http.ResponseWriter, r *http.Request) {
 	var passedMethods []Method
 	json.NewDecoder(r.Body).Decode(&passedMethods)
 
-	for _, passedMethod := range passedMethods {
+	for passedMethodIndex, passedMethod := range passedMethods {
 		found := false
 
-		for _, existingMethod := range existingMethods {
+		for existingMethodIndex, existingMethod := range existingMethods {
+			sortOrder := passedMethod.SortOrder
+			if existingMethodIndex == 0 && passedMethod.SortOrder == 0 {
+				sortOrder += 1
+			} else if existingMethodIndex != 0 && passedMethod.SortOrder == 0 {
+				sortOrder = existingMethodIndex + 1
+			}
 			if passedMethod.ID == existingMethod.ID {
-				// Update the existing ingredient
-				_, err := db.Exec("UPDATE method SET value = ?, sortOrder = ?, value = ? WHERE id = ?", passedMethod.Value, passedMethod.SortOrder, passedMethod.ID)
+				_, err := db.Exec("UPDATE method SET value = ?, sortOrder = ?, value = ? WHERE id = ?", passedMethod.Value, sortOrder, passedMethod.ID)
 				if err != nil {
 					fmt.Println("Error updating method:", err)
 					http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -572,8 +596,8 @@ func addMethods(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if !found {
-			// Insert the new ingredient into the database
-			_, err := db.Exec("INSERT INTO method(value, sortOrder, recipe_id) VALUES(?,?,?)", passedMethod.Value, passedMethod.SortOrder, recipeId)
+			sortOrder := passedMethodIndex + 1 + len(existingMethods)
+			_, err := db.Exec("INSERT INTO method(value, sortOrder, recipe_id) VALUES(?,?,?)", passedMethod.Value, sortOrder, recipeId)
 			if err != nil {
 				fmt.Println("Error inserting method:", err)
 				http.Error(w, err.Error(), http.StatusInternalServerError)
