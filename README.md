@@ -34,6 +34,7 @@ CREATE TABLE ingredients(
     name TEXT,
     measurement TEXT,
     value TEXT,
+    sortOrder INTEGER,
     recipe_id INTEGER,
     FOREIGN KEY (recipe_id) REFERENCES recipes(id) ON DELETE CASCADE ON UPDATE NO ACTION
 );
@@ -66,13 +67,12 @@ The **recipe** table has a relationsip `has_one` **portion** and `has_many` **in
 - DELETE: http://localhost/portion/{id}
 
 #### Ingredient
+- GET: http://localhost/ingredients
 - POST: http://localhost/ingredient/{recipe_id}
-- PUT: http://localhost/ingredient/{id}
 - DELETE: http://localhost/ingredient/{id}
 
 #### Method
 - POST: http://localhost/method/{recipe_id}
-- PUT: http://localhost/method/{id}
 - DELETE: http://localhost/method/{id}
 
 ## Idea:

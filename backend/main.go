@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gorilla/mux"
 	_ "github.com/mattn/go-sqlite3"
@@ -19,12 +20,13 @@ type Portion struct {
 	RecipeID    int    `json:"recipe_id"`
 }
 
-type Ingerdient struct {
+type Ingredient struct {
 	ID          int    `json:"id"`
 	Name        string `json:"name"`
 	Measurement string `json:"measurement"`
 	Value       string `json:"value"`
 	RecipeID    int    `json:"recipe_id"`
+	SortOrder   int    `json:"sortOrder"`
 }
 
 type Method struct {
@@ -40,7 +42,7 @@ type Recipe struct {
 	Portion     *Portion     `json:"portion"`
 	Url         string       `json:"url"`
 	ImageUrl    string       `json:"imageUrl"`
-	Ingredients []Ingerdient `json:"ingredients"`
+	Ingredients []Ingredient `json:"ingredients"`
 	Methods     []Method     `json:"methods"`
 	CreatedAt   string       `json:"createdAt"`
 }
@@ -56,20 +58,14 @@ func getRecipes(w http.ResponseWriter, r *http.Request) {
 
 	if searchString == "" {
 		rows, err = db.Query(`
-		SELECT *
-		FROM recipe
-		LEFT JOIN ingredient ON recipe.id = ingredient.recipe_id
+		SELECT * FROM recipe
 		LEFT JOIN portion ON recipe.id = portion.recipe_id
-		LEFT JOIN method ON recipe.id = method.recipe_id
 	`)
 	} else {
 		searchPattern := "%" + searchString + "%"
 		rows, err = db.Query(`
-			SELECT *
-			FROM recipe
-			LEFT JOIN ingredient ON recipe.id = ingredient.recipe_id
+			SELECT * FROM recipe
 			LEFT JOIN portion ON recipe.id = portion.recipe_id
-			LEFT JOIN method ON recipe.id = method.recipe_id
 			WHERE recipe.name LIKE ? OR ingredient.name LIKE ?
 		`, searchPattern, searchPattern)
 	}
@@ -79,14 +75,16 @@ func getRecipes(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer rows.Close()
+
 	var recipes []Recipe
+
 	for rows.Next() {
 		var recipe Recipe
 		var portion Portion
-		var ingredient Ingerdient
-		var method Method
-		recipe.Ingredients = []Ingerdient{}
+		recipe.Ingredients = []Ingredient{}
 		recipe.Methods = []Method{}
+
+		// Scan the current row
 		rows.Scan(
 			&recipe.ID,
 			&recipe.Name,
@@ -97,27 +95,13 @@ func getRecipes(w http.ResponseWriter, r *http.Request) {
 			&portion.Value,
 			&portion.Measurement,
 			&portion.RecipeID,
-			&ingredient.ID,
-			&ingredient.Name,
-			&ingredient.Measurement,
-			&ingredient.Value,
-			&ingredient.RecipeID,
-			&method.ID,
-			&method.SortOrder,
-			&method.Value,
-			&method.RecipeID,
 		)
+
+		recipe.Ingredients = getRecipeIngredients(recipe.ID, searchString)
+		recipe.Methods = getRecipeMethods(recipe.ID)
 
 		if portion.ID != 0 {
 			recipe.Portion = &portion
-		}
-
-		if ingredient.ID != 0 {
-			recipe.Ingredients = append(recipe.Ingredients, ingredient)
-		}
-
-		if method.ID != 0 {
-			recipe.Methods = append(recipe.Methods, method)
 		}
 
 		recipes = append(recipes, recipe)
@@ -136,22 +120,20 @@ func getRecipe(w http.ResponseWriter, r *http.Request) {
 
 	id, _ := strconv.Atoi(idStr)
 
+	json.NewEncoder(w).Encode(getRecipeById(id))
+}
+
+func getRecipeById(id int) Recipe {
 	row := db.QueryRow(`
 		SELECT * FROM recipe
-		LEFT JOIN ingredient ON recipe.id = ingredient.recipe_id
-		LEFT JOIN portion ON recipe.id = portion.recipe_id
-		LEFT JOIN method ON recipe.id = method.recipe_id
+		LEFT JOIN portion ON portion.recipe_id = recipe.id
 		WHERE recipe.id = ?
 	`, id)
 
 	var recipe Recipe
 	var portion Portion
-	var ingredient Ingerdient
-	var method Method
-	recipe.Ingredients = []Ingerdient{}
-	recipe.Methods = []Method{}
 
-	err := row.Scan(
+	row.Scan(
 		&recipe.ID,
 		&recipe.Name,
 		&recipe.Url,
@@ -161,37 +143,16 @@ func getRecipe(w http.ResponseWriter, r *http.Request) {
 		&portion.Value,
 		&portion.Measurement,
 		&portion.RecipeID,
-		&ingredient.ID,
-		&ingredient.Name,
-		&ingredient.Measurement,
-		&ingredient.Value,
-		&ingredient.RecipeID,
-		&method.ID,
-		&method.SortOrder,
-		&method.Value,
-		&method.RecipeID,
 	)
 
 	if portion.ID != 0 {
 		recipe.Portion = &portion
 	}
 
-	if ingredient.ID != 0 {
-		recipe.Ingredients = append(recipe.Ingredients, ingredient)
-	}
+	recipe.Ingredients = getRecipeIngredients(id, "")
+	recipe.Methods = []Method{}
 
-	if method.ID != 0 {
-		recipe.Methods = append(recipe.Methods, method)
-	}
-
-	if err != nil {
-		if err == sql.ErrNoRows {
-			json.NewEncoder(w).Encode(nil)
-			return
-		}
-	}
-
-	json.NewEncoder(w).Encode(recipe)
+	return recipe
 }
 
 func createRecipe(w http.ResponseWriter, r *http.Request) {
@@ -204,12 +165,15 @@ func createRecipe(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	_, err = stmt.Exec(recipe.Name, recipe.Url, recipe.ImageUrl, recipe.CreatedAt)
+
+	now := time.Now()
+	result, err := stmt.Exec(recipe.Name, recipe.Url, recipe.ImageUrl, now.Format("2006-01-02 15:04:05"))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	w.WriteHeader(http.StatusCreated)
+	recipeId, _ := result.LastInsertId()
+	json.NewEncoder(w).Encode(getRecipeById(int(recipeId)))
 }
 
 func updateRecipe(w http.ResponseWriter, r *http.Request) {
@@ -247,7 +211,7 @@ func updateRecipe(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(recipe)
 }
 
 func deleteRecipe(w http.ResponseWriter, r *http.Request) {
@@ -303,7 +267,7 @@ func createPortion(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(portion)
 }
 
 func updatePortion(w http.ResponseWriter, r *http.Request) {
@@ -367,7 +331,75 @@ func deletePortion(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func createIngredient(w http.ResponseWriter, r *http.Request) {
+func getIngredients(w http.ResponseWriter, r *http.Request) {
+	rows, err := db.Query(`
+		SELECT * FROM ingredient
+	`)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+	var ingredients []Ingredient
+	for rows.Next() {
+		var ingredient Ingredient
+		rows.Scan(
+			&ingredient.ID,
+			&ingredient.Name,
+			&ingredient.Measurement,
+			&ingredient.Value,
+			&ingredient.RecipeID,
+		)
+
+		ingredients = append(ingredients, ingredient)
+	}
+
+	json.NewEncoder(w).Encode(ingredients)
+}
+
+func getRecipeIngredients(recipeId int, searchString string) []Ingredient {
+	var rows *sql.Rows
+	var err error
+
+	if searchString == "" {
+		rows, err = db.Query(`
+		SELECT * FROM ingredient
+		WHERE recipe_id = ?
+	`, recipeId)
+	} else {
+		searchPattern := "%" + searchString + "%"
+		rows, err = db.Query(`
+		SELECT * FROM ingredient
+		WHERE recipe_id = ? AND ingredient.name LIKE ?
+		`, recipeId, searchPattern)
+	}
+
+	if err != nil {
+		return []Ingredient{}
+	}
+
+	defer rows.Close()
+
+	var ingredients []Ingredient
+	for rows.Next() {
+		var ingredient Ingredient
+		rows.Scan(
+			&ingredient.ID,
+			&ingredient.Name,
+			&ingredient.Measurement,
+			&ingredient.Value,
+			&ingredient.SortOrder,
+			&ingredient.RecipeID,
+		)
+
+		ingredients = append(ingredients, ingredient)
+	}
+
+	return ingredients
+}
+
+func addIngredients(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	idStr := params["recipe_id"]
 
@@ -377,21 +409,37 @@ func createIngredient(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var ingredient Ingerdient
-	json.NewDecoder(r.Body).Decode(&ingredient)
-	stmt, err := db.Prepare(`
-		INSERT INTO portion(name, measurement, value, recipe_id) VALUES(?,?,?,?)
-	`)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	var existingIngredients = getRecipeIngredients(recipeId, "")
+	var passedIngredients []Ingredient
+	json.NewDecoder(r.Body).Decode(&passedIngredients)
+
+	for _, passedIngredient := range passedIngredients {
+		found := false
+
+		for _, existingIngredient := range existingIngredients {
+			if passedIngredient.ID == existingIngredient.ID {
+				_, err := db.Exec("UPDATE ingredient SET name = ?, measurement = ?, value = ?, sortOrder = ? WHERE id = ?", passedIngredient.Name, passedIngredient.Measurement, passedIngredient.Value, passedIngredient.SortOrder, passedIngredient.ID)
+				if err != nil {
+					fmt.Println("Error updating ingredient:", err)
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			_, err := db.Exec("INSERT INTO ingredient(name, measurement, value, sortOrder, recipe_id) VALUES(?,?,?,?)", passedIngredient.Name, passedIngredient.Measurement, passedIngredient.Value, passedIngredient.SortOrder, recipeId)
+			if err != nil {
+				fmt.Println("Error inserting ingredient:", err)
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+		}
 	}
-	_, err = stmt.Exec(ingredient.Name, ingredient.Measurement, ingredient.Value, recipeId)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	w.WriteHeader(http.StatusCreated)
+
+	json.NewEncoder(w).Encode(getRecipeById(recipeId))
 }
 
 func updateIngredient(w http.ResponseWriter, r *http.Request) {
@@ -404,7 +452,7 @@ func updateIngredient(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var ingredient Ingerdient
+	var ingredient Ingredient
 	json.NewDecoder(r.Body).Decode(&ingredient)
 	stmt, err := db.Prepare(`
 		UPDATE ingredient
@@ -427,7 +475,7 @@ func updateIngredient(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(ingredient)
 }
 
 func deleteIngredient(w http.ResponseWriter, r *http.Request) {
@@ -457,7 +505,35 @@ func deleteIngredient(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func createMethod(w http.ResponseWriter, r *http.Request) {
+func getRecipeMethods(recipeId int) []Method {
+	rows, err := db.Query(`
+		SELECT * FROM method
+		WHERE recipe_id = ?
+	`, recipeId)
+
+	if err != nil {
+		return []Method{}
+	}
+
+	defer rows.Close()
+
+	var methods []Method
+	for rows.Next() {
+		var method Method
+		rows.Scan(
+			&method.ID,
+			&method.SortOrder,
+			&method.Value,
+			&method.RecipeID,
+		)
+
+		methods = append(methods, method)
+	}
+
+	return methods
+}
+
+func addMethods(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	idStr := params["recipe_id"]
 
@@ -467,21 +543,46 @@ func createMethod(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var method Method
-	json.NewDecoder(r.Body).Decode(&method)
-	stmt, err := db.Prepare(`
-		INSERT INTO portion(value, sortOrder, recipe_id) VALUES(?,?,?)
-	`)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	rows, err := db.Query(`
+		SELECT * FROM method WHERE recipe_id = ?
+	`, recipeId)
+
+	defer rows.Close()
+
+	var existingMethods = getRecipeMethods(recipeId)
+
+	var passedMethods []Method
+	json.NewDecoder(r.Body).Decode(&passedMethods)
+
+	for _, passedMethod := range passedMethods {
+		found := false
+
+		for _, existingMethod := range existingMethods {
+			if passedMethod.ID == existingMethod.ID {
+				// Update the existing ingredient
+				_, err := db.Exec("UPDATE method SET value = ?, sortOrder = ?, value = ? WHERE id = ?", passedMethod.Value, passedMethod.SortOrder, passedMethod.ID)
+				if err != nil {
+					fmt.Println("Error updating method:", err)
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			// Insert the new ingredient into the database
+			_, err := db.Exec("INSERT INTO method(value, sortOrder, recipe_id) VALUES(?,?,?)", passedMethod.Value, passedMethod.SortOrder, recipeId)
+			if err != nil {
+				fmt.Println("Error inserting method:", err)
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+		}
 	}
-	_, err = stmt.Exec(method.Value, method.SortOrder, recipeId)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	w.WriteHeader(http.StatusCreated)
+
+	json.NewEncoder(w).Encode(getRecipeById(recipeId))
 }
 
 func updateMethod(w http.ResponseWriter, r *http.Request) {
@@ -515,7 +616,7 @@ func updateMethod(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(method)
 }
 
 func deleteMethod(w http.ResponseWriter, r *http.Request) {
@@ -564,17 +665,16 @@ func main() {
 	// Portion routes
 	router.HandleFunc("/portion/{recipe_id}", createPortion).Methods("POST")
 	router.HandleFunc("/portion/{id}", updatePortion).Methods("PUT")
-	router.HandleFunc("/recipe/{id}", deletePortion).Methods("DELETE")
+	router.HandleFunc("/portion/{id}", deletePortion).Methods("DELETE")
 
 	// Ingredient routes
-	router.HandleFunc("/ingredient/{recipe_id}", createIngredient).Methods("POST")
-	router.HandleFunc("/ingredient/{id}", updateIngredient).Methods("PUT")
-	router.HandleFunc("/recipe/{id}", deleteIngredient).Methods("DELETE")
+	router.HandleFunc("/ingredients/{recipe_id}", addIngredients).Methods("POST")
+	router.HandleFunc("/ingredient/{id}", deleteIngredient).Methods("DELETE")
+	router.HandleFunc("/ingredients", getIngredients).Methods("GET")
 
 	// Method routes
-	router.HandleFunc("/mehthod/{recipe_id}", createMethod).Methods("POST")
-	router.HandleFunc("/method/{id}", updateMethod).Methods("PUT")
-	router.HandleFunc("/recipe/{id}", deleteMethod).Methods("DELETE")
+	router.HandleFunc("/methods/{recipe_id}", addMethods).Methods("POST")
+	router.HandleFunc("/method/{id}", deleteMethod).Methods("DELETE")
 
 	fmt.Println("Starting server on :8080...")
 	http.ListenAndServe(":8080", router)
