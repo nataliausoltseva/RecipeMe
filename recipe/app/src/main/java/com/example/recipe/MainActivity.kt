@@ -261,7 +261,7 @@ fun ListOfRecipes(
                             text = recipe.name,
                         )
 
-                        if (recipe.portion?.value != null) {
+                        if (recipe.portion != null) {
                             Text(
                                 text = recipe.portion.value.toString() + " " + recipe.portion.measurement,
                             )
@@ -474,7 +474,11 @@ fun CreateOrEditRecipe(
                     )
                     if (selectedIngredient.value != null) {
                         ingredients[selectedIngredientIndex.intValue] = it
-                        ingredientRequests[selectedIngredientIndex.intValue] = ingredientRequest
+                        if (ingredientRequests.size - 1 >= selectedIngredientIndex.intValue) {
+                            ingredientRequests[selectedIngredientIndex.intValue] = ingredientRequest
+                        } else {
+                            ingredientRequests.add(ingredientRequest)
+                        }
                     } else {
                         ingredients.add(it)
                         ingredientRequests.add(ingredientRequest)
@@ -523,7 +527,11 @@ fun CreateOrEditRecipe(
                     )
                     if (selectedIngredient.value != null) {
                         methods[selectedMethodIndex.intValue] = it
-                        methodRequests[selectedMethodIndex.intValue] = methodRequest
+                        if (methodRequests.size - 1 >= selectedMethodIndex.intValue) {
+                            methodRequests[selectedMethodIndex.intValue] = methodRequest
+                        } else {
+                            methodRequests.add(methodRequest)
+                        }
                     } else {
                         methods.add(it)
                         methodRequests.add(methodRequest)

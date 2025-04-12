@@ -21,12 +21,12 @@ type Portion struct {
 }
 
 type Ingredient struct {
-	ID          int    `json:"id"`
-	Name        string `json:"name"`
-	Measurement string `json:"measurement"`
-	Value       string `json:"value"`
-	RecipeID    int    `json:"recipe_id"`
-	SortOrder   int    `json:"sortOrder"`
+	ID          int     `json:"id"`
+	Name        string  `json:"name"`
+	Measurement string  `json:"measurement"`
+	Value       float32 `json:"value"`
+	RecipeID    int     `json:"recipe_id"`
+	SortOrder   int     `json:"sortOrder"`
 }
 
 type Method struct {

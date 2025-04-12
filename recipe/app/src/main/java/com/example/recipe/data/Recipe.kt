@@ -29,13 +29,13 @@ data class Recipe (
     }
 
     override fun hashCode(): Int {
-        var result = id.hashCode()
+        var result = id
         result = 31 * result + name.hashCode()
-        result = 31 * result + portion.hashCode()
+        result = 31 * result + (portion?.hashCode() ?: 0)
         result = 31 * result + imageUrl.hashCode()
         result = 31 * result + image.hashCode()
-        result = 31 * result + ingredients.contentHashCode()
-        result = 31 * result + methods.contentHashCode()
+        result = 31 * result + (ingredients?.contentHashCode() ?: 0)
+        result = 31 * result + (methods?.contentHashCode() ?: 0)
         result = 31 * result + createdAt.hashCode()
         return result
     }
