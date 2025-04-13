@@ -544,8 +544,8 @@ func getRecipeMethods(recipeId int) []Method {
 		var method Method
 		rows.Scan(
 			&method.ID,
-			&method.SortOrder,
 			&method.Value,
+			&method.SortOrder,
 			&method.RecipeID,
 		)
 
@@ -571,12 +571,6 @@ func addMethods(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := db.Query(`
-		SELECT * FROM method WHERE recipe_id = ?
-	`, recipeId)
-
-	defer rows.Close()
-
 	var existingMethods = getRecipeMethods(recipeId)
 
 	var passedMethods []Method
@@ -587,13 +581,14 @@ func addMethods(w http.ResponseWriter, r *http.Request) {
 
 		for existingMethodIndex, existingMethod := range existingMethods {
 			sortOrder := passedMethod.SortOrder
-			if existingMethodIndex == 0 && passedMethod.SortOrder == 0 {
+			if existingMethodIndex == 0 && sortOrder == 0 {
 				sortOrder += 1
-			} else if existingMethodIndex != 0 && passedMethod.SortOrder == 0 {
+			} else if existingMethodIndex != 0 && sortOrder == 0 {
 				sortOrder = existingMethodIndex + 1
 			}
+
 			if passedMethod.ID == existingMethod.ID {
-				_, err := db.Exec("UPDATE method SET value = ?, sortOrder = ?, value = ? WHERE id = ?", passedMethod.Value, sortOrder, passedMethod.ID)
+				_, err := db.Exec("UPDATE method SET value = ?, sortOrder = ? WHERE id = ?", passedMethod.Value, sortOrder, passedMethod.ID)
 				if err != nil {
 					fmt.Println("Error updating method:", err)
 					http.Error(w, err.Error(), http.StatusInternalServerError)
