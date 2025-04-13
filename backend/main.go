@@ -375,12 +375,14 @@ func getRecipeIngredients(recipeId int, searchString string) []Ingredient {
 		rows, err = db.Query(`
 		SELECT * FROM ingredient
 		WHERE recipe_id = ?
+		ORDER BY SortOrder ASC
 	`, recipeId)
 	} else {
 		searchPattern := "%" + searchString + "%"
 		rows, err = db.Query(`
 		SELECT * FROM ingredient
-		WHERE recipe_id = ? AND ingredient.name LIKE ?
+		WHERE recipe_id = ? AND name LIKE ?
+		ORDER BY SortOrder ASC
 		`, recipeId, searchPattern)
 	}
 
@@ -531,6 +533,7 @@ func getRecipeMethods(recipeId int) []Method {
 	rows, err := db.Query(`
 		SELECT * FROM method
 		WHERE recipe_id = ?
+		ORDER BY SortOrder ASC
 	`, recipeId)
 
 	if err != nil {
