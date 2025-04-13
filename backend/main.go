@@ -37,14 +37,15 @@ type Method struct {
 }
 
 type Recipe struct {
-	ID          int          `json:"id"`
-	Name        string       `json:"name"`
-	Portion     *Portion     `json:"portion"`
-	Url         string       `json:"url"`
-	ImageUrl    string       `json:"imageUrl"`
-	Ingredients []Ingredient `json:"ingredients"`
-	Methods     []Method     `json:"methods"`
-	CreatedAt   string       `json:"createdAt"`
+	ID           int          `json:"id"`
+	Name         string       `json:"name"`
+	Portion      *Portion     `json:"portion"`
+	Url          string       `json:"url"`
+	ImageUrl     string       `json:"imageUrl"`
+	Ingredients  []Ingredient `json:"ingredients"`
+	Methods      []Method     `json:"methods"`
+	CreatedAt    string       `json:"createdAt"`
+	LastEditedAt string       `json:"lastEditedAt"`
 }
 
 var recipes []Recipe
@@ -59,12 +60,14 @@ func getRecipes(w http.ResponseWriter, r *http.Request) {
 	if searchString == "" {
 		rows, err = db.Query(`
 		SELECT * FROM recipe
+		ORDER BY lastEditedAt DESC
 	`)
 	} else {
 		searchPattern := "%" + searchString + "%"
 		rows, err = db.Query(`
 			SELECT * FROM recipe
 			WHERE recipe.name LIKE ?
+			ORDER BY lastEditedAt DESC
 		`, searchPattern)
 	}
 
@@ -88,6 +91,7 @@ func getRecipes(w http.ResponseWriter, r *http.Request) {
 			&recipe.Url,
 			&recipe.ImageUrl,
 			&recipe.CreatedAt,
+			&recipe.LastEditedAt,
 		)
 
 		recipe.Ingredients = getRecipeIngredients(recipe.ID, searchString)
@@ -126,6 +130,7 @@ func getRecipeById(id int) Recipe {
 		&recipe.Url,
 		&recipe.ImageUrl,
 		&recipe.CreatedAt,
+		&recipe.LastEditedAt,
 	)
 
 	recipe.Ingredients = getRecipeIngredients(id, "")
@@ -173,18 +178,20 @@ func updateRecipe(w http.ResponseWriter, r *http.Request) {
 		SET name = ?,
 			url = ?,
 			imageUrl = ?,
-			createdAt = ?
+			lastEditedAt = ?
 		WHERE id = ?
 	`)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	now := time.Now()
 	_, err = stmt.Exec(
 		recipe.Name,
 		recipe.Url,
 		recipe.ImageUrl,
-		recipe.CreatedAt,
+		now.Format("2006-01-02 15:04:05"),
 		id,
 	)
 	if err != nil {
@@ -192,6 +199,16 @@ func updateRecipe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	json.NewEncoder(w).Encode(recipe)
+}
+
+func updateRecipeLastEdited(recipeId int) {
+	now := time.Now()
+	_, err := db.Exec(`
+		UPDATE recipe SET lastEditedAt = ? WHERE recipe_id = ?
+	`, now.Format("2006-01-02 15:04:05"), recipeId)
+	if err != nil {
+		fmt.Println("Failed updating lastEditedAt")
+	}
 }
 
 func deleteRecipe(w http.ResponseWriter, r *http.Request) {
@@ -283,6 +300,8 @@ func addPortion(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+
+	updateRecipeLastEdited(recipeId)
 
 	json.NewEncoder(w).Encode(getRecipeById(recipeId))
 }
@@ -463,43 +482,9 @@ func addIngredients(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	updateRecipeLastEdited(recipeId)
+
 	json.NewEncoder(w).Encode(getRecipeById(recipeId))
-}
-
-func updateIngredient(w http.ResponseWriter, r *http.Request) {
-	params := mux.Vars(r)
-	idStr := params["id"]
-
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		http.Error(w, "Invalid ID parameter", http.StatusInternalServerError)
-		return
-	}
-
-	var ingredient Ingredient
-	json.NewDecoder(r.Body).Decode(&ingredient)
-	stmt, err := db.Prepare(`
-		UPDATE ingredient
-		SET name = ?,
-			measurement = ?,
-			value = ?,
-		WHERE id = ?
-	`)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	_, err = stmt.Exec(
-		ingredient.Value,
-		ingredient.Measurement,
-		ingredient.Name,
-		id,
-	)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	json.NewEncoder(w).Encode(ingredient)
 }
 
 func deleteIngredient(w http.ResponseWriter, r *http.Request) {
@@ -613,41 +598,9 @@ func addMethods(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	updateRecipeLastEdited(recipeId)
+
 	json.NewEncoder(w).Encode(getRecipeById(recipeId))
-}
-
-func updateMethod(w http.ResponseWriter, r *http.Request) {
-	params := mux.Vars(r)
-	idStr := params["id"]
-
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		http.Error(w, "Invalid ID parameter", http.StatusInternalServerError)
-		return
-	}
-
-	var method Method
-	json.NewDecoder(r.Body).Decode(&method)
-	stmt, err := db.Prepare(`
-		UPDATE method
-		SET value = ?,
-			sortOrder = ?,
-		WHERE id = ?
-	`)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	_, err = stmt.Exec(
-		method.Value,
-		method.SortOrder,
-		id,
-	)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	json.NewEncoder(w).Encode(method)
 }
 
 func deleteMethod(w http.ResponseWriter, r *http.Request) {
