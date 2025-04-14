@@ -8,6 +8,7 @@ import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -25,6 +27,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -35,6 +40,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
@@ -44,6 +50,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
@@ -74,6 +81,8 @@ import com.example.recipe.helpers.MethodRequest
 import com.example.recipe.helpers.PortionRequest
 import com.example.recipe.helpers.RecipeRequest
 import com.example.recipe.helpers.getResizedBitmap
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyListState
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -93,8 +102,8 @@ fun Main(recipeViewModel: RecipeViewModel) {
     var search by remember { mutableStateOf("") }
     Column(
         modifier = Modifier
-            .verticalScroll(rememberScrollState())
-            .fillMaxWidth()
+            .fillMaxSize()  // Ensure the column takes the full screen space
+            .verticalScroll(rememberScrollState())  // Make entire column scrollable
             .windowInsetsPadding(WindowInsets.systemBars)
     ) {
         if (recipesUIState.isFullScreen) {
@@ -375,6 +384,14 @@ fun CreateOrEditRecipe(
     var showIngredientModal by remember { mutableStateOf(false) }
     val selectedIngredient = remember { mutableStateOf<Ingredient?>(null) }
     val selectedIngredientIndex = remember { mutableIntStateOf(0) }
+    // Remember the LazyListState
+    val lazyListState = rememberLazyListState()
+
+    // Initialize the ReorderableLazyListState
+    val reorderableState = rememberReorderableLazyListState(lazyListState) { from, to ->
+        // Update the list order
+        ingredients.add(to.index, ingredients.removeAt(from.index))
+    }
 
     val ingredientRequests = remember {
         mutableStateListOf<IngredientRequest>()
@@ -390,7 +407,9 @@ fun CreateOrEditRecipe(
         mutableStateListOf<MethodRequest>()
     }
 
-    Column {
+    Column(
+        modifier = Modifier.fillMaxHeight()
+    ) {
         ImageUploader(
             onImageUpload = { imageUrl = it.toString() }
         )
@@ -446,20 +465,67 @@ fun CreateOrEditRecipe(
                 Text("+")
             }
         }
-        for ((index, ingredient) in ingredients.withIndex()) {
-            Row(
-                modifier = Modifier.clickable{
-                    showIngredientModal = true
-                    selectedIngredient.value = ingredient
-                    selectedIngredientIndex.intValue = index
+        LazyColumn(
+            state = lazyListState,
+            modifier = Modifier
+                .fillMaxWidth()  // Make LazyColumn fill width of the column
+                .weight(1f)  // This makes LazyColumn take remaining height in Column
+        ) {
+            itemsIndexed(ingredients, key = { _, ingredient -> ingredient.id }) { index, ingredient ->
+                ReorderableItem(reorderableState, key = ingredient) { isDragging ->
+                    val elevation by animateDpAsState(if (isDragging) 4.dp else 0.dp)
+
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(8.dp),
+                        tonalElevation = elevation
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.clickable{
+                                    showIngredientModal = true
+                                    selectedIngredient.value = ingredient
+                                    selectedIngredientIndex.intValue = index
+                                }
+                            ) {
+                                Text(ingredient.name)
+                                Text(" - ")
+                                Text(ingredient.value.toString())
+                                Text(ingredient.measurement)
+                            }
+                            Icon(
+                                imageVector = Icons.Default.FavoriteBorder,
+                                contentDescription = "Drag Handle",
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .draggableHandle() // This is correct for the drag handle
+                            )
+                        }
+                    }
                 }
-            ) {
-                Text(ingredient.name)
-                Text(" - ")
-                Text(ingredient.value.toString())
-                Text(ingredient.measurement)
             }
         }
+
+//        for ((index, ingredient) in ingredients.withIndex()) {
+//            Row(
+//                modifier = Modifier.clickable{
+//                    showIngredientModal = true
+//                    selectedIngredient.value = ingredient
+//                    selectedIngredientIndex.intValue = index
+//                }
+//            ) {
+//                Text(ingredient.name)
+//                Text(" - ")
+//                Text(ingredient.value.toString())
+//                Text(ingredient.measurement)
+//            }
+//        }
 
         if (showIngredientModal) {
             AddOrEditIngredient(
