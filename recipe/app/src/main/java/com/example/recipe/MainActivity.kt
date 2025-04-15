@@ -8,7 +8,6 @@ import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -27,8 +26,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -50,7 +47,6 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
@@ -81,8 +77,9 @@ import com.example.recipe.helpers.MethodRequest
 import com.example.recipe.helpers.PortionRequest
 import com.example.recipe.helpers.RecipeRequest
 import com.example.recipe.helpers.getResizedBitmap
-import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.ReorderableColumn
 import sh.calvin.reorderable.rememberReorderableLazyListState
+import androidx.compose.runtime.key
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -380,7 +377,7 @@ fun CreateOrEditRecipe(
     var placeholderPortionValue by remember { mutableStateOf(recipe?.portion?.value?.toString() ?: "1") }
 
     // ingredients handlers
-    val ingredients = remember { mutableStateListOf<Ingredient>(*recipe?.ingredients.orEmpty()) }
+    var ingredients = remember { mutableStateListOf<Ingredient>(*recipe?.ingredients.orEmpty()) }
     var showIngredientModal by remember { mutableStateOf(false) }
     val selectedIngredient = remember { mutableStateOf<Ingredient?>(null) }
     val selectedIngredientIndex = remember { mutableIntStateOf(0) }
@@ -465,67 +462,46 @@ fun CreateOrEditRecipe(
                 Text("+")
             }
         }
-        LazyColumn(
-            state = lazyListState,
-            modifier = Modifier
-                .fillMaxWidth()  // Make LazyColumn fill width of the column
-                .weight(1f)  // This makes LazyColumn take remaining height in Column
+        ReorderableColumn(
+           list = ingredients,
+            onSettle = { fromIndex, toIndex  -> {
+                ingredients.apply {
+                    add(toIndex, removeAt(fromIndex))
+                }
+            }}
         ) {
-            itemsIndexed(ingredients, key = { _, ingredient -> ingredient.id }) { index, ingredient ->
-                ReorderableItem(reorderableState, key = ingredient) { isDragging ->
-                    val elevation by animateDpAsState(if (isDragging) 4.dp else 0.dp)
-
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(8.dp),
-                        tonalElevation = elevation
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(12.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.clickable{
-                                    showIngredientModal = true
-                                    selectedIngredient.value = ingredient
-                                    selectedIngredientIndex.intValue = index
-                                }
-                            ) {
-                                Text(ingredient.name)
-                                Text(" - ")
-                                Text(ingredient.value.toString())
-                                Text(ingredient.measurement)
-                            }
-                            Icon(
-                                imageVector = Icons.Default.FavoriteBorder,
-                                contentDescription = "Drag Handle",
-                                modifier = Modifier
-                                    .size(24.dp)
-                                    .draggableHandle() // This is correct for the drag handle
-                            )
+            index, ingredient, isDragging ->
+            key(index) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.clickable{
+                            showIngredientModal = true
+                            selectedIngredient.value = ingredient
+                            selectedIngredientIndex.intValue = index
                         }
+                    ) {
+                        Text(ingredient.name)
+                        Text(" - ")
+                        Text(ingredient.value.toString())
+                        Text(ingredient.measurement)
+                    }
+                    if (index in ingredients.indices) {
+                        Icon(
+                            imageVector = Icons.Default.FavoriteBorder,
+                            contentDescription = "Drag Handle",
+                            modifier = Modifier
+                                .size(24.dp)
+                                .draggableHandle() // This is correct for the drag handle
+                        )
                     }
                 }
             }
         }
-
-//        for ((index, ingredient) in ingredients.withIndex()) {
-//            Row(
-//                modifier = Modifier.clickable{
-//                    showIngredientModal = true
-//                    selectedIngredient.value = ingredient
-//                    selectedIngredientIndex.intValue = index
-//                }
-//            ) {
-//                Text(ingredient.name)
-//                Text(" - ")
-//                Text(ingredient.value.toString())
-//                Text(ingredient.measurement)
-//            }
-//        }
 
         if (showIngredientModal) {
             AddOrEditIngredient(
@@ -569,16 +545,42 @@ fun CreateOrEditRecipe(
             }
         }
 
-        for ((index, method) in methods.withIndex()) {
-            val methodDivider = if (method.sortOrder != null) method.sortOrder.inc().toString() + ". " else "- "
-            Row(
-                modifier = Modifier.clickable{
-                    showMethodModal = true
-                    selectedMethod.value = method
-                    selectedMethodIndex.intValue = index
+        ReorderableColumn(
+            list = methods,
+            onSettle = { fromIndex, toIndex  -> {
+                methods.apply {
+                    add(toIndex, removeAt(fromIndex))
                 }
-            ) {
-                Text(methodDivider + method.value)
+            }}
+        ) {
+                index, method, isDragging ->
+            key(index) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp)
+                ) {
+                    val methodDivider = index.inc().toString() + ". "
+                    Row(
+                        modifier = Modifier.clickable{
+                            showMethodModal = true
+                            selectedMethod.value = method
+                            selectedMethodIndex.intValue = index
+                        }
+                    ) {
+                        Text(methodDivider + method.value)
+                    }
+                    if (index in ingredients.indices) {
+                        Icon(
+                            imageVector = Icons.Default.FavoriteBorder,
+                            contentDescription = "Drag Handle",
+                            modifier = Modifier
+                                .size(24.dp)
+                                .draggableHandle() // This is correct for the drag handle
+                        )
+                    }
+                }
             }
         }
 
