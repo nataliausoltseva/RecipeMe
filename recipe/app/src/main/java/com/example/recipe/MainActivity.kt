@@ -26,7 +26,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -78,7 +77,6 @@ import com.example.recipe.helpers.PortionRequest
 import com.example.recipe.helpers.RecipeRequest
 import com.example.recipe.helpers.getResizedBitmap
 import sh.calvin.reorderable.ReorderableColumn
-import sh.calvin.reorderable.rememberReorderableLazyListState
 import androidx.compose.runtime.key
 
 class MainActivity : ComponentActivity() {
@@ -107,7 +105,8 @@ fun Main(recipeViewModel: RecipeViewModel) {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
                 contentDescription = "Arrow Left",
-                modifier = Modifier.clickable{ recipeViewModel.backToListView() }
+                modifier = Modifier
+                    .clickable { recipeViewModel.backToListView() }
                     .size(50.dp, 50.dp)
             )
             if (recipesUIState.selectedRecipe != null) {
@@ -122,7 +121,8 @@ fun Main(recipeViewModel: RecipeViewModel) {
                     Icon(
                         imageVector = Icons.Filled.CheckCircle,
                         contentDescription = "Edit button",
-                        modifier = Modifier.clickable{ recipeViewModel.onSaveRecipe() }
+                        modifier = Modifier
+                            .clickable { recipeViewModel.onSaveRecipe() }
                             .size(50.dp, 50.dp)
                     )
                 } else {
@@ -132,7 +132,8 @@ fun Main(recipeViewModel: RecipeViewModel) {
                     Icon(
                         imageVector = Icons.Filled.Edit,
                         contentDescription = "Edit button",
-                        modifier = Modifier.clickable{ recipeViewModel.onEditRecipe() }
+                        modifier = Modifier
+                            .clickable { recipeViewModel.onEditRecipe() }
                             .size(50.dp, 50.dp)
                     )
                 }
@@ -146,7 +147,9 @@ fun Main(recipeViewModel: RecipeViewModel) {
             }
         } else {
             Row (
-                modifier = Modifier.fillMaxWidth().padding(20.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -205,7 +208,8 @@ fun Filter(
     Icon(
         imageVector = Icons.Filled.Settings,
         contentDescription = "Settings Icon",
-        modifier = Modifier.size(45.dp)
+        modifier = Modifier
+            .size(45.dp)
             .clickable { onToggle(!isOpen) }
     )
 }
@@ -226,7 +230,8 @@ fun Add(
         Icon(
             imageVector = Icons.Filled.Add,
             contentDescription = "Settings Icon",
-            modifier = Modifier.size(45.dp)
+            modifier = Modifier
+                .size(45.dp)
                 .clickable { onAdd() }
                 .align(Alignment.BottomEnd)
         )
@@ -377,25 +382,17 @@ fun CreateOrEditRecipe(
     var placeholderPortionValue by remember { mutableStateOf(recipe?.portion?.value?.toString() ?: "1") }
 
     // ingredients handlers
-    var ingredients = remember { mutableStateListOf<Ingredient>(*recipe?.ingredients.orEmpty()) }
+    var ingredients = remember { mutableStateOf(listOf<Ingredient>(*recipe?.ingredients.orEmpty())) }
     var showIngredientModal by remember { mutableStateOf(false) }
     val selectedIngredient = remember { mutableStateOf<Ingredient?>(null) }
     val selectedIngredientIndex = remember { mutableIntStateOf(0) }
-    // Remember the LazyListState
-    val lazyListState = rememberLazyListState()
-
-    // Initialize the ReorderableLazyListState
-    val reorderableState = rememberReorderableLazyListState(lazyListState) { from, to ->
-        // Update the list order
-        ingredients.add(to.index, ingredients.removeAt(from.index))
-    }
 
     val ingredientRequests = remember {
         mutableStateListOf<IngredientRequest>()
     }
 
-    // ingredients handlers
-    val methods = remember { mutableStateListOf<Method>(*recipe?.methods.orEmpty()) }
+    // methods handlers
+    var methods = remember { mutableStateOf(listOf<Method>(*recipe?.methods.orEmpty())) }
     var showMethodModal by remember { mutableStateOf(false) }
     val selectedMethod = remember { mutableStateOf<Method?>(null) }
     val selectedMethodIndex = remember { mutableIntStateOf(0) }
@@ -463,9 +460,9 @@ fun CreateOrEditRecipe(
             }
         }
         ReorderableColumn(
-           list = ingredients,
+           list = ingredients.value,
             onSettle = { fromIndex, toIndex  -> {
-                ingredients.apply {
+                ingredients.value = ingredients.value.toMutableList().apply {
                     add(toIndex, removeAt(fromIndex))
                 }
             }}
@@ -490,15 +487,13 @@ fun CreateOrEditRecipe(
                         Text(ingredient.value.toString())
                         Text(ingredient.measurement)
                     }
-                    if (index in ingredients.indices) {
-                        Icon(
-                            imageVector = Icons.Default.FavoriteBorder,
-                            contentDescription = "Drag Handle",
-                            modifier = Modifier
-                                .size(24.dp)
-                                .draggableHandle() // This is correct for the drag handle
-                        )
-                    }
+                    Icon(
+                        imageVector = Icons.Default.FavoriteBorder,
+                        contentDescription = "Drag Handle",
+                        modifier = Modifier
+                            .size(24.dp)
+                            .draggableHandle() // This is correct for the drag handle
+                    )
                 }
             }
         }
@@ -512,17 +507,19 @@ fun CreateOrEditRecipe(
                         name = it.name,
                         measurement = it.measurement,
                         value = it.value,
-                        sortOrder = it.sortOrder ?: (ingredients.size + 1)
+                        sortOrder = it.sortOrder ?: (ingredients.value.size + 1)
                     )
                     if (selectedIngredient.value != null) {
-                        ingredients[selectedIngredientIndex.intValue] = it
+                        val updatedList = ingredients.value.toMutableList()
+                        updatedList[selectedIngredientIndex.intValue] = it
+                        ingredients.value = updatedList
                         if (ingredientRequests.size - 1 >= selectedIngredientIndex.intValue) {
                             ingredientRequests[selectedIngredientIndex.intValue] = ingredientRequest
                         } else {
                             ingredientRequests.add(ingredientRequest)
                         }
                     } else {
-                        ingredients.add(it)
+                        ingredients.value = ingredients.value.toMutableList().apply { add(it) }
                         ingredientRequests.add(ingredientRequest)
                     }
                     selectedIngredient.value = null
@@ -546,9 +543,9 @@ fun CreateOrEditRecipe(
         }
 
         ReorderableColumn(
-            list = methods,
+            list = methods.value,
             onSettle = { fromIndex, toIndex  -> {
-                methods.apply {
+                methods.value = methods.value.toMutableList().apply {
                     add(toIndex, removeAt(fromIndex))
                 }
             }}
@@ -571,15 +568,13 @@ fun CreateOrEditRecipe(
                     ) {
                         Text(methodDivider + method.value)
                     }
-                    if (index in ingredients.indices) {
-                        Icon(
-                            imageVector = Icons.Default.FavoriteBorder,
-                            contentDescription = "Drag Handle",
-                            modifier = Modifier
-                                .size(24.dp)
-                                .draggableHandle() // This is correct for the drag handle
-                        )
-                    }
+                    Icon(
+                        imageVector = Icons.Default.FavoriteBorder,
+                        contentDescription = "Drag Handle",
+                        modifier = Modifier
+                            .size(24.dp)
+                            .draggableHandle() // This is correct for the drag handle
+                    )
                 }
             }
         }
@@ -594,14 +589,16 @@ fun CreateOrEditRecipe(
                         sortOrder = it.sortOrder ?: (methodRequests.size + 1)
                     )
                     if (selectedIngredient.value != null) {
-                        methods[selectedMethodIndex.intValue] = it
+                        val updatedList = methods.value.toMutableList()
+                        updatedList[selectedMethodIndex.intValue] = it
+                        methods.value = updatedList
                         if (methodRequests.size - 1 >= selectedMethodIndex.intValue) {
                             methodRequests[selectedMethodIndex.intValue] = methodRequest
                         } else {
                             methodRequests.add(methodRequest)
                         }
                     } else {
-                        methods.add(it)
+                        methods.value = methods.value.toMutableList().apply { add(it) }
                         methodRequests.add(methodRequest)
                     }
                     selectedMethod.value = null
