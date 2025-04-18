@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -35,6 +36,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
@@ -74,6 +76,8 @@ import com.example.recipe.helpers.MethodRequest
 import com.example.recipe.helpers.PortionRequest
 import com.example.recipe.helpers.RecipeRequest
 import com.example.recipe.helpers.getResizedBitmap
+import sh.calvin.reorderable.ReorderableColumn
+import androidx.compose.runtime.key
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -93,15 +97,16 @@ fun Main(recipeViewModel: RecipeViewModel) {
     var search by remember { mutableStateOf("") }
     Column(
         modifier = Modifier
-            .verticalScroll(rememberScrollState())
-            .fillMaxWidth()
+            .fillMaxSize()  // Ensure the column takes the full screen space
+            .verticalScroll(rememberScrollState())  // Make entire column scrollable
             .windowInsetsPadding(WindowInsets.systemBars)
     ) {
         if (recipesUIState.isFullScreen) {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
                 contentDescription = "Arrow Left",
-                modifier = Modifier.clickable{ recipeViewModel.backToListView() }
+                modifier = Modifier
+                    .clickable { recipeViewModel.backToListView() }
                     .size(50.dp, 50.dp)
             )
             if (recipesUIState.selectedRecipe != null) {
@@ -116,7 +121,8 @@ fun Main(recipeViewModel: RecipeViewModel) {
                     Icon(
                         imageVector = Icons.Filled.CheckCircle,
                         contentDescription = "Edit button",
-                        modifier = Modifier.clickable{ recipeViewModel.onSaveRecipe() }
+                        modifier = Modifier
+                            .clickable { recipeViewModel.onSaveRecipe() }
                             .size(50.dp, 50.dp)
                     )
                 } else {
@@ -126,7 +132,8 @@ fun Main(recipeViewModel: RecipeViewModel) {
                     Icon(
                         imageVector = Icons.Filled.Edit,
                         contentDescription = "Edit button",
-                        modifier = Modifier.clickable{ recipeViewModel.onEditRecipe() }
+                        modifier = Modifier
+                            .clickable { recipeViewModel.onEditRecipe() }
                             .size(50.dp, 50.dp)
                     )
                 }
@@ -140,7 +147,9 @@ fun Main(recipeViewModel: RecipeViewModel) {
             }
         } else {
             Row (
-                modifier = Modifier.fillMaxWidth().padding(20.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -199,7 +208,8 @@ fun Filter(
     Icon(
         imageVector = Icons.Filled.Settings,
         contentDescription = "Settings Icon",
-        modifier = Modifier.size(45.dp)
+        modifier = Modifier
+            .size(45.dp)
             .clickable { onToggle(!isOpen) }
     )
 }
@@ -220,7 +230,8 @@ fun Add(
         Icon(
             imageVector = Icons.Filled.Add,
             contentDescription = "Settings Icon",
-            modifier = Modifier.size(45.dp)
+            modifier = Modifier
+                .size(45.dp)
                 .clickable { onAdd() }
                 .align(Alignment.BottomEnd)
         )
@@ -371,7 +382,7 @@ fun CreateOrEditRecipe(
     var placeholderPortionValue by remember { mutableStateOf(recipe?.portion?.value?.toString() ?: "1") }
 
     // ingredients handlers
-    val ingredients = remember { mutableStateListOf<Ingredient>(*recipe?.ingredients.orEmpty()) }
+    var ingredients = remember { mutableStateOf(listOf<Ingredient>(*recipe?.ingredients.orEmpty())) }
     var showIngredientModal by remember { mutableStateOf(false) }
     val selectedIngredient = remember { mutableStateOf<Ingredient?>(null) }
     val selectedIngredientIndex = remember { mutableIntStateOf(0) }
@@ -380,8 +391,8 @@ fun CreateOrEditRecipe(
         mutableStateListOf<IngredientRequest>()
     }
 
-    // ingredients handlers
-    val methods = remember { mutableStateListOf<Method>(*recipe?.methods.orEmpty()) }
+    // methods handlers
+    var methods = remember { mutableStateOf(listOf<Method>(*recipe?.methods.orEmpty())) }
     var showMethodModal by remember { mutableStateOf(false) }
     val selectedMethod = remember { mutableStateOf<Method?>(null) }
     val selectedMethodIndex = remember { mutableIntStateOf(0) }
@@ -390,7 +401,9 @@ fun CreateOrEditRecipe(
         mutableStateListOf<MethodRequest>()
     }
 
-    Column {
+    Column(
+        modifier = Modifier.fillMaxHeight()
+    ) {
         ImageUploader(
             onImageUpload = { imageUrl = it.toString() }
         )
@@ -446,18 +459,42 @@ fun CreateOrEditRecipe(
                 Text("+")
             }
         }
-        for ((index, ingredient) in ingredients.withIndex()) {
-            Row(
-                modifier = Modifier.clickable{
-                    showIngredientModal = true
-                    selectedIngredient.value = ingredient
-                    selectedIngredientIndex.intValue = index
+        ReorderableColumn(
+           list = ingredients.value,
+            onSettle = { fromIndex, toIndex  -> {
+                ingredients.value = ingredients.value.toMutableList().apply {
+                    add(toIndex, removeAt(fromIndex))
                 }
-            ) {
-                Text(ingredient.name)
-                Text(" - ")
-                Text(ingredient.value.toString())
-                Text(ingredient.measurement)
+            }}
+        ) {
+            index, ingredient, isDragging ->
+            key(index) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.clickable{
+                            showIngredientModal = true
+                            selectedIngredient.value = ingredient
+                            selectedIngredientIndex.intValue = index
+                        }
+                    ) {
+                        Text(ingredient.name)
+                        Text(" - ")
+                        Text(ingredient.value.toString())
+                        Text(ingredient.measurement)
+                    }
+                    Icon(
+                        imageVector = Icons.Default.FavoriteBorder,
+                        contentDescription = "Drag Handle",
+                        modifier = Modifier
+                            .size(24.dp)
+                            .draggableHandle() // This is correct for the drag handle
+                    )
+                }
             }
         }
 
@@ -470,17 +507,19 @@ fun CreateOrEditRecipe(
                         name = it.name,
                         measurement = it.measurement,
                         value = it.value,
-                        sortOrder = it.sortOrder ?: (ingredients.size + 1)
+                        sortOrder = it.sortOrder ?: (ingredients.value.size + 1)
                     )
                     if (selectedIngredient.value != null) {
-                        ingredients[selectedIngredientIndex.intValue] = it
+                        val updatedList = ingredients.value.toMutableList()
+                        updatedList[selectedIngredientIndex.intValue] = it
+                        ingredients.value = updatedList
                         if (ingredientRequests.size - 1 >= selectedIngredientIndex.intValue) {
                             ingredientRequests[selectedIngredientIndex.intValue] = ingredientRequest
                         } else {
                             ingredientRequests.add(ingredientRequest)
                         }
                     } else {
-                        ingredients.add(it)
+                        ingredients.value = ingredients.value.toMutableList().apply { add(it) }
                         ingredientRequests.add(ingredientRequest)
                     }
                     selectedIngredient.value = null
@@ -503,16 +542,40 @@ fun CreateOrEditRecipe(
             }
         }
 
-        for ((index, method) in methods.withIndex()) {
-            val methodDivider = if (method.sortOrder != null) method.sortOrder.inc().toString() + ". " else "- "
-            Row(
-                modifier = Modifier.clickable{
-                    showMethodModal = true
-                    selectedMethod.value = method
-                    selectedMethodIndex.intValue = index
+        ReorderableColumn(
+            list = methods.value,
+            onSettle = { fromIndex, toIndex  -> {
+                methods.value = methods.value.toMutableList().apply {
+                    add(toIndex, removeAt(fromIndex))
                 }
-            ) {
-                Text(methodDivider + method.value)
+            }}
+        ) {
+                index, method, isDragging ->
+            key(index) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp)
+                ) {
+                    val methodDivider = index.inc().toString() + ". "
+                    Row(
+                        modifier = Modifier.clickable{
+                            showMethodModal = true
+                            selectedMethod.value = method
+                            selectedMethodIndex.intValue = index
+                        }
+                    ) {
+                        Text(methodDivider + method.value)
+                    }
+                    Icon(
+                        imageVector = Icons.Default.FavoriteBorder,
+                        contentDescription = "Drag Handle",
+                        modifier = Modifier
+                            .size(24.dp)
+                            .draggableHandle() // This is correct for the drag handle
+                    )
+                }
             }
         }
 
@@ -526,14 +589,16 @@ fun CreateOrEditRecipe(
                         sortOrder = it.sortOrder ?: (methodRequests.size + 1)
                     )
                     if (selectedIngredient.value != null) {
-                        methods[selectedMethodIndex.intValue] = it
+                        val updatedList = methods.value.toMutableList()
+                        updatedList[selectedMethodIndex.intValue] = it
+                        methods.value = updatedList
                         if (methodRequests.size - 1 >= selectedMethodIndex.intValue) {
                             methodRequests[selectedMethodIndex.intValue] = methodRequest
                         } else {
                             methodRequests.add(methodRequest)
                         }
                     } else {
-                        methods.add(it)
+                        methods.value = methods.value.toMutableList().apply { add(it) }
                         methodRequests.add(methodRequest)
                     }
                     selectedMethod.value = null

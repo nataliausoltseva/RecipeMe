@@ -10,6 +10,7 @@ activityCompose = "1.10.1"
 composeBom = "2025.03.01"
 converterGson = "2.9.0"
 coilCompose = "2.7.0"
+reorderable = "2.4.3"
 volley = "1.2.1"
 
 [libraries]
@@ -27,6 +28,7 @@ androidx-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-toolin
 androidx-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
 androidx-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-material3 = { group = "androidx.compose.material3", name = "material3" }
+reorderable = { module = "sh.calvin.reorderable:reorderable", version.ref = "reorderable" }
 retrofit = { module = "com.squareup.retrofit2:retrofit", version.ref = "converterGson" }
 converter-gson = { module = "com.squareup.retrofit2:converter-gson", version.ref = "converterGson" }
 coil-compose = { module = "io.coil-kt:coil-compose", version.ref = "coilCompose" }
