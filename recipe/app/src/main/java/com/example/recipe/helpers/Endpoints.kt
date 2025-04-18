@@ -1,5 +1,8 @@
 package com.example.recipe.helpers
 
+import com.example.recipe.data.Ingredient
+import com.example.recipe.data.Method
+import com.example.recipe.data.Portion
 import com.example.recipe.data.Recipe
 
 class Endpoints {
@@ -48,25 +51,25 @@ class Endpoints {
         }
     }
 
-    suspend fun updateOrCreatePortion(portion: PortionRequest, recipeId: Int) {
+    suspend fun updateOrCreatePortion(portion: Portion, recipeId: Int) {
         try {
-            apiInterface.addOrUpdate(recipeId, portion)
+            apiInterface.addOrUpdatePortion(recipeId, portion)
         } catch (e: Exception) {
             println("Exception error updateOrCreatePortion: ${e.message}. ${e.printStackTrace()}")
         }
     }
 
-    suspend fun addOrUpdateIngredients(ingredients: List<IngredientRequest>, recipeId: Int) {
+    suspend fun addOrUpdateIngredients(ingredients: List<Ingredient>, recipeId: Int) {
         try {
-            apiInterface.addIngredients(recipeId, ingredients)
+            apiInterface.addOrUpdateIngredients(recipeId, ingredients)
         } catch (e: Exception) {
             println("Exception error updateOrCreatePortion: ${e.message}. ${e.printStackTrace()}")
         }
     }
 
-    suspend fun addOrUpdateMethods(methods: List<MethodRequest>, recipeId: Int) {
+    suspend fun addOrUpdateMethods(methods: List<Method>, recipeId: Int) {
         try {
-            apiInterface.addMethods(recipeId, methods)
+            apiInterface.addOrUpdateMethods(recipeId, methods)
         } catch (e: Exception) {
             println("Exception error updateOrCreatePortion: ${e.message}. ${e.printStackTrace()}")
         }

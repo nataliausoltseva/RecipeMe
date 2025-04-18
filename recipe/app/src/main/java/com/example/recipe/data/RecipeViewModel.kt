@@ -3,9 +3,6 @@ package com.example.recipe.data
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.recipe.helpers.Endpoints
-import com.example.recipe.helpers.IngredientRequest
-import com.example.recipe.helpers.MethodRequest
-import com.example.recipe.helpers.PortionRequest
 import com.example.recipe.helpers.RecipeRequest
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -44,7 +41,8 @@ class RecipeViewModel: ViewModel() {
         _uiState.update {
             it.copy(
                 isFullScreen = true,
-                selectedRecipe = recipe
+                selectedRecipe = recipe,
+                isEditingRecipe = false
             )
         }
     }
@@ -59,9 +57,9 @@ class RecipeViewModel: ViewModel() {
 
     fun saveRecipe(
         recipe: RecipeRequest,
-        portion: PortionRequest,
-        ingredients: List<IngredientRequest>,
-        methods: List<MethodRequest>,
+        portion: Portion,
+        ingredients: List<Ingredient>,
+        methods: List<Method>,
     ) {
         viewModelScope.launch {
             try {

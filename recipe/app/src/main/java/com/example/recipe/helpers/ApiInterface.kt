@@ -19,26 +19,6 @@ data class RecipeRequest(
     var imageUrl: String,
 )
 
-data class PortionRequest(
-    var id: Int,
-    var value: Number,
-    var measurement: String,
-)
-
-data class MethodRequest(
-    var id: Int,
-    val value: String,
-    val sortOrder: Int,
-)
-
-data class IngredientRequest(
-    var id: Int,
-    val name: String,
-    val measurement: String,
-    val value: Number,
-    val sortOrder: Int,
-)
-
 interface ApiInterface {
     // Recipe endpoints
     @GET("/recipes")
@@ -58,21 +38,21 @@ interface ApiInterface {
 
     // Portion endpoints
     @POST("/portion/{recipeId}")
-    suspend fun addOrUpdate(@Path("recipeId") id: Int, @Body request: PortionRequest): Response<Portion>
+    suspend fun addOrUpdatePortion(@Path("recipeId") id: Int, @Body request: Portion): Response<Portion>
 
     @DELETE("/portion/{id}")
     suspend fun deletePortion(@Path("id") id: Int): Response<Void>
 
     // Ingredient endpoints
     @POST("/ingredients/{recipeId}")
-    suspend fun addIngredients(@Path("recipeId") id: Int, @Body request: List<IngredientRequest>): Response<Ingredient>
+    suspend fun addOrUpdateIngredients(@Path("recipeId") id: Int, @Body request: List<Ingredient>): Response<Recipe>
 
     @DELETE("/ingredient/{id}")
     suspend fun deleteIngredient(@Path("id") id: Int): Response<Void>
 
-    // Method endpoints
+    // Methods endpoints
     @POST("/methods/{recipeId}")
-    suspend fun addMethods(@Path("recipeId") id: Int, @Body request: List<MethodRequest>): Response<Method>
+    suspend fun addOrUpdateMethods(@Path("recipeId") id: Int, @Body request: List<Method>): Response<Recipe>
 
     @DELETE("/method/{id}")
     suspend fun deleteMethod(@Path("id") id: Int): Response<Void>

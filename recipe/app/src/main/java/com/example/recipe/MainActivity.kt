@@ -53,7 +53,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -71,13 +70,11 @@ import coil.request.ImageRequest
 import com.example.recipe.data.Ingredient
 import com.example.recipe.data.Method
 import com.example.recipe.data.Recipe
-import com.example.recipe.helpers.IngredientRequest
-import com.example.recipe.helpers.MethodRequest
-import com.example.recipe.helpers.PortionRequest
 import com.example.recipe.helpers.RecipeRequest
 import com.example.recipe.helpers.getResizedBitmap
 import sh.calvin.reorderable.ReorderableColumn
 import androidx.compose.runtime.key
+import com.example.recipe.data.Portion
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -367,9 +364,9 @@ fun ViewRecipe(
 fun CreateOrEditRecipe(
     onSave: (
         recipeRequest: RecipeRequest,
-        portionRequest: PortionRequest,
-        ingredientRequests: List<IngredientRequest>,
-        methodRequests: List<MethodRequest>
+        portionRequest: Portion,
+        ingredientRequests: List<Ingredient>,
+        methodRequests: List<Method>
     ) -> Unit,
     recipe: Recipe? = null
 ) {
@@ -387,19 +384,11 @@ fun CreateOrEditRecipe(
     val selectedIngredient = remember { mutableStateOf<Ingredient?>(null) }
     val selectedIngredientIndex = remember { mutableIntStateOf(0) }
 
-    val ingredientRequests = remember {
-        mutableStateListOf<IngredientRequest>()
-    }
-
     // methods handlers
     var methods = remember { mutableStateOf(listOf<Method>(*recipe?.methods.orEmpty())) }
     var showMethodModal by remember { mutableStateOf(false) }
     val selectedMethod = remember { mutableStateOf<Method?>(null) }
     val selectedMethodIndex = remember { mutableIntStateOf(0) }
-
-    val methodRequests = remember {
-        mutableStateListOf<MethodRequest>()
-    }
 
     Column(
         modifier = Modifier.fillMaxHeight()
@@ -502,25 +491,12 @@ fun CreateOrEditRecipe(
             AddOrEditIngredient(
                 ingredient = selectedIngredient.value,
                 onConfirmation = {
-                    val ingredientRequest = IngredientRequest(
-                        id = it.id,
-                        name = it.name,
-                        measurement = it.measurement,
-                        value = it.value,
-                        sortOrder = it.sortOrder ?: (ingredients.value.size + 1)
-                    )
                     if (selectedIngredient.value != null) {
                         val updatedList = ingredients.value.toMutableList()
                         updatedList[selectedIngredientIndex.intValue] = it
                         ingredients.value = updatedList
-                        if (ingredientRequests.size - 1 >= selectedIngredientIndex.intValue) {
-                            ingredientRequests[selectedIngredientIndex.intValue] = ingredientRequest
-                        } else {
-                            ingredientRequests.add(ingredientRequest)
-                        }
                     } else {
                         ingredients.value = ingredients.value.toMutableList().apply { add(it) }
-                        ingredientRequests.add(ingredientRequest)
                     }
                     selectedIngredient.value = null
                     showIngredientModal = false
@@ -583,23 +559,12 @@ fun CreateOrEditRecipe(
             AddOrEditMethodStep(
                 method = selectedMethod.value,
                 onConfirmation = {
-                    val methodRequest = MethodRequest(
-                        id = it.id,
-                        value = it.value,
-                        sortOrder = it.sortOrder ?: (methodRequests.size + 1)
-                    )
                     if (selectedIngredient.value != null) {
                         val updatedList = methods.value.toMutableList()
                         updatedList[selectedMethodIndex.intValue] = it
                         methods.value = updatedList
-                        if (methodRequests.size - 1 >= selectedMethodIndex.intValue) {
-                            methodRequests[selectedMethodIndex.intValue] = methodRequest
-                        } else {
-                            methodRequests.add(methodRequest)
-                        }
                     } else {
                         methods.value = methods.value.toMutableList().apply { add(it) }
-                        methodRequests.add(methodRequest)
                     }
                     selectedMethod.value = null
                     showMethodModal = false
@@ -616,13 +581,13 @@ fun CreateOrEditRecipe(
                     name = name,
                     imageUrl =  imageUrl
                 ),
-                PortionRequest(
+                Portion(
                     id = recipe?.portion?.id ?: 0,
-                    value = portionValue,
+                    value = portionValue.toFloat(),
                     measurement = if (portionSelection === "Choose") "days" else portionSelection
                 ),
-                ingredientRequests,
-                methodRequests
+                ingredients.value,
+                methods.value
             ) },
             modifier = Modifier
                 .align(Alignment.End),
