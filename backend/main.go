@@ -186,12 +186,11 @@ func updateRecipe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	now := time.Now()
 	_, err = stmt.Exec(
 		recipe.Name,
 		recipe.Url,
 		recipe.ImageUrl,
-		now.Format("2006-01-02 15:04:05"),
+		time.Now().Format("2006-01-02 15:04:05"),
 		id,
 	)
 	if err != nil {
@@ -202,12 +201,11 @@ func updateRecipe(w http.ResponseWriter, r *http.Request) {
 }
 
 func updateRecipeLastEdited(recipeId int) {
-	now := time.Now()
 	_, err := db.Exec(`
-		UPDATE recipe SET lastEditedAt = ? WHERE recipe_id = ?
-	`, now.Format("2006-01-02 15:04:05"), recipeId)
+		UPDATE recipe SET lastEditedAt = ? WHERE id = ?
+	`, time.Now().Format("2006-01-02 15:04:05"), recipeId)
 	if err != nil {
-		fmt.Println("Failed updating lastEditedAt")
+		fmt.Println(err.Error())
 	}
 }
 
@@ -487,6 +485,61 @@ func addIngredients(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(getRecipeById(recipeId))
 }
 
+func addIngredient(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	idStr := params["recipe_id"]
+
+	recipeId, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, "Invalid ID parameter", http.StatusInternalServerError)
+		return
+	}
+
+	recipe := getRecipeById(recipeId)
+	if recipe.ID == 0 {
+		json.NewEncoder(w).Encode(nil)
+		return
+	}
+
+	var existingIngredients = getRecipeIngredients(recipeId, "")
+	var passedIngredient Ingredient
+	json.NewDecoder(r.Body).Decode(&passedIngredient)
+	found := false
+	for existingIngredientIndex, existingIngredient := range existingIngredients {
+		if passedIngredient.ID == existingIngredient.ID {
+			sortOrder := passedIngredient.SortOrder
+			if existingIngredientIndex == 0 && passedIngredient.SortOrder == 0 {
+				sortOrder += 1
+			} else if existingIngredientIndex != 0 && passedIngredient.SortOrder == 0 {
+				sortOrder = existingIngredientIndex + 1
+			}
+
+			_, err := db.Exec("UPDATE ingredient SET name = ?, measurement = ?, value = ?, sortOrder = ? WHERE id = ?", passedIngredient.Name, passedIngredient.Measurement, passedIngredient.Value, sortOrder, passedIngredient.ID)
+			if err != nil {
+				fmt.Println("Error updating ingredient:", err)
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			found = true
+			break
+		}
+	}
+	if !found {
+		sortOrder := 1 + len(existingIngredients)
+
+		_, err := db.Exec("INSERT INTO ingredient(name, measurement, value, sortOrder, recipe_id) VALUES(?,?,?,?,?)", passedIngredient.Name, passedIngredient.Measurement, passedIngredient.Value, sortOrder, recipeId)
+		if err != nil {
+			fmt.Println("Error inserting ingredient:", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+
+	updateRecipeLastEdited(recipeId)
+
+	json.NewEncoder(w).Encode(getRecipeById(recipeId))
+}
+
 func deleteIngredient(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	idStr, ok := params["id"]
@@ -603,6 +656,64 @@ func addMethods(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(getRecipeById(recipeId))
 }
 
+func addMethod(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	idStr := params["recipe_id"]
+
+	recipeId, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, "Invalid ID parameter", http.StatusInternalServerError)
+		return
+	}
+
+	recipe := getRecipeById(recipeId)
+	if recipe.ID == 0 {
+		json.NewEncoder(w).Encode(nil)
+		return
+	}
+
+	var existingMethods = getRecipeMethods(recipeId)
+
+	var passedMethod Method
+	json.NewDecoder(r.Body).Decode(&passedMethod)
+
+	found := false
+
+	for existingMethodIndex, existingMethod := range existingMethods {
+		sortOrder := passedMethod.SortOrder
+		if existingMethodIndex == 0 && sortOrder == 0 {
+			sortOrder += 1
+		} else if existingMethodIndex != 0 && sortOrder == 0 {
+			sortOrder = existingMethodIndex + 1
+		}
+
+		if passedMethod.ID == existingMethod.ID {
+			_, err := db.Exec("UPDATE method SET value = ?, sortOrder = ? WHERE id = ?", passedMethod.Value, sortOrder, passedMethod.ID)
+			if err != nil {
+				fmt.Println("Error updating method:", err)
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		sortOrder := 1 + len(existingMethods)
+		_, err := db.Exec("INSERT INTO method(value, sortOrder, recipe_id) VALUES(?,?,?)", passedMethod.Value, sortOrder, recipeId)
+		if err != nil {
+			fmt.Println("Error inserting method:", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+
+	updateRecipeLastEdited(recipeId)
+
+	json.NewEncoder(w).Encode(getRecipeById(recipeId))
+}
+
 func deleteMethod(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	idStr, ok := params["id"]
@@ -653,11 +764,13 @@ func main() {
 
 	// Ingredient routes
 	router.HandleFunc("/ingredients/{recipe_id}", addIngredients).Methods("POST")
+	router.HandleFunc("/ingredient/{recipe_id}", addIngredient).Methods("POST")
 	router.HandleFunc("/ingredient/{id}", deleteIngredient).Methods("DELETE")
 	router.HandleFunc("/ingredients", getIngredients).Methods("GET")
 
 	// Method routes
 	router.HandleFunc("/methods/{recipe_id}", addMethods).Methods("POST")
+	router.HandleFunc("/method/{recipe_id}", addMethod).Methods("POST")
 	router.HandleFunc("/method/{id}", deleteMethod).Methods("DELETE")
 
 	fmt.Println("Starting server on :8080...")
