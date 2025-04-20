@@ -16,7 +16,7 @@ import retrofit2.http.Query
 data class RecipeRequest(
     var id: Int,
     var name: String,
-    var imageUrl: String,
+    var imageBytes: ByteArray?
 )
 
 interface ApiInterface {

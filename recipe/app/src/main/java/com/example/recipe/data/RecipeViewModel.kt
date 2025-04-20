@@ -74,7 +74,7 @@ class RecipeViewModel: ViewModel() {
                 getRecipes()
 
                 if (recipe.id != 0 && recipeResponse != null) {
-                    viewRecipe(recipeResponse)
+                    onSaveRecipe()
                 } else {
                     backToListView()
                 }

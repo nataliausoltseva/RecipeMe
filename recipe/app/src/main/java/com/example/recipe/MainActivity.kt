@@ -1,6 +1,7 @@
 package com.example.recipe
 
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -75,6 +76,7 @@ import com.example.recipe.helpers.getResizedBitmap
 import sh.calvin.reorderable.ReorderableColumn
 import androidx.compose.runtime.key
 import com.example.recipe.data.Portion
+import java.io.ByteArrayOutputStream
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -101,7 +103,7 @@ fun Main(recipeViewModel: RecipeViewModel) {
         if (recipesUIState.isFullScreen) {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
-                contentDescription = "Arrow Left",
+                contentDescription = "Go back",
                 modifier = Modifier
                     .clickable { recipeViewModel.backToListView() }
                     .size(50.dp, 50.dp)
@@ -113,14 +115,6 @@ fun Main(recipeViewModel: RecipeViewModel) {
                             recipeViewModel.saveRecipe(recipe, portion, ingredients, methods)
                         },
                         recipe = recipesUIState.selectedRecipe
-
-                    )
-                    Icon(
-                        imageVector = Icons.Filled.CheckCircle,
-                        contentDescription = "Edit button",
-                        modifier = Modifier
-                            .clickable { recipeViewModel.onSaveRecipe() }
-                            .size(50.dp, 50.dp)
                     )
                 } else {
                     ViewRecipe(
@@ -254,14 +248,15 @@ fun ListOfRecipes(
                         .clickable { onView(recipe) }
                 ) {
                     Column {
-                        if (recipe.imageUrl != "") {
-                            AsyncImage(
-                                model = ImageRequest.Builder(LocalContext.current)
-                                    .data(recipe.imageUrl)
-                                    .crossfade(true)
-                                    .build(),
-                                contentDescription = recipe.name,
-                                modifier = Modifier.height(150.dp)
+                        if (recipe.imageBytes != null) {
+                            val bitmap = byteArrayToBitmap(recipe.imageBytes)
+                            val imageBitmap = bitmap.asImageBitmap()
+                            Image(
+                                bitmap = imageBitmap,
+                                contentDescription = recipe.name + " image",
+                                modifier = Modifier
+                                    .size(200.dp)
+                                    .clip(RoundedCornerShape(8.dp))
                             )
                         }
 
@@ -312,14 +307,15 @@ fun ViewRecipe(
     recipe: Recipe
 ) {
     Column {
-        if (recipe.imageUrl != "") {
-            AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
-                    .data(recipe.imageUrl)
-                    .crossfade(true)
-                    .build(),
-                contentDescription = recipe.name,
-                modifier = Modifier.height(150.dp)
+        if (recipe.imageBytes != null) {
+            val bitmap = byteArrayToBitmap(recipe.imageBytes)
+            val imageBitmap = bitmap.asImageBitmap()
+            Image(
+                bitmap = imageBitmap,
+                contentDescription = recipe.name + " image",
+                modifier = Modifier
+                    .size(200.dp)
+                    .clip(RoundedCornerShape(8.dp))
             )
         }
 
@@ -371,7 +367,8 @@ fun CreateOrEditRecipe(
     recipe: Recipe? = null
 ) {
     var name by remember { mutableStateOf(recipe?.name ?: "") }
-    var imageUrl by remember { mutableStateOf(recipe?.imageUrl ?: "") }
+    var imageBytes by remember { mutableStateOf(recipe?.imageBytes) }
+
     // portion handlers
     var isExpandedPortionSelector by remember { mutableStateOf(false) }
     var portionSelection by remember { mutableStateOf(recipe?.portion?.measurement ?: "Choose") }
@@ -394,7 +391,7 @@ fun CreateOrEditRecipe(
         modifier = Modifier.fillMaxHeight()
     ) {
         ImageUploader(
-            onImageUpload = { imageUrl = it.toString() }
+            onImageUpload = { imageBytes = it }
         )
         TextField(
             value = name,
@@ -579,7 +576,7 @@ fun CreateOrEditRecipe(
                 RecipeRequest(
                     id = recipe?.id ?: 0,
                     name = name,
-                    imageUrl =  imageUrl
+                    imageBytes = imageBytes
                 ),
                 Portion(
                     id = recipe?.portion?.id ?: 0,
@@ -591,7 +588,7 @@ fun CreateOrEditRecipe(
             ) },
             modifier = Modifier
                 .align(Alignment.End),
-            enabled = name !== "" || imageUrl !== ""
+            enabled = name !== ""
         ) {
             Text("Save")
         }
@@ -600,7 +597,7 @@ fun CreateOrEditRecipe(
 
 @Composable
 fun ImageUploader(
-    onImageUpload: (imageUri: Uri) -> Unit
+    onImageUpload: (byteArray: ByteArray) -> Unit
 ) {
     val context = LocalActivity.current
     var imageUri by remember { mutableStateOf<Uri?>(null) }
@@ -613,8 +610,9 @@ fun ImageUploader(
                 imageUri = it
                 val resizedBitmap = getResizedBitmap(context!!, it, 800, 800)
                 bitmapState = resizedBitmap
-                println(resizedBitmap)
-                onImageUpload(it)
+                val outputStream = ByteArrayOutputStream()
+                resizedBitmap?.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
+                onImageUpload(outputStream.toByteArray())
             }
         }
     )
@@ -788,4 +786,8 @@ fun AddOrEditMethodStep(
             }
         }
     )
+}
+
+fun byteArrayToBitmap(bytes: ByteArray): Bitmap {
+    return BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
 }
