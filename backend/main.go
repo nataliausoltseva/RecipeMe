@@ -127,7 +127,7 @@ func getRecipe(w http.ResponseWriter, r *http.Request) {
 
 func getRecipeById(id int) Recipe {
 	row := db.QueryRow(`
-		SELECT * FROM recipe WHERE recipe.id = ?
+		SELECT * FROM recipes WHERE id = ?
 	`, id)
 
 	var recipe Recipe
@@ -151,7 +151,7 @@ func createRecipe(w http.ResponseWriter, r *http.Request) {
 	var recipe Recipe
 	json.NewDecoder(r.Body).Decode(&recipe)
 	stmt, err := db.Prepare(`
-		INSERT INTO recipe(name, url, createdAt) VALUES(?,?,?,?)
+		INSERT INTO recipes(name, url, createdAt) VALUES(?,?,?)
 	`)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -181,7 +181,7 @@ func updateRecipe(w http.ResponseWriter, r *http.Request) {
 	var recipe Recipe
 	json.NewDecoder(r.Body).Decode(&recipe)
 	stmt, err := db.Prepare(`
-		UPDATE recipe
+		UPDATE recipes
 		SET name = ?,
 			url = ?,
 			lastEditedAt = ?
@@ -207,7 +207,7 @@ func updateRecipe(w http.ResponseWriter, r *http.Request) {
 
 func updateRecipeLastEdited(recipeId int) {
 	_, err := db.Exec(`
-		UPDATE recipe SET lastEditedAt = ? WHERE id = ?
+		UPDATE recipes SET lastEditedAt = ? WHERE id = ?
 	`, time.Now().Format("2006-01-02 15:04:05"), recipeId)
 	if err != nil {
 		fmt.Println(err.Error())
@@ -228,7 +228,7 @@ func deleteRecipe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	stmt, err := db.Prepare("DELETE FROM recipe WHERE id = ?")
+	stmt, err := db.Prepare("DELETE FROM recipes WHERE id = ?")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

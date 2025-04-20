@@ -26,7 +26,7 @@ RUN sqlite3 ./database/database.db "CREATE TABLE recipes (id INTEGER PRIMARY KEY
 RUN sqlite3 ./database/database.db "CREATE TABLE portions (id INTEGER PRIMARY KEY AUTOINCREMENT, value DOUBLE, measurement TEXT, recipe_id INTEGER, FOREIGN KEY (recipe_id) REFERENCES recipe(id) ON DELETE CASCADE ON UPDATE NO ACTION);"
 RUN sqlite3 ./database/database.db "CREATE TABLE ingredients (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, measurement TEXT, value DOUBLE, sortOrder INTEGER, recipe_id INTEGER, FOREIGN KEY (recipe_id) REFERENCES recipe(id) ON DELETE CASCADE ON UPDATE NO ACTION);"
 RUN sqlite3 ./database/database.db "CREATE TABLE method (id INTEGER PRIMARY KEY AUTOINCREMENT, value TEXT, sortOrder INTEGER, recipe_id INTEGER, FOREIGN KEY (recipe_id) REFERENCES recipe(id) ON DELETE CASCADE ON UPDATE NO ACTION);"
-RUN sqlite3 ./database/database.db "CREATE TABLE images (id INTEGER PRIMARY KEY AUTOINCREMENT, url BLOB, filename TEXT, FOREIGN KEY (recipe_id) REFERENCES recipe(id) ON DELETE CASCADE ON UPDATE NO ACTION);"
+RUN sqlite3 ./database/database.db "CREATE TABLE images (id INTEGER PRIMARY KEY AUTOINCREMENT, url BLOB, filename TEXT, recipe_id INTEGER, FOREIGN KEY (recipe_id) REFERENCES recipe(id) ON DELETE CASCADE ON UPDATE NO ACTION);"
 
 # Debugging step to check if the database file is created
 RUN ls -l ./database
