@@ -49,7 +49,7 @@ type Recipe struct {
 	ID           int          `json:"id"`
 	Name         string       `json:"name"`
 	Portion      *Portion     `json:"portion"`
-	Image        *Image       `json:"iamge"`
+	Image        *Image       `json:"image"`
 	Url          string       `json:"url"`
 	Ingredients  []Ingredient `json:"ingredients"`
 	Methods      []Method     `json:"methods"`
