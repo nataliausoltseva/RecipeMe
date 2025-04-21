@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
+import android.util.Base64
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -75,8 +76,12 @@ import com.example.recipe.helpers.RecipeRequest
 import com.example.recipe.helpers.getResizedBitmap
 import sh.calvin.reorderable.ReorderableColumn
 import androidx.compose.runtime.key
+import androidx.compose.runtime.rememberCoroutineScope
 import com.example.recipe.data.Portion
+import kotlinx.coroutines.launch
 import java.io.ByteArrayOutputStream
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -111,8 +116,8 @@ fun Main(recipeViewModel: RecipeViewModel) {
             if (recipesUIState.selectedRecipe != null) {
                 if (recipesUIState.isEditingRecipe) {
                     CreateOrEditRecipe(
-                        onSave = { recipe, portion, ingredients, methods ->
-                            recipeViewModel.saveRecipe(recipe, portion, ingredients, methods)
+                        onSave = { recipe, portion, ingredients, methods, imageBytes ->
+                            recipeViewModel.saveRecipe(recipe, portion, ingredients, methods, imageBytes)
                         },
                         recipe = recipesUIState.selectedRecipe
                     )
@@ -131,8 +136,8 @@ fun Main(recipeViewModel: RecipeViewModel) {
 
             } else {
                 CreateOrEditRecipe(
-                    onSave = { recipe, portion, ingredients, methods ->
-                        recipeViewModel.saveRecipe(recipe, portion, ingredients, methods)
+                    onSave = { recipe, portion, ingredients, methods, imageBytes ->
+                        recipeViewModel.saveRecipe(recipe, portion, ingredients, methods, imageBytes)
                     }
                 )
             }
@@ -248,8 +253,9 @@ fun ListOfRecipes(
                         .clickable { onView(recipe) }
                 ) {
                     Column {
-                        if (recipe.imageBytes != null) {
-                            val bitmap = byteArrayToBitmap(recipe.imageBytes)
+                        if (recipe.image?.url != null) {
+                            val decodedBytes = Base64.decode(recipe.image.url, Base64.DEFAULT)
+                            val bitmap = byteArrayToBitmap(decodedBytes)
                             val imageBitmap = bitmap.asImageBitmap()
                             Image(
                                 bitmap = imageBitmap,
@@ -307,8 +313,9 @@ fun ViewRecipe(
     recipe: Recipe
 ) {
     Column {
-        if (recipe.imageBytes != null) {
-            val bitmap = byteArrayToBitmap(recipe.imageBytes)
+        if (recipe.image?.url != null) {
+            val decodedBytes = Base64.decode(recipe.image.url, Base64.DEFAULT)
+            val bitmap = byteArrayToBitmap(decodedBytes)
             val imageBitmap = bitmap.asImageBitmap()
             Image(
                 bitmap = imageBitmap,
@@ -362,12 +369,14 @@ fun CreateOrEditRecipe(
         recipeRequest: RecipeRequest,
         portionRequest: Portion,
         ingredientRequests: List<Ingredient>,
-        methodRequests: List<Method>
+        methodRequests: List<Method>,
+        imageBytes: ByteArray?
     ) -> Unit,
     recipe: Recipe? = null
 ) {
     var name by remember { mutableStateOf(recipe?.name ?: "") }
-    var imageBytes by remember { mutableStateOf(recipe?.imageBytes) }
+    val decodedBytes = Base64.decode(recipe?.image?.url ?: "", Base64.DEFAULT)
+    var imageBytes by remember { mutableStateOf(decodedBytes) }
 
     // portion handlers
     var isExpandedPortionSelector by remember { mutableStateOf(false) }
@@ -575,8 +584,7 @@ fun CreateOrEditRecipe(
             onClick = { onSave(
                 RecipeRequest(
                     id = recipe?.id ?: 0,
-                    name = name,
-                    imageBytes = imageBytes
+                    name = name
                 ),
                 Portion(
                     id = recipe?.portion?.id ?: 0,
@@ -584,7 +592,8 @@ fun CreateOrEditRecipe(
                     measurement = if (portionSelection === "Choose") "days" else portionSelection
                 ),
                 ingredients.value,
-                methods.value
+                methods.value,
+                imageBytes,
             ) },
             modifier = Modifier
                 .align(Alignment.End),
@@ -599,20 +608,29 @@ fun CreateOrEditRecipe(
 fun ImageUploader(
     onImageUpload: (byteArray: ByteArray) -> Unit
 ) {
-    val context = LocalActivity.current
+    val context = LocalContext.current
     var imageUri by remember { mutableStateOf<Uri?>(null) }
     var bitmapState by remember { mutableStateOf<Bitmap?>(null) }
+    val scope = rememberCoroutineScope()
 
     val pickImageLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent(),
         onResult = { uri: Uri? ->
             uri?.let {
                 imageUri = it
-                val resizedBitmap = getResizedBitmap(context!!, it, 800, 800)
-                bitmapState = resizedBitmap
-                val outputStream = ByteArrayOutputStream()
-                resizedBitmap?.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
-                onImageUpload(outputStream.toByteArray())
+                scope.launch(Dispatchers.IO) {
+                    val resizedBitmap = getResizedBitmap(context, it, 800, 800)
+                    resizedBitmap?.let { bmp ->
+                        val outputStream = ByteArrayOutputStream()
+                        bmp.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
+                        withContext(Dispatchers.Main) {
+                            bitmapState = bmp
+                            println("BYTES:")
+                            println(outputStream.toByteArray())
+                            onImageUpload(outputStream.toByteArray())
+                        }
+                    }
+                }
             }
         }
     )

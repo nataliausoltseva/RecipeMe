@@ -4,19 +4,21 @@ import com.example.recipe.data.Ingredient
 import com.example.recipe.data.Method
 import com.example.recipe.data.Portion
 import com.example.recipe.data.Recipe
+import okhttp3.MultipartBody
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
+import retrofit2.http.Multipart
 import retrofit2.http.POST
 import retrofit2.http.PUT
+import retrofit2.http.Part
 import retrofit2.http.Path
 import retrofit2.http.Query
 
 data class RecipeRequest(
     var id: Int,
     var name: String,
-    var imageBytes: ByteArray?
 )
 
 interface ApiInterface {
@@ -56,4 +58,9 @@ interface ApiInterface {
 
     @DELETE("/method/{id}")
     suspend fun deleteMethod(@Path("id") id: Int): Response<Void>
+
+    // Image endpoints
+    @Multipart
+    @POST("/image/{recipeId}")
+    suspend fun uploadImage(@Path("recipeId") id: Int, @Part image: MultipartBody.Part): Response<Recipe>
 }

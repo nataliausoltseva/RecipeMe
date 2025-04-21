@@ -4,6 +4,7 @@ import com.example.recipe.data.Ingredient
 import com.example.recipe.data.Method
 import com.example.recipe.data.Portion
 import com.example.recipe.data.Recipe
+import okhttp3.MultipartBody
 
 class Endpoints {
     private var apiInterface: ApiInterface = RetrofitInstance.getInstance().create(ApiInterface::class.java)
@@ -70,6 +71,14 @@ class Endpoints {
     suspend fun addOrUpdateMethods(methods: List<Method>, recipeId: Int) {
         try {
             apiInterface.addOrUpdateMethods(recipeId, methods)
+        } catch (e: Exception) {
+            println("Exception error updateOrCreatePortion: ${e.message}. ${e.printStackTrace()}")
+        }
+    }
+
+    suspend fun addImage(body: MultipartBody.Part, recipeId: Int) {
+        try {
+            apiInterface.uploadImage(recipeId, body)
         } catch (e: Exception) {
             println("Exception error updateOrCreatePortion: ${e.message}. ${e.printStackTrace()}")
         }

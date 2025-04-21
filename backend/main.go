@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/rand"
 	"database/sql"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -41,8 +42,9 @@ type Method struct {
 
 type Image struct {
 	ID       int    `json:"id"`
-	Url      []byte `json:"url"`
+	Url      string `json:"url"`
 	Filename string `json:"filename"`
+	RecipeID int    `json:"recipe_id"`
 }
 
 type Recipe struct {
@@ -105,6 +107,7 @@ func getRecipes(w http.ResponseWriter, r *http.Request) {
 		recipe.Ingredients = getRecipeIngredients(recipe.ID, searchString)
 		recipe.Methods = getRecipeMethods(recipe.ID)
 		recipe.Portion = getRecipePortion(recipe.ID)
+		recipe.Image = getRecipeImage(recipe.ID)
 
 		recipes = append(recipes, recipe)
 	}
@@ -143,6 +146,7 @@ func getRecipeById(id int) Recipe {
 	recipe.Ingredients = getRecipeIngredients(id, "")
 	recipe.Methods = getRecipeMethods(id)
 	recipe.Portion = getRecipePortion(id)
+	recipe.Image = getRecipeImage(id)
 
 	return recipe
 }
@@ -636,7 +640,6 @@ func addMethods(w http.ResponseWriter, r *http.Request) {
 			if passedMethod.ID == existingMethod.ID {
 				_, err := db.Exec("UPDATE methods SET value = ?, sortOrder = ? WHERE id = ?", passedMethod.Value, sortOrder, passedMethod.ID)
 				if err != nil {
-					fmt.Println("Error updating method:", err)
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
 				}
@@ -649,7 +652,6 @@ func addMethods(w http.ResponseWriter, r *http.Request) {
 			sortOrder := passedMethodIndex + 1 + len(existingMethods)
 			_, err := db.Exec("INSERT INTO methods(value, sortOrder, recipe_id) VALUES(?,?,?)", passedMethod.Value, sortOrder, recipeId)
 			if err != nil {
-				fmt.Println("Error inserting method:", err)
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
@@ -695,7 +697,6 @@ func addMethod(w http.ResponseWriter, r *http.Request) {
 		if passedMethod.ID == existingMethod.ID {
 			_, err := db.Exec("UPDATE methods SET value = ?, sortOrder = ? WHERE id = ?", passedMethod.Value, sortOrder, passedMethod.ID)
 			if err != nil {
-				fmt.Println("Error updating method:", err)
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
@@ -708,7 +709,6 @@ func addMethod(w http.ResponseWriter, r *http.Request) {
 		sortOrder := 1 + len(existingMethods)
 		_, err := db.Exec("INSERT INTO methods(value, sortOrder, recipe_id) VALUES(?,?,?)", passedMethod.Value, sortOrder, recipeId)
 		if err != nil {
-			fmt.Println("Error inserting method:", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -746,62 +746,6 @@ func deleteMethod(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func uploadImage(w http.ResponseWriter, r *http.Request) {
-	file, _, err := r.FormFile("image")
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	defer file.Close()
-
-	params := mux.Vars(r)
-	idStr := params["recipe_id"]
-
-	recipeId, err := strconv.Atoi(idStr)
-	if err != nil {
-		http.Error(w, "Invalid ID parameter", http.StatusInternalServerError)
-		return
-	}
-
-	recipe := getRecipeById(recipeId)
-
-	if recipe.ID == 0 {
-		json.NewEncoder(w).Encode(nil)
-		return
-	}
-
-	imgBytes, err := io.ReadAll(file)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	saveImage(imgBytes, recipeId)
-	updateRecipeLastEdited(recipeId)
-
-	json.NewEncoder(w).Encode(getRecipeById(recipeId))
-}
-
-func saveImage(data []byte, recipeId int) error {
-	stmt, err := db.Prepare("INSERT INTO images(filename, url, recipe_id) VALUES(?,?,?)")
-	if err != nil {
-		return err
-	}
-	defer stmt.Close()
-
-	_, err = stmt.Exec(generateRandomFilename("png"), data, recipeId)
-	return err
-}
-
-func generateRandomFilename(ext string) string {
-	b := make([]byte, 16)
-	_, err := rand.Read(b)
-	if err != nil {
-		panic(err)
-	}
-	return fmt.Sprintf("%s.%s", hex.EncodeToString(b), ext)
-}
-
 func updateImage(w http.ResponseWriter, r *http.Request) {
 	file, _, err := r.FormFile("image")
 	if err != nil {
@@ -832,7 +776,7 @@ func updateImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = db.Exec("UPDATE images SER url = ? WHERE recipe_id = ? VALUES(?,?)", imgBytes, recipeId)
+	err = saveImage(imgBytes, recipeId, recipe.Image.ID != 0)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -841,6 +785,78 @@ func updateImage(w http.ResponseWriter, r *http.Request) {
 	updateRecipeLastEdited(recipeId)
 
 	json.NewEncoder(w).Encode(getRecipeById(recipeId))
+}
+
+func saveImage(data []byte, recipeId int, isReplace bool) error {
+	url := base64.StdEncoding.EncodeToString(data)
+
+	if isReplace {
+		_, err := db.Exec("UPDATE images SET url = ? WHERE recipe_id = ?",
+			url, recipeId,
+		)
+		return err
+	} else {
+		_, err := db.Exec("INSERT INTO images(filename, url, recipe_id) VALUES(?,?,?)",
+			generateRandomFilename("png"), url, recipeId,
+		)
+		return err
+	}
+}
+
+func generateRandomFilename(ext string) string {
+	b := make([]byte, 16)
+	_, err := rand.Read(b)
+	if err != nil {
+		panic(err)
+	}
+	return fmt.Sprintf("%s.%s", hex.EncodeToString(b), ext)
+}
+
+func getRecipeImage(recipeId int) *Image {
+	row := db.QueryRow(`
+		SELECT * FROM images
+		WHERE recipe_id = ?
+	`, recipeId)
+
+	var image Image
+	row.Scan(
+		&image.ID,
+		&image.Url,
+		&image.Filename,
+		&image.RecipeID,
+	)
+
+	if image.ID == 0 {
+		return nil
+	}
+
+	return &image
+}
+
+func getImages(w http.ResponseWriter, r *http.Request) {
+	rows, err := db.Query(`
+		SELECT * FROM images
+	`)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+	var images []Image
+	for rows.Next() {
+		var image Image
+		rows.Scan(
+			&image.ID,
+			&image.Url,
+			&image.Filename,
+			&image.RecipeID,
+		)
+
+		images = append(images, image)
+	}
+
+	json.NewEncoder(w).Encode(images)
 }
 
 func main() {
@@ -876,8 +892,8 @@ func main() {
 	router.HandleFunc("/method/{id}", deleteMethod).Methods("DELETE")
 
 	// Image routes
-	router.HandleFunc("/image/{recipe_id}", uploadImage).Methods("POST")
-	router.HandleFunc("/image/{recipe_id}", updateImage).Methods("PUT")
+	router.HandleFunc("/image/{recipe_id}", updateImage).Methods("POST")
+	router.HandleFunc("/images", getImages).Methods("GET")
 
 	fmt.Println("Starting server on :8080...")
 	http.ListenAndServe(":8080", router)
