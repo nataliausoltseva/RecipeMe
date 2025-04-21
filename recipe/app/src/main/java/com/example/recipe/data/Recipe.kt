@@ -8,7 +8,7 @@ data class Recipe (
     val methods: Array<Method>?,
     val createdAt: String,
     val editedAt: String,
-    val imageBytes: ByteArray,
+    val image: Image?,
 ) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
