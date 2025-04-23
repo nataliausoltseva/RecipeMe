@@ -73,7 +73,6 @@ class RecipeViewModel: ViewModel() {
                     endpoints.updateOrCreatePortion(portion, recipeResponse.id)
                     endpoints.addOrUpdateIngredients(ingredients, recipeResponse.id)
                     endpoints.addOrUpdateMethods(methods, recipeResponse.id)
-                    println(imageBytes)
                     if (imageBytes != null) {
                         endpoints.addImage(createMultipartFromBytes(imageBytes, recipeResponse.id), recipeResponse.id)
                     }

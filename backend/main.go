@@ -776,7 +776,7 @@ func updateImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = saveImage(imgBytes, recipeId, recipe.Image.ID != 0)
+	err = saveImage(imgBytes, recipeId, recipe.Image != nil)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

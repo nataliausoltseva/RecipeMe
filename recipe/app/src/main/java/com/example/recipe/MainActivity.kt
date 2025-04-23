@@ -255,15 +255,17 @@ fun ListOfRecipes(
                     Column {
                         if (recipe.image?.url != null) {
                             val decodedBytes = Base64.decode(recipe.image.url, Base64.DEFAULT)
-                            val bitmap = byteArrayToBitmap(decodedBytes)
-                            val imageBitmap = bitmap.asImageBitmap()
-                            Image(
-                                bitmap = imageBitmap,
-                                contentDescription = recipe.name + " image",
-                                modifier = Modifier
-                                    .size(200.dp)
-                                    .clip(RoundedCornerShape(8.dp))
-                            )
+                            if (decodedBytes != null) {
+                                val bitmap = byteArrayToBitmap(decodedBytes)
+                                val imageBitmap = bitmap.asImageBitmap()
+                                Image(
+                                    bitmap = imageBitmap,
+                                    contentDescription = recipe.name + " image",
+                                    modifier = Modifier
+                                        .size(200.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                )
+                            }
                         }
 
                         Text(
@@ -315,15 +317,17 @@ fun ViewRecipe(
     Column {
         if (recipe.image?.url != null) {
             val decodedBytes = Base64.decode(recipe.image.url, Base64.DEFAULT)
-            val bitmap = byteArrayToBitmap(decodedBytes)
-            val imageBitmap = bitmap.asImageBitmap()
-            Image(
-                bitmap = imageBitmap,
-                contentDescription = recipe.name + " image",
-                modifier = Modifier
-                    .size(200.dp)
-                    .clip(RoundedCornerShape(8.dp))
-            )
+            if (decodedBytes != null) {
+                val bitmap = byteArrayToBitmap(decodedBytes)
+                val imageBitmap = bitmap.asImageBitmap()
+                Image(
+                    bitmap = imageBitmap,
+                    contentDescription = recipe.name + " image",
+                    modifier = Modifier
+                        .size(200.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                )
+            }
         }
 
         Text(
@@ -376,7 +380,7 @@ fun CreateOrEditRecipe(
 ) {
     var name by remember { mutableStateOf(recipe?.name ?: "") }
     val decodedBytes = Base64.decode(recipe?.image?.url ?: "", Base64.DEFAULT)
-    var imageBytes by remember { mutableStateOf(decodedBytes) }
+    var imageBytes by remember { mutableStateOf(if (recipe?.image?.url != null ) decodedBytes else null) }
 
     // portion handlers
     var isExpandedPortionSelector by remember { mutableStateOf(false) }
