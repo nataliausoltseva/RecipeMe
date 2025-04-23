@@ -1,9 +1,13 @@
 package main
 
 import (
+	"crypto/rand"
 	"database/sql"
+	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"strconv"
@@ -36,12 +40,19 @@ type Method struct {
 	RecipeID  int    `json:"recipe_id"`
 }
 
+type Image struct {
+	ID       int    `json:"id"`
+	Url      string `json:"url"`
+	Filename string `json:"filename"`
+	RecipeID int    `json:"recipe_id"`
+}
+
 type Recipe struct {
 	ID           int          `json:"id"`
 	Name         string       `json:"name"`
 	Portion      *Portion     `json:"portion"`
+	Image        *Image       `json:"image"`
 	Url          string       `json:"url"`
-	ImageUrl     string       `json:"imageUrl"`
 	Ingredients  []Ingredient `json:"ingredients"`
 	Methods      []Method     `json:"methods"`
 	CreatedAt    string       `json:"createdAt"`
@@ -59,14 +70,14 @@ func getRecipes(w http.ResponseWriter, r *http.Request) {
 
 	if searchString == "" {
 		rows, err = db.Query(`
-		SELECT * FROM recipe
+		SELECT * FROM recipes
 		ORDER BY lastEditedAt DESC
 	`)
 	} else {
 		searchPattern := "%" + searchString + "%"
 		rows, err = db.Query(`
-			SELECT * FROM recipe
-			WHERE recipe.name LIKE ?
+			SELECT * FROM recipes
+			WHERE recipes.name LIKE ?
 			ORDER BY lastEditedAt DESC
 		`, searchPattern)
 	}
@@ -89,7 +100,6 @@ func getRecipes(w http.ResponseWriter, r *http.Request) {
 			&recipe.ID,
 			&recipe.Name,
 			&recipe.Url,
-			&recipe.ImageUrl,
 			&recipe.CreatedAt,
 			&recipe.LastEditedAt,
 		)
@@ -97,6 +107,7 @@ func getRecipes(w http.ResponseWriter, r *http.Request) {
 		recipe.Ingredients = getRecipeIngredients(recipe.ID, searchString)
 		recipe.Methods = getRecipeMethods(recipe.ID)
 		recipe.Portion = getRecipePortion(recipe.ID)
+		recipe.Image = getRecipeImage(recipe.ID)
 
 		recipes = append(recipes, recipe)
 	}
@@ -119,7 +130,7 @@ func getRecipe(w http.ResponseWriter, r *http.Request) {
 
 func getRecipeById(id int) Recipe {
 	row := db.QueryRow(`
-		SELECT * FROM recipe WHERE recipe.id = ?
+		SELECT * FROM recipes WHERE id = ?
 	`, id)
 
 	var recipe Recipe
@@ -128,7 +139,6 @@ func getRecipeById(id int) Recipe {
 		&recipe.ID,
 		&recipe.Name,
 		&recipe.Url,
-		&recipe.ImageUrl,
 		&recipe.CreatedAt,
 		&recipe.LastEditedAt,
 	)
@@ -136,6 +146,7 @@ func getRecipeById(id int) Recipe {
 	recipe.Ingredients = getRecipeIngredients(id, "")
 	recipe.Methods = getRecipeMethods(id)
 	recipe.Portion = getRecipePortion(id)
+	recipe.Image = getRecipeImage(id)
 
 	return recipe
 }
@@ -144,7 +155,7 @@ func createRecipe(w http.ResponseWriter, r *http.Request) {
 	var recipe Recipe
 	json.NewDecoder(r.Body).Decode(&recipe)
 	stmt, err := db.Prepare(`
-		INSERT INTO recipe(name, url, imageUrl, createdAt) VALUES(?,?,?,?)
+		INSERT INTO recipes(name, url, createdAt) VALUES(?,?,?)
 	`)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -152,7 +163,7 @@ func createRecipe(w http.ResponseWriter, r *http.Request) {
 	}
 
 	now := time.Now()
-	result, err := stmt.Exec(recipe.Name, recipe.Url, recipe.ImageUrl, now.Format("2006-01-02 15:04:05"))
+	result, err := stmt.Exec(recipe.Name, recipe.Url, now.Format("2006-01-02 15:04:05"))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -174,10 +185,9 @@ func updateRecipe(w http.ResponseWriter, r *http.Request) {
 	var recipe Recipe
 	json.NewDecoder(r.Body).Decode(&recipe)
 	stmt, err := db.Prepare(`
-		UPDATE recipe
+		UPDATE recipes
 		SET name = ?,
 			url = ?,
-			imageUrl = ?,
 			lastEditedAt = ?
 		WHERE id = ?
 	`)
@@ -189,7 +199,6 @@ func updateRecipe(w http.ResponseWriter, r *http.Request) {
 	_, err = stmt.Exec(
 		recipe.Name,
 		recipe.Url,
-		recipe.ImageUrl,
 		time.Now().Format("2006-01-02 15:04:05"),
 		id,
 	)
@@ -202,7 +211,7 @@ func updateRecipe(w http.ResponseWriter, r *http.Request) {
 
 func updateRecipeLastEdited(recipeId int) {
 	_, err := db.Exec(`
-		UPDATE recipe SET lastEditedAt = ? WHERE id = ?
+		UPDATE recipes SET lastEditedAt = ? WHERE id = ?
 	`, time.Now().Format("2006-01-02 15:04:05"), recipeId)
 	if err != nil {
 		fmt.Println(err.Error())
@@ -223,7 +232,7 @@ func deleteRecipe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	stmt, err := db.Prepare("DELETE FROM recipe WHERE id = ?")
+	stmt, err := db.Prepare("DELETE FROM recipes WHERE id = ?")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -240,7 +249,7 @@ func deleteRecipe(w http.ResponseWriter, r *http.Request) {
 
 func getRecipePortion(recipeId int) *Portion {
 	row := db.QueryRow(`
-		SELECT * FROM portion
+		SELECT * FROM portions
 		WHERE recipe_id = ?
 	`, recipeId)
 
@@ -283,7 +292,7 @@ func addPortion(w http.ResponseWriter, r *http.Request) {
 
 	if recipePortion == nil {
 		_, err := db.Exec(`
-			INSERT INTO portion(value, measurement, recipe_id) VALUES(?,?,?)
+			INSERT INTO portions(value, measurement, recipe_id) VALUES(?,?,?)
 		`, portion.Value, portion.Measurement, recipeId)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -291,7 +300,7 @@ func addPortion(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		_, err := db.Exec(`
-			UPDATE portion SET value = ?, measurement = ? WHERE recipe_id = ?
+			UPDATE portions SET value = ?, measurement = ? WHERE recipe_id = ?
 		`, portion.Value, portion.Measurement, recipeId)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -318,7 +327,7 @@ func deletePortion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	stmt, err := db.Prepare("DELETE FROM portion WHERE id = ?")
+	stmt, err := db.Prepare("DELETE FROM portions WHERE id = ?")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -333,7 +342,7 @@ func deletePortion(w http.ResponseWriter, r *http.Request) {
 
 func getPortions(w http.ResponseWriter, r *http.Request) {
 	rows, err := db.Query(`
-		SELECT * FROM portion
+		SELECT * FROM portions
 	`)
 
 	if err != nil {
@@ -359,7 +368,7 @@ func getPortions(w http.ResponseWriter, r *http.Request) {
 
 func getIngredients(w http.ResponseWriter, r *http.Request) {
 	rows, err := db.Query(`
-		SELECT * FROM ingredient
+		SELECT * FROM ingredients
 	`)
 
 	if err != nil {
@@ -390,14 +399,14 @@ func getRecipeIngredients(recipeId int, searchString string) []Ingredient {
 
 	if searchString == "" {
 		rows, err = db.Query(`
-		SELECT * FROM ingredient
+		SELECT * FROM ingredients
 		WHERE recipe_id = ?
 		ORDER BY SortOrder ASC
 	`, recipeId)
 	} else {
 		searchPattern := "%" + searchString + "%"
 		rows, err = db.Query(`
-		SELECT * FROM ingredient
+		SELECT * FROM ingredients
 		WHERE recipe_id = ? AND name LIKE ?
 		ORDER BY SortOrder ASC
 		`, recipeId, searchPattern)
@@ -458,7 +467,7 @@ func addIngredients(w http.ResponseWriter, r *http.Request) {
 					sortOrder = existingIngredientIndex + 1
 				}
 
-				_, err := db.Exec("UPDATE ingredient SET name = ?, measurement = ?, value = ?, sortOrder = ? WHERE id = ?", passedIngredient.Name, passedIngredient.Measurement, passedIngredient.Value, sortOrder, passedIngredient.ID)
+				_, err := db.Exec("UPDATE ingredients SET name = ?, measurement = ?, value = ?, sortOrder = ? WHERE id = ?", passedIngredient.Name, passedIngredient.Measurement, passedIngredient.Value, sortOrder, passedIngredient.ID)
 				if err != nil {
 					fmt.Println("Error updating ingredient:", err)
 					http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -471,7 +480,7 @@ func addIngredients(w http.ResponseWriter, r *http.Request) {
 		if !found {
 			sortOrder := passedIngredientIndex + 1 + len(existingIngredients)
 
-			_, err := db.Exec("INSERT INTO ingredient(name, measurement, value, sortOrder, recipe_id) VALUES(?,?,?,?,?)", passedIngredient.Name, passedIngredient.Measurement, passedIngredient.Value, sortOrder, recipeId)
+			_, err := db.Exec("INSERT INTO ingredients(name, measurement, value, sortOrder, recipe_id) VALUES(?,?,?,?,?)", passedIngredient.Name, passedIngredient.Measurement, passedIngredient.Value, sortOrder, recipeId)
 			if err != nil {
 				fmt.Println("Error inserting ingredient:", err)
 				http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -514,7 +523,7 @@ func addIngredient(w http.ResponseWriter, r *http.Request) {
 				sortOrder = existingIngredientIndex + 1
 			}
 
-			_, err := db.Exec("UPDATE ingredient SET name = ?, measurement = ?, value = ?, sortOrder = ? WHERE id = ?", passedIngredient.Name, passedIngredient.Measurement, passedIngredient.Value, sortOrder, passedIngredient.ID)
+			_, err := db.Exec("UPDATE ingredients SET name = ?, measurement = ?, value = ?, sortOrder = ? WHERE id = ?", passedIngredient.Name, passedIngredient.Measurement, passedIngredient.Value, sortOrder, passedIngredient.ID)
 			if err != nil {
 				fmt.Println("Error updating ingredient:", err)
 				http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -527,7 +536,7 @@ func addIngredient(w http.ResponseWriter, r *http.Request) {
 	if !found {
 		sortOrder := 1 + len(existingIngredients)
 
-		_, err := db.Exec("INSERT INTO ingredient(name, measurement, value, sortOrder, recipe_id) VALUES(?,?,?,?,?)", passedIngredient.Name, passedIngredient.Measurement, passedIngredient.Value, sortOrder, recipeId)
+		_, err := db.Exec("INSERT INTO ingredients(name, measurement, value, sortOrder, recipe_id) VALUES(?,?,?,?,?)", passedIngredient.Name, passedIngredient.Measurement, passedIngredient.Value, sortOrder, recipeId)
 		if err != nil {
 			fmt.Println("Error inserting ingredient:", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -554,7 +563,7 @@ func deleteIngredient(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	stmt, err := db.Prepare("DELETE FROM ingredient WHERE id = ?")
+	stmt, err := db.Prepare("DELETE FROM ingredients WHERE id = ?")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -569,7 +578,7 @@ func deleteIngredient(w http.ResponseWriter, r *http.Request) {
 
 func getRecipeMethods(recipeId int) []Method {
 	rows, err := db.Query(`
-		SELECT * FROM method
+		SELECT * FROM methods
 		WHERE recipe_id = ?
 		ORDER BY SortOrder ASC
 	`, recipeId)
@@ -629,9 +638,8 @@ func addMethods(w http.ResponseWriter, r *http.Request) {
 			}
 
 			if passedMethod.ID == existingMethod.ID {
-				_, err := db.Exec("UPDATE method SET value = ?, sortOrder = ? WHERE id = ?", passedMethod.Value, sortOrder, passedMethod.ID)
+				_, err := db.Exec("UPDATE methods SET value = ?, sortOrder = ? WHERE id = ?", passedMethod.Value, sortOrder, passedMethod.ID)
 				if err != nil {
-					fmt.Println("Error updating method:", err)
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
 				}
@@ -642,9 +650,8 @@ func addMethods(w http.ResponseWriter, r *http.Request) {
 
 		if !found {
 			sortOrder := passedMethodIndex + 1 + len(existingMethods)
-			_, err := db.Exec("INSERT INTO method(value, sortOrder, recipe_id) VALUES(?,?,?)", passedMethod.Value, sortOrder, recipeId)
+			_, err := db.Exec("INSERT INTO methods(value, sortOrder, recipe_id) VALUES(?,?,?)", passedMethod.Value, sortOrder, recipeId)
 			if err != nil {
-				fmt.Println("Error inserting method:", err)
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
@@ -688,9 +695,8 @@ func addMethod(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if passedMethod.ID == existingMethod.ID {
-			_, err := db.Exec("UPDATE method SET value = ?, sortOrder = ? WHERE id = ?", passedMethod.Value, sortOrder, passedMethod.ID)
+			_, err := db.Exec("UPDATE methods SET value = ?, sortOrder = ? WHERE id = ?", passedMethod.Value, sortOrder, passedMethod.ID)
 			if err != nil {
-				fmt.Println("Error updating method:", err)
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
@@ -701,9 +707,8 @@ func addMethod(w http.ResponseWriter, r *http.Request) {
 
 	if !found {
 		sortOrder := 1 + len(existingMethods)
-		_, err := db.Exec("INSERT INTO method(value, sortOrder, recipe_id) VALUES(?,?,?)", passedMethod.Value, sortOrder, recipeId)
+		_, err := db.Exec("INSERT INTO methods(value, sortOrder, recipe_id) VALUES(?,?,?)", passedMethod.Value, sortOrder, recipeId)
 		if err != nil {
-			fmt.Println("Error inserting method:", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -728,7 +733,7 @@ func deleteMethod(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	stmt, err := db.Prepare("DELETE FROM method WHERE id = ?")
+	stmt, err := db.Prepare("DELETE FROM methods WHERE id = ?")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -739,6 +744,119 @@ func deleteMethod(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+}
+
+func updateImage(w http.ResponseWriter, r *http.Request) {
+	file, _, err := r.FormFile("image")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	defer file.Close()
+
+	params := mux.Vars(r)
+	idStr := params["recipe_id"]
+
+	recipeId, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, "Invalid ID parameter", http.StatusInternalServerError)
+		return
+	}
+
+	recipe := getRecipeById(recipeId)
+
+	if recipe.ID == 0 {
+		json.NewEncoder(w).Encode(nil)
+		return
+	}
+
+	imgBytes, err := io.ReadAll(file)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	err = saveImage(imgBytes, recipeId, recipe.Image.ID != 0)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	updateRecipeLastEdited(recipeId)
+
+	json.NewEncoder(w).Encode(getRecipeById(recipeId))
+}
+
+func saveImage(data []byte, recipeId int, isReplace bool) error {
+	url := base64.StdEncoding.EncodeToString(data)
+
+	if isReplace {
+		_, err := db.Exec("UPDATE images SET url = ? WHERE recipe_id = ?",
+			url, recipeId,
+		)
+		return err
+	} else {
+		_, err := db.Exec("INSERT INTO images(filename, url, recipe_id) VALUES(?,?,?)",
+			generateRandomFilename("png"), url, recipeId,
+		)
+		return err
+	}
+}
+
+func generateRandomFilename(ext string) string {
+	b := make([]byte, 16)
+	_, err := rand.Read(b)
+	if err != nil {
+		panic(err)
+	}
+	return fmt.Sprintf("%s.%s", hex.EncodeToString(b), ext)
+}
+
+func getRecipeImage(recipeId int) *Image {
+	row := db.QueryRow(`
+		SELECT * FROM images
+		WHERE recipe_id = ?
+	`, recipeId)
+
+	var image Image
+	row.Scan(
+		&image.ID,
+		&image.Url,
+		&image.Filename,
+		&image.RecipeID,
+	)
+
+	if image.ID == 0 {
+		return nil
+	}
+
+	return &image
+}
+
+func getImages(w http.ResponseWriter, r *http.Request) {
+	rows, err := db.Query(`
+		SELECT * FROM images
+	`)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+	var images []Image
+	for rows.Next() {
+		var image Image
+		rows.Scan(
+			&image.ID,
+			&image.Url,
+			&image.Filename,
+			&image.RecipeID,
+		)
+
+		images = append(images, image)
+	}
+
+	json.NewEncoder(w).Encode(images)
 }
 
 func main() {
@@ -772,6 +890,10 @@ func main() {
 	router.HandleFunc("/methods/{recipe_id}", addMethods).Methods("POST")
 	router.HandleFunc("/method/{recipe_id}", addMethod).Methods("POST")
 	router.HandleFunc("/method/{id}", deleteMethod).Methods("DELETE")
+
+	// Image routes
+	router.HandleFunc("/image/{recipe_id}", updateImage).Methods("POST")
+	router.HandleFunc("/images", getImages).Methods("GET")
 
 	fmt.Println("Starting server on :8080...")
 	http.ListenAndServe(":8080", router)

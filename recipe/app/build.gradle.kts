@@ -61,4 +61,5 @@ dependencies {
     implementation(libs.converter.gson)
     implementation(libs.coil.compose)
     implementation(libs.reorderable)
+    implementation(libs.kotlinx.coroutines.android)
 }

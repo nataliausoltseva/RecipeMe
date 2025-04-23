@@ -9,6 +9,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.toRequestBody
 
 class RecipeViewModel: ViewModel() {
     private val _uiState = MutableStateFlow(State())
@@ -60,6 +63,7 @@ class RecipeViewModel: ViewModel() {
         portion: Portion,
         ingredients: List<Ingredient>,
         methods: List<Method>,
+        imageBytes: ByteArray? = null
     ) {
         viewModelScope.launch {
             try {
@@ -69,12 +73,16 @@ class RecipeViewModel: ViewModel() {
                     endpoints.updateOrCreatePortion(portion, recipeResponse.id)
                     endpoints.addOrUpdateIngredients(ingredients, recipeResponse.id)
                     endpoints.addOrUpdateMethods(methods, recipeResponse.id)
+                    println(imageBytes)
+                    if (imageBytes != null) {
+                        endpoints.addImage(createMultipartFromBytes(imageBytes, recipeResponse.id), recipeResponse.id)
+                    }
                 }
 
                 getRecipes()
 
                 if (recipe.id != 0 && recipeResponse != null) {
-                    viewRecipe(recipeResponse)
+                    onSaveRecipe()
                 } else {
                     backToListView()
                 }
@@ -111,6 +119,12 @@ class RecipeViewModel: ViewModel() {
 
     fun onSearch(search: String) {
         getRecipes(search)
+    }
+
+    fun createMultipartFromBytes(imageBytes: ByteArray, recipeId: Int): MultipartBody.Part {
+        val requestBody = imageBytes.toRequestBody("image/png".toMediaTypeOrNull())
+        println(MultipartBody.Part.createFormData("image", "recipe-$recipeId.png", requestBody))
+        return MultipartBody.Part.createFormData("image", "recipe-$recipeId.png", requestBody)
     }
 
     init {

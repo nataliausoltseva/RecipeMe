@@ -1,8 +1,10 @@
 package com.example.recipe
 
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
+import android.util.Base64
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -74,7 +76,12 @@ import com.example.recipe.helpers.RecipeRequest
 import com.example.recipe.helpers.getResizedBitmap
 import sh.calvin.reorderable.ReorderableColumn
 import androidx.compose.runtime.key
+import androidx.compose.runtime.rememberCoroutineScope
 import com.example.recipe.data.Portion
+import kotlinx.coroutines.launch
+import java.io.ByteArrayOutputStream
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -101,7 +108,7 @@ fun Main(recipeViewModel: RecipeViewModel) {
         if (recipesUIState.isFullScreen) {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
-                contentDescription = "Arrow Left",
+                contentDescription = "Go back",
                 modifier = Modifier
                     .clickable { recipeViewModel.backToListView() }
                     .size(50.dp, 50.dp)
@@ -109,18 +116,10 @@ fun Main(recipeViewModel: RecipeViewModel) {
             if (recipesUIState.selectedRecipe != null) {
                 if (recipesUIState.isEditingRecipe) {
                     CreateOrEditRecipe(
-                        onSave = { recipe, portion, ingredients, methods ->
-                            recipeViewModel.saveRecipe(recipe, portion, ingredients, methods)
+                        onSave = { recipe, portion, ingredients, methods, imageBytes ->
+                            recipeViewModel.saveRecipe(recipe, portion, ingredients, methods, imageBytes)
                         },
                         recipe = recipesUIState.selectedRecipe
-
-                    )
-                    Icon(
-                        imageVector = Icons.Filled.CheckCircle,
-                        contentDescription = "Edit button",
-                        modifier = Modifier
-                            .clickable { recipeViewModel.onSaveRecipe() }
-                            .size(50.dp, 50.dp)
                     )
                 } else {
                     ViewRecipe(
@@ -137,8 +136,8 @@ fun Main(recipeViewModel: RecipeViewModel) {
 
             } else {
                 CreateOrEditRecipe(
-                    onSave = { recipe, portion, ingredients, methods ->
-                        recipeViewModel.saveRecipe(recipe, portion, ingredients, methods)
+                    onSave = { recipe, portion, ingredients, methods, imageBytes ->
+                        recipeViewModel.saveRecipe(recipe, portion, ingredients, methods, imageBytes)
                     }
                 )
             }
@@ -254,14 +253,16 @@ fun ListOfRecipes(
                         .clickable { onView(recipe) }
                 ) {
                     Column {
-                        if (recipe.imageUrl != "") {
-                            AsyncImage(
-                                model = ImageRequest.Builder(LocalContext.current)
-                                    .data(recipe.imageUrl)
-                                    .crossfade(true)
-                                    .build(),
-                                contentDescription = recipe.name,
-                                modifier = Modifier.height(150.dp)
+                        if (recipe.image?.url != null) {
+                            val decodedBytes = Base64.decode(recipe.image.url, Base64.DEFAULT)
+                            val bitmap = byteArrayToBitmap(decodedBytes)
+                            val imageBitmap = bitmap.asImageBitmap()
+                            Image(
+                                bitmap = imageBitmap,
+                                contentDescription = recipe.name + " image",
+                                modifier = Modifier
+                                    .size(200.dp)
+                                    .clip(RoundedCornerShape(8.dp))
                             )
                         }
 
@@ -312,14 +313,16 @@ fun ViewRecipe(
     recipe: Recipe
 ) {
     Column {
-        if (recipe.imageUrl != "") {
-            AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
-                    .data(recipe.imageUrl)
-                    .crossfade(true)
-                    .build(),
-                contentDescription = recipe.name,
-                modifier = Modifier.height(150.dp)
+        if (recipe.image?.url != null) {
+            val decodedBytes = Base64.decode(recipe.image.url, Base64.DEFAULT)
+            val bitmap = byteArrayToBitmap(decodedBytes)
+            val imageBitmap = bitmap.asImageBitmap()
+            Image(
+                bitmap = imageBitmap,
+                contentDescription = recipe.name + " image",
+                modifier = Modifier
+                    .size(200.dp)
+                    .clip(RoundedCornerShape(8.dp))
             )
         }
 
@@ -366,12 +369,15 @@ fun CreateOrEditRecipe(
         recipeRequest: RecipeRequest,
         portionRequest: Portion,
         ingredientRequests: List<Ingredient>,
-        methodRequests: List<Method>
+        methodRequests: List<Method>,
+        imageBytes: ByteArray?
     ) -> Unit,
     recipe: Recipe? = null
 ) {
     var name by remember { mutableStateOf(recipe?.name ?: "") }
-    var imageUrl by remember { mutableStateOf(recipe?.imageUrl ?: "") }
+    val decodedBytes = Base64.decode(recipe?.image?.url ?: "", Base64.DEFAULT)
+    var imageBytes by remember { mutableStateOf(decodedBytes) }
+
     // portion handlers
     var isExpandedPortionSelector by remember { mutableStateOf(false) }
     var portionSelection by remember { mutableStateOf(recipe?.portion?.measurement ?: "Choose") }
@@ -394,7 +400,7 @@ fun CreateOrEditRecipe(
         modifier = Modifier.fillMaxHeight()
     ) {
         ImageUploader(
-            onImageUpload = { imageUrl = it.toString() }
+            onImageUpload = { imageBytes = it }
         )
         TextField(
             value = name,
@@ -578,8 +584,7 @@ fun CreateOrEditRecipe(
             onClick = { onSave(
                 RecipeRequest(
                     id = recipe?.id ?: 0,
-                    name = name,
-                    imageUrl =  imageUrl
+                    name = name
                 ),
                 Portion(
                     id = recipe?.portion?.id ?: 0,
@@ -587,11 +592,12 @@ fun CreateOrEditRecipe(
                     measurement = if (portionSelection === "Choose") "days" else portionSelection
                 ),
                 ingredients.value,
-                methods.value
+                methods.value,
+                imageBytes,
             ) },
             modifier = Modifier
                 .align(Alignment.End),
-            enabled = name !== "" || imageUrl !== ""
+            enabled = name !== ""
         ) {
             Text("Save")
         }
@@ -600,21 +606,31 @@ fun CreateOrEditRecipe(
 
 @Composable
 fun ImageUploader(
-    onImageUpload: (imageUri: Uri) -> Unit
+    onImageUpload: (byteArray: ByteArray) -> Unit
 ) {
-    val context = LocalActivity.current
+    val context = LocalContext.current
     var imageUri by remember { mutableStateOf<Uri?>(null) }
     var bitmapState by remember { mutableStateOf<Bitmap?>(null) }
+    val scope = rememberCoroutineScope()
 
     val pickImageLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent(),
         onResult = { uri: Uri? ->
             uri?.let {
                 imageUri = it
-                val resizedBitmap = getResizedBitmap(context!!, it, 800, 800)
-                bitmapState = resizedBitmap
-                println(resizedBitmap)
-                onImageUpload(it)
+                scope.launch(Dispatchers.IO) {
+                    val resizedBitmap = getResizedBitmap(context, it, 800, 800)
+                    resizedBitmap?.let { bmp ->
+                        val outputStream = ByteArrayOutputStream()
+                        bmp.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
+                        withContext(Dispatchers.Main) {
+                            bitmapState = bmp
+                            println("BYTES:")
+                            println(outputStream.toByteArray())
+                            onImageUpload(outputStream.toByteArray())
+                        }
+                    }
+                }
             }
         }
     )
@@ -788,4 +804,8 @@ fun AddOrEditMethodStep(
             }
         }
     )
+}
+
+fun byteArrayToBitmap(bytes: ByteArray): Bitmap {
+    return BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
 }
