@@ -6,11 +6,11 @@ import android.net.Uri
 import android.os.Bundle
 import android.util.Base64
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.absoluteOffset
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -36,7 +37,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Search
@@ -51,6 +51,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -58,7 +59,6 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -67,8 +67,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.example.recipe.data.RecipeViewModel
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
 import com.example.recipe.data.Ingredient
 import com.example.recipe.data.Method
 import com.example.recipe.data.Recipe
@@ -77,6 +75,7 @@ import com.example.recipe.helpers.getResizedBitmap
 import sh.calvin.reorderable.ReorderableColumn
 import androidx.compose.runtime.key
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import com.example.recipe.data.Portion
 import kotlinx.coroutines.launch
 import java.io.ByteArrayOutputStream
@@ -384,7 +383,7 @@ fun CreateOrEditRecipe(
 
     // portion handlers
     var isExpandedPortionSelector by remember { mutableStateOf(false) }
-    var portionSelection by remember { mutableStateOf(recipe?.portion?.measurement ?: "Choose") }
+    var portionSelection by remember { mutableStateOf(recipe?.portion?.measurement ?: "day") }
     var portionValue by remember { mutableStateOf(recipe?.portion?.value ?: 1) }
     var placeholderPortionValue by remember { mutableStateOf(recipe?.portion?.value?.toString() ?: "1") }
 
@@ -406,48 +405,64 @@ fun CreateOrEditRecipe(
         ImageUploader(
             onImageUpload = { imageBytes = it }
         )
-        TextField(
-            value = name,
-            onValueChange = {
-                name = it
-            },
-            label = { Text("Name") },
-        )
-        Text("Portion")
         Row {
             TextField(
-                value = placeholderPortionValue,
+                value = name,
                 onValueChange = {
-                    if (it.toFloatOrNull() != null) {
-                        portionValue = it.toFloat()
-                    }
-                    placeholderPortionValue = it
+                    name = it
                 },
-                keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
+                label = { Text("Name") },
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = Color.Transparent,
+                    unfocusedContainerColor = Color.Transparent,
+                ),
+                modifier = Modifier.fillMaxWidth(0.6F)
             )
-
-            DropdownMenuItem(
-                text = { Text(portionSelection) },
-                onClick = {
-                    isExpandedPortionSelector = !isExpandedPortionSelector
-                }
-            )
-            DropdownMenu(
-                expanded = isExpandedPortionSelector,
-                onDismissRequest = { isExpandedPortionSelector = !isExpandedPortionSelector }
+            Column(
+                modifier = Modifier.padding(start = 20.dp)
             ) {
-                for (portion in arrayOf("day", "portion")) {
-                    DropdownMenuItem(
-                        text = { Text(portion) },
-                        onClick = {
-                            portionSelection = portion
-                            isExpandedPortionSelector = false
+                TextField(
+                    value = placeholderPortionValue,
+                    onValueChange = {
+                        if (it.toFloatOrNull() != null) {
+                            portionValue = it.toFloat()
                         }
-                    )
+                        placeholderPortionValue = it
+                    },
+                    keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                    ),
+                )
+
+                DropdownMenuItem(
+                    text = { Text(portionSelection) },
+                    onClick = {
+                        isExpandedPortionSelector = !isExpandedPortionSelector
+                    }
+                )
+                DropdownMenu(
+                    expanded = isExpandedPortionSelector,
+                    onDismissRequest = { isExpandedPortionSelector = !isExpandedPortionSelector }
+                ) {
+                    for (portion in arrayOf("day", "portion")) {
+                        DropdownMenuItem(
+                            modifier = Modifier
+                                .background(if (portion == portionSelection) Color.LightGray else Color.Transparent),
+                            text = { Text(portion) },
+                            onClick = {
+                                portionSelection = portion
+                                isExpandedPortionSelector = false
+                            },
+                        )
+                    }
                 }
             }
         }
-        Row {
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Text("Ingredients")
             TextButton(
                 onClick = {
@@ -516,7 +531,9 @@ fun CreateOrEditRecipe(
             )
         }
 
-        Row {
+        Row (
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Text("Methods")
             TextButton(
                 onClick = {
@@ -696,6 +713,10 @@ fun AddOrEditIngredient(
                         newIngredient.name = it
                         name = it
                     },
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                    ),
                 )
                 Row {
                     Box (
@@ -707,6 +728,10 @@ fun AddOrEditIngredient(
                                 amount = it
                             },
                             keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
+                            colors = TextFieldDefaults.colors(
+                                focusedContainerColor = Color.Transparent,
+                                unfocusedContainerColor = Color.Transparent,
+                            ),
                         )
                     }
 
@@ -783,6 +808,10 @@ fun AddOrEditMethodStep(
                         newMethod.value = it
                         value = it
                     },
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                    ),
                 )
             }
         },
