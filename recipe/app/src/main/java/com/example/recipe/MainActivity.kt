@@ -76,6 +76,7 @@ import sh.calvin.reorderable.ReorderableColumn
 import androidx.compose.runtime.key
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
+import com.example.recipe.data.Image
 import com.example.recipe.data.Portion
 import kotlinx.coroutines.launch
 import java.io.ByteArrayOutputStream
@@ -116,7 +117,13 @@ fun Main(recipeViewModel: RecipeViewModel) {
                 if (recipesUIState.isEditingRecipe) {
                     CreateOrEditRecipe(
                         onSave = { recipe, portion, ingredients, methods, imageBytes ->
-                            recipeViewModel.saveRecipe(recipe, portion, ingredients, methods, imageBytes)
+                            recipeViewModel.saveRecipe(
+                                recipe,
+                                portion,
+                                ingredients,
+                                methods,
+                                imageBytes
+                            )
                         },
                         recipe = recipesUIState.selectedRecipe
                     )
@@ -136,12 +143,18 @@ fun Main(recipeViewModel: RecipeViewModel) {
             } else {
                 CreateOrEditRecipe(
                     onSave = { recipe, portion, ingredients, methods, imageBytes ->
-                        recipeViewModel.saveRecipe(recipe, portion, ingredients, methods, imageBytes)
+                        recipeViewModel.saveRecipe(
+                            recipe,
+                            portion,
+                            ingredients,
+                            methods,
+                            imageBytes
+                        )
                     }
                 )
             }
         } else {
-            Row (
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(20.dp),
@@ -155,7 +168,7 @@ fun Main(recipeViewModel: RecipeViewModel) {
                         recipeViewModel.onSearch(it)
                     }
                 )
-                Filter (
+                Filter(
                     onToggle = { },
                     isOpen = true
                 )
@@ -185,7 +198,8 @@ fun SearchInput(
     search: String,
     onValueChange: (String) -> Unit
 ) {
-    OutlinedTextField(value = search,
+    OutlinedTextField(
+        value = search,
         onValueChange = onValueChange,
         leadingIcon = { Icon(imageVector = Icons.Default.Search, contentDescription = "") },
         placeholder = { Text(text = "Search") },
@@ -213,7 +227,7 @@ fun Filter(
 fun Add(
     onAdd: () -> Unit
 ) {
-    Box (
+    Box(
         modifier = Modifier
             .clip(CircleShape)
             .border(
@@ -224,7 +238,7 @@ fun Add(
     ) {
         Icon(
             imageVector = Icons.Filled.Add,
-            contentDescription = "Settings Icon",
+            contentDescription = "Add Icon",
             modifier = Modifier
                 .size(45.dp)
                 .clickable { onAdd() }
@@ -295,9 +309,10 @@ fun ListOfRecipes(
 
                         if (recipe.methods != null) {
                             for (method in recipe.methods) {
-                                val indicator = if (method.sortOrder != null) (method.sortOrder + 1) else 1;
+                                val indicator =
+                                    if (method.sortOrder != null) (method.sortOrder + 1) else 1;
                                 Text(
-                                    text =  indicator.toString() + ". " +method.value,
+                                    text = indicator.toString() + ". " + method.value,
                                 )
                             }
                         }
@@ -331,19 +346,24 @@ fun ViewRecipe(
 
         Text(
             text = recipe.name,
+            modifier = Modifier.padding(top = 20.dp)
         )
 
         if (recipe.portion?.value != null) {
+            val portionValue = if (recipe.portion.value % 1 == 0f) recipe.portion.value.toUInt() else recipe.portion.value
+            val portionLabel = if (recipe.portion.value >= 2.0) recipe.portion.measurement + "s" else recipe.portion.measurement
             Text(
-                text = recipe.portion.value.toString() + " " + recipe.portion.measurement,
+                text = "$portionValue $portionLabel",
+                modifier = Modifier.padding(top = 20.dp)
             )
         }
 
-        Text(
-            text = "Ingredients:",
-        )
-
         if (recipe.ingredients != null) {
+            Text(
+                text = "Ingredients:",
+                modifier = Modifier.padding(top = 20.dp)
+            )
+
             for (ingredient in recipe.ingredients) {
                 Text(
                     text = ingredient.name + " " + ingredient.value + " " + ingredient.measurement,
@@ -351,15 +371,16 @@ fun ViewRecipe(
             }
         }
 
-        Text(
-            text = "Methods:",
-        )
-
         if (recipe.methods != null) {
+            Text(
+                text = "Methods:",
+                modifier = Modifier.padding(top = 20.dp)
+            )
+
             for (method in recipe.methods) {
                 val indicator = if (method.sortOrder != null) (method.sortOrder + 1) else 1;
                 Text(
-                    text =  indicator.toString() + ". " +method.value,
+                    text = indicator.toString() + ". " + method.value,
                 )
             }
         }
@@ -379,16 +400,21 @@ fun CreateOrEditRecipe(
 ) {
     var name by remember { mutableStateOf(recipe?.name ?: "") }
     val decodedBytes = Base64.decode(recipe?.image?.url ?: "", Base64.DEFAULT)
-    var imageBytes by remember { mutableStateOf(if (recipe?.image?.url != null ) decodedBytes else null) }
+    var imageBytes by remember { mutableStateOf(if (recipe?.image?.url != null) decodedBytes else null) }
 
     // portion handlers
     var isExpandedPortionSelector by remember { mutableStateOf(false) }
     var portionSelection by remember { mutableStateOf(recipe?.portion?.measurement ?: "day") }
     var portionValue by remember { mutableStateOf(recipe?.portion?.value ?: 1) }
-    var placeholderPortionValue by remember { mutableStateOf(recipe?.portion?.value?.toString() ?: "1") }
+    var placeholderPortionValue by remember {
+        mutableStateOf(
+            recipe?.portion?.value?.toString() ?: "1"
+        )
+    }
 
     // ingredients handlers
-    var ingredients = remember { mutableStateOf(listOf<Ingredient>(*recipe?.ingredients.orEmpty())) }
+    var ingredients =
+        remember { mutableStateOf(listOf<Ingredient>(*recipe?.ingredients.orEmpty())) }
     var showIngredientModal by remember { mutableStateOf(false) }
     val selectedIngredient = remember { mutableStateOf<Ingredient?>(null) }
     val selectedIngredientIndex = remember { mutableIntStateOf(0) }
@@ -403,7 +429,8 @@ fun CreateOrEditRecipe(
         modifier = Modifier.fillMaxHeight()
     ) {
         ImageUploader(
-            onImageUpload = { imageBytes = it }
+            onImageUpload = { imageBytes = it },
+            image = recipe?.image
         )
         Row {
             TextField(
@@ -461,27 +488,31 @@ fun CreateOrEditRecipe(
             }
         }
         Row(
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Text("Ingredients")
-            TextButton(
-                onClick = {
-                    showIngredientModal = true
-                    selectedIngredient.value = null
-                }
-            ) {
-                Text("+")
-            }
+            Icon(
+                imageVector = Icons.Filled.Add,
+                contentDescription = "Add Icon",
+                modifier = Modifier
+                    .padding(start = 20.dp)
+                    .size(20.dp)
+                    .clickable {
+                        showIngredientModal = true
+                        selectedIngredient.value = null
+                    }
+            )
         }
         ReorderableColumn(
-           list = ingredients.value,
-            onSettle = { fromIndex, toIndex  -> {
-                ingredients.value = ingredients.value.toMutableList().apply {
-                    add(toIndex, removeAt(fromIndex))
+            list = ingredients.value,
+            onSettle = { fromIndex, toIndex ->
+                {
+                    ingredients.value = ingredients.value.toMutableList().apply {
+                        add(toIndex, removeAt(fromIndex))
+                    }
                 }
-            }}
-        ) {
-            index, ingredient, isDragging ->
+            }
+        ) { index, ingredient, isDragging ->
             key(index) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -490,7 +521,7 @@ fun CreateOrEditRecipe(
                         .padding(12.dp)
                 ) {
                     Row(
-                        modifier = Modifier.clickable{
+                        modifier = Modifier.clickable {
                             showIngredientModal = true
                             selectedIngredient.value = ingredient
                             selectedIngredientIndex.intValue = index
@@ -531,29 +562,34 @@ fun CreateOrEditRecipe(
             )
         }
 
-        Row (
-            verticalAlignment = Alignment.CenterVertically
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(top = 20.dp)
         ) {
             Text("Methods")
-            TextButton(
-                onClick = {
-                    showMethodModal = true
-                    selectedMethod.value = null
-                }
-            ) {
-                Text("+")
-            }
+            Icon(
+                imageVector = Icons.Filled.Add,
+                contentDescription = "Add Icon",
+                modifier = Modifier
+                    .padding(start = 20.dp)
+                    .size(20.dp)
+                    .clickable {
+                        showMethodModal = true
+                        selectedMethod.value = null
+                    }
+            )
         }
 
         ReorderableColumn(
             list = methods.value,
-            onSettle = { fromIndex, toIndex  -> {
-                methods.value = methods.value.toMutableList().apply {
-                    add(toIndex, removeAt(fromIndex))
+            onSettle = { fromIndex, toIndex ->
+                {
+                    methods.value = methods.value.toMutableList().apply {
+                        add(toIndex, removeAt(fromIndex))
+                    }
                 }
-            }}
-        ) {
-                index, method, isDragging ->
+            }
+        ) { index, method, isDragging ->
             key(index) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -563,7 +599,7 @@ fun CreateOrEditRecipe(
                 ) {
                     val methodDivider = index.inc().toString() + ". "
                     Row(
-                        modifier = Modifier.clickable{
+                        modifier = Modifier.clickable {
                             showMethodModal = true
                             selectedMethod.value = method
                             selectedMethodIndex.intValue = index
@@ -602,20 +638,22 @@ fun CreateOrEditRecipe(
         }
 
         Button(
-            onClick = { onSave(
-                RecipeRequest(
-                    id = recipe?.id ?: 0,
-                    name = name
-                ),
-                Portion(
-                    id = recipe?.portion?.id ?: 0,
-                    value = portionValue.toFloat(),
-                    measurement = if (portionSelection === "Choose") "days" else portionSelection
-                ),
-                ingredients.value,
-                methods.value,
-                imageBytes,
-            ) },
+            onClick = {
+                onSave(
+                    RecipeRequest(
+                        id = recipe?.id ?: 0,
+                        name = name
+                    ),
+                    Portion(
+                        id = recipe?.portion?.id ?: 0,
+                        value = portionValue.toFloat(),
+                        measurement = if (portionSelection === "Choose") "days" else portionSelection
+                    ),
+                    ingredients.value,
+                    methods.value,
+                    imageBytes,
+                )
+            },
             modifier = Modifier
                 .align(Alignment.End),
             enabled = name !== ""
@@ -627,7 +665,8 @@ fun CreateOrEditRecipe(
 
 @Composable
 fun ImageUploader(
-    onImageUpload: (byteArray: ByteArray) -> Unit
+    onImageUpload: (byteArray: ByteArray) -> Unit,
+    image: Image?
 ) {
     val context = LocalContext.current
     var imageUri by remember { mutableStateOf<Uri?>(null) }
@@ -663,6 +702,21 @@ fun ImageUploader(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
+        if (image?.url != null) {
+            val decodedBytes = Base64.decode(image.url, Base64.DEFAULT)
+            if (decodedBytes != null) {
+                val bitmap = byteArrayToBitmap(decodedBytes)
+                val imageBitmap = bitmap.asImageBitmap()
+                Image(
+                    bitmap = imageBitmap,
+                    contentDescription = "Existing image",
+                    modifier = Modifier
+                        .size(200.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                )
+            }
+        }
+
         bitmapState?.let {
             Image(
                 bitmap = it.asImageBitmap(),
@@ -678,7 +732,7 @@ fun ImageUploader(
                 pickImageLauncher.launch("image/*")
             }
         ) {
-            Text("Upload Image")
+            Text("Upload new image")
         }
     }
 }
@@ -691,15 +745,19 @@ fun AddOrEditIngredient(
     dialogTitle: String,
 ) {
     var name by remember { mutableStateOf(ingredient?.name ?: "") }
-    var amount by remember { mutableStateOf(ingredient?.value?.toString() ?: "1")}
+    var amount by remember { mutableStateOf(ingredient?.value?.toString() ?: "1") }
     var isExpandedIngredientPortionSelector by remember { mutableStateOf(false) }
-    val newIngredient by remember { mutableStateOf(Ingredient(
-        id = ingredient?.id ?: 0,
-        name = ingredient?.name ?: "",
-        measurement = ingredient?.measurement ?: "",
-        value = ingredient?.value ?: 1,
-        sortOrder = ingredient?.sortOrder ?: 1
-    )) }
+    val newIngredient by remember {
+        mutableStateOf(
+            Ingredient(
+                id = ingredient?.id ?: 0,
+                name = ingredient?.name ?: "",
+                measurement = ingredient?.measurement ?: "",
+                value = ingredient?.value ?: 1,
+                sortOrder = ingredient?.sortOrder ?: 1
+            )
+        )
+    }
 
     AlertDialog(
         title = {
@@ -718,8 +776,11 @@ fun AddOrEditIngredient(
                         unfocusedContainerColor = Color.Transparent,
                     ),
                 )
-                Row {
-                    Box (
+                Row (
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                ) {
+                    Box(
                         Modifier.width(100.dp)
                     ) {
                         TextField(
@@ -738,14 +799,29 @@ fun AddOrEditIngredient(
                     DropdownMenuItem(
                         text = { Text(if (newIngredient.measurement !== "") newIngredient.measurement else "Choose") },
                         onClick = {
-                            isExpandedIngredientPortionSelector = !isExpandedIngredientPortionSelector
+                            isExpandedIngredientPortionSelector =
+                                !isExpandedIngredientPortionSelector
                         }
                     )
                     DropdownMenu(
                         expanded = isExpandedIngredientPortionSelector,
-                        onDismissRequest = { isExpandedIngredientPortionSelector = !isExpandedIngredientPortionSelector }
+                        onDismissRequest = {
+                            isExpandedIngredientPortionSelector =
+                                !isExpandedIngredientPortionSelector
+                        }
                     ) {
-                        for (portion in arrayOf("bottle", "can", "item", "g", "kg", "mL", "L", "tbsp", "tsp", "cup")) {
+                        for (portion in arrayOf(
+                            "bottle",
+                            "can",
+                            "item",
+                            "g",
+                            "kg",
+                            "mL",
+                            "L",
+                            "tbsp",
+                            "tsp",
+                            "cup"
+                        )) {
                             DropdownMenuItem(
                                 text = { Text(portion) },
                                 onClick = {
@@ -791,11 +867,15 @@ fun AddOrEditMethodStep(
     dialogTitle: String,
 ) {
     var value by remember { mutableStateOf(method?.value ?: "") }
-    val newMethod by remember { mutableStateOf(Method(
-        value = method?.value ?: "",
-        id = 0,
-        sortOrder = 0,
-    )) }
+    val newMethod by remember {
+        mutableStateOf(
+            Method(
+                value = method?.value ?: "",
+                id = 0,
+                sortOrder = 0,
+            )
+        )
+    }
     AlertDialog(
         title = {
             Text(text = dialogTitle)
