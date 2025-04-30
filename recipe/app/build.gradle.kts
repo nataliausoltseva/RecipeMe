@@ -62,4 +62,5 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.reorderable)
     implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.androidx.core.ktx.v190)
 }

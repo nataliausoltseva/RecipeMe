@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.absoluteOffset
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -29,6 +28,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
+import androidx.compose.foundation.lazy.staggeredgrid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -46,6 +48,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -101,8 +104,6 @@ fun Main(recipeViewModel: RecipeViewModel) {
     var search by remember { mutableStateOf("") }
     Column(
         modifier = Modifier
-            .fillMaxSize()  // Ensure the column takes the full screen space
-            .verticalScroll(rememberScrollState())  // Make entire column scrollable
             .windowInsetsPadding(WindowInsets.systemBars)
     ) {
         if (recipesUIState.isFullScreen) {
@@ -182,13 +183,23 @@ fun Main(recipeViewModel: RecipeViewModel) {
             ) {
                 Text("Reload")
             }
-            ListOfRecipes(
-                recipesUIState.recipes,
-                onView = { recipeViewModel.viewRecipe(it) }
-            )
-            Add(
-                onAdd = { recipeViewModel.createRecipe() }
-            )
+            Box(
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                ListOfRecipes(
+                    recipesUIState.recipes,
+                    onView = { recipeViewModel.viewRecipe(it) }
+                )
+                FloatingActionButton(
+                    onClick = { recipeViewModel.createRecipe() },
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(16.dp)
+                ) {
+                    Add()
+                }
+
+            }
         }
     }
 }
@@ -224,9 +235,7 @@ fun Filter(
 }
 
 @Composable
-fun Add(
-    onAdd: () -> Unit
-) {
+fun Add() {
     Box(
         modifier = Modifier
             .clip(CircleShape)
@@ -241,8 +250,6 @@ fun Add(
             contentDescription = "Add Icon",
             modifier = Modifier
                 .size(45.dp)
-                .clickable { onAdd() }
-                .align(Alignment.BottomEnd)
         )
     }
 }
@@ -252,76 +259,83 @@ fun ListOfRecipes(
     recipes: List<Recipe>,
     onView: (recipe: Recipe) -> Unit
 ) {
-    for (recipe in recipes) {
-        Card(
-            modifier = Modifier.padding(0.dp, 0.dp, 0.dp, 20.dp)
-        ) {
-            Column(
-                modifier = Modifier
-                    .padding(0.dp, 10.dp)
-            ) {
-                Box(
-                    Modifier
-                        .fillMaxWidth(0.5f)
-                        .clickable { onView(recipe) }
+    LazyVerticalStaggeredGrid(
+        columns = StaggeredGridCells.Adaptive(200.dp),
+        verticalItemSpacing = 4.dp,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        content = {
+            items(recipes) { recipe ->
+                Card(
+                    modifier = Modifier.padding(bottom = 10.dp)
                 ) {
-                    Column {
-                        if (recipe.image?.url != null) {
-                            val decodedBytes = Base64.decode(recipe.image.url, Base64.DEFAULT)
-                            if (decodedBytes != null) {
-                                val bitmap = byteArrayToBitmap(decodedBytes)
-                                val imageBitmap = bitmap.asImageBitmap()
-                                Image(
-                                    bitmap = imageBitmap,
-                                    contentDescription = recipe.name + " image",
-                                    modifier = Modifier
-                                        .size(200.dp)
-                                        .clip(RoundedCornerShape(8.dp))
-                                )
-                            }
-                        }
+                    Column(
+                        modifier = Modifier
+                            .padding(0.dp, 10.dp)
+                    ) {
+                        Box(
+                            Modifier
+                                .fillMaxWidth(0.5f)
+                                .clickable { onView(recipe) }
+                        ) {
+                            Column {
+                                if (recipe.image?.url != null) {
+                                    val decodedBytes = Base64.decode(recipe.image.url, Base64.DEFAULT)
+                                    if (decodedBytes != null) {
+                                        val bitmap = byteArrayToBitmap(decodedBytes)
+                                        val imageBitmap = bitmap.asImageBitmap()
+                                        Image(
+                                            bitmap = imageBitmap,
+                                            contentDescription = recipe.name + " image",
+                                            modifier = Modifier
+                                                .size(200.dp)
+                                                .clip(RoundedCornerShape(8.dp))
+                                        )
+                                    }
+                                }
 
-                        Text(
-                            text = recipe.name,
-                        )
-
-                        if (recipe.portion != null) {
-                            Text(
-                                text = recipe.portion.value.toString() + " " + recipe.portion.measurement,
-                            )
-                        }
-
-                        Text(
-                            text = "Ingredients:",
-                        )
-
-                        if (recipe.ingredients != null) {
-                            for (ingredient in recipe.ingredients) {
                                 Text(
-                                    text = ingredient.name + " " + ingredient.value + " " + ingredient.measurement,
+                                    text = recipe.name,
                                 )
-                            }
-                        }
 
-                        Text(
-                            text = "Methods:",
-                        )
+                                if (recipe.portion != null) {
+                                    Text(
+                                        text = recipe.portion.value.toString() + " " + recipe.portion.measurement,
+                                    )
+                                }
 
-                        if (recipe.methods != null) {
-                            for (method in recipe.methods) {
-                                val indicator =
-                                    if (method.sortOrder != null) (method.sortOrder + 1) else 1;
                                 Text(
-                                    text = indicator.toString() + ". " + method.value,
+                                    text = "Ingredients:",
                                 )
+
+                                if (recipe.ingredients != null) {
+                                    for (ingredient in recipe.ingredients) {
+                                        Text(
+                                            text = ingredient.name + " " + ingredient.value + " " + ingredient.measurement,
+                                        )
+                                    }
+                                }
+
+                                Text(
+                                    text = "Methods:",
+                                )
+
+                                if (recipe.methods != null) {
+                                    for (method in recipe.methods) {
+                                        val indicator =
+                                            if (method.sortOrder != null) (method.sortOrder + 1) else 1;
+                                        Text(
+                                            text = indicator.toString() + ". " + method.value,
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
                 }
             }
-        }
-
-    }
+        },
+        modifier = Modifier.fillMaxSize()
+    )
 }
 
 @Composable
@@ -426,7 +440,7 @@ fun CreateOrEditRecipe(
     val selectedMethodIndex = remember { mutableIntStateOf(0) }
 
     Column(
-        modifier = Modifier.fillMaxHeight()
+        modifier = Modifier.fillMaxHeight().verticalScroll(rememberScrollState()),
     ) {
         ImageUploader(
             onImageUpload = { imageBytes = it },
