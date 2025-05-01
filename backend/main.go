@@ -57,6 +57,7 @@ type Recipe struct {
 	Methods      []Method     `json:"methods"`
 	CreatedAt    string       `json:"createdAt"`
 	LastEditedAt string       `json:"lastEditedAt"`
+	Type         string       `json:"type"`
 }
 
 var recipes []Recipe
@@ -102,6 +103,7 @@ func getRecipes(w http.ResponseWriter, r *http.Request) {
 			&recipe.Url,
 			&recipe.CreatedAt,
 			&recipe.LastEditedAt,
+			&recipe.Type,
 		)
 
 		recipe.Ingredients = getRecipeIngredients(recipe.ID, searchString)
@@ -141,6 +143,7 @@ func getRecipeById(id int) Recipe {
 		&recipe.Url,
 		&recipe.CreatedAt,
 		&recipe.LastEditedAt,
+		&recipe.Type,
 	)
 
 	recipe.Ingredients = getRecipeIngredients(id, "")
@@ -155,7 +158,7 @@ func createRecipe(w http.ResponseWriter, r *http.Request) {
 	var recipe Recipe
 	json.NewDecoder(r.Body).Decode(&recipe)
 	stmt, err := db.Prepare(`
-		INSERT INTO recipes(name, url, createdAt) VALUES(?,?,?)
+		INSERT INTO recipes(name, url, createdAt, type) VALUES(?,?,?,?)
 	`)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -163,7 +166,7 @@ func createRecipe(w http.ResponseWriter, r *http.Request) {
 	}
 
 	now := time.Now()
-	result, err := stmt.Exec(recipe.Name, recipe.Url, now.Format("2006-01-02 15:04:05"))
+	result, err := stmt.Exec(recipe.Name, recipe.Url, now.Format("2006-01-02 15:04:05"), recipe.Type)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -188,7 +191,8 @@ func updateRecipe(w http.ResponseWriter, r *http.Request) {
 		UPDATE recipes
 		SET name = ?,
 			url = ?,
-			lastEditedAt = ?
+			lastEditedAt = ?,
+			type = ?
 		WHERE id = ?
 	`)
 	if err != nil {
@@ -200,6 +204,7 @@ func updateRecipe(w http.ResponseWriter, r *http.Request) {
 		recipe.Name,
 		recipe.Url,
 		time.Now().Format("2006-01-02 15:04:05"),
+		recipe.Type,
 		id,
 	)
 	if err != nil {

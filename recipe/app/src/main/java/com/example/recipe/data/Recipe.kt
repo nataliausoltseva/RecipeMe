@@ -9,6 +9,7 @@ data class Recipe (
     val createdAt: String,
     val editedAt: String,
     val image: Image?,
+    val type: String,
 ) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -22,6 +23,9 @@ data class Recipe (
         if (!ingredients.contentEquals(other.ingredients)) return false
         if (!methods.contentEquals(other.methods)) return false
         if (createdAt != other.createdAt) return false
+        if (editedAt != other.editedAt) return false
+        if (image != other.image) return false
+        if (type != other.type) return false
 
         return true
     }
@@ -33,6 +37,9 @@ data class Recipe (
         result = 31 * result + (ingredients?.contentHashCode() ?: 0)
         result = 31 * result + (methods?.contentHashCode() ?: 0)
         result = 31 * result + createdAt.hashCode()
+        result = 31 * result + editedAt.hashCode()
+        result = 31 * result + (image?.hashCode() ?: 0)
+        result = 31 * result + type.hashCode()
         return result
     }
 }

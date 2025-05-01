@@ -22,7 +22,7 @@ RUN go build -o backend ./main.go
 
 RUN mkdir -p ./database
 # Create the SQLite database and tables
-RUN sqlite3 ./database/database.db "CREATE TABLE recipes (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, url TEXT, createdAt TEXT, lastEditedAt TEXT);"
+RUN sqlite3 ./database/database.db "CREATE TABLE recipes (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, url TEXT, createdAt TEXT, lastEditedAt TEXT, type TEXT);"
 RUN sqlite3 ./database/database.db "CREATE TABLE portions (id INTEGER PRIMARY KEY AUTOINCREMENT, value DOUBLE, measurement TEXT, recipe_id INTEGER, FOREIGN KEY (recipe_id) REFERENCES recipe(id) ON DELETE CASCADE ON UPDATE NO ACTION);"
 RUN sqlite3 ./database/database.db "CREATE TABLE ingredients (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, measurement TEXT, value DOUBLE, sortOrder INTEGER, recipe_id INTEGER, FOREIGN KEY (recipe_id) REFERENCES recipe(id) ON DELETE CASCADE ON UPDATE NO ACTION);"
 RUN sqlite3 ./database/database.db "CREATE TABLE methods (id INTEGER PRIMARY KEY AUTOINCREMENT, value TEXT, sortOrder INTEGER, recipe_id INTEGER, FOREIGN KEY (recipe_id) REFERENCES recipe(id) ON DELETE CASCADE ON UPDATE NO ACTION);"

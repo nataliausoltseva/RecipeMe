@@ -140,7 +140,6 @@ fun Main(recipeViewModel: RecipeViewModel) {
                             .size(50.dp, 50.dp)
                     )
                 }
-
             } else {
                 CreateOrEditRecipe(
                     onSave = { recipe, portion, ingredients, methods, imageBytes ->
