@@ -66,6 +66,10 @@ var db *sql.DB
 func getRecipes(w http.ResponseWriter, r *http.Request) {
 	queryParams := r.URL.Query()
 	searchString := queryParams.Get("search")
+
+	params := mux.Vars(r)
+	ingredientStr := params["ingredient"]
+
 	var rows *sql.Rows
 	var err error
 
@@ -114,7 +118,23 @@ func getRecipes(w http.ResponseWriter, r *http.Request) {
 		recipes = append(recipes, recipe)
 	}
 
-	json.NewEncoder(w).Encode(recipes)
+	if ingredientStr != "" {
+		var filteredRecieps []Recipe
+	outerLoop:
+		for _, recipe := range recipes {
+			for _, ingredient := range recipe.Ingredients {
+				if ingredient.Name == ingredientStr {
+					filteredRecieps = append(filteredRecieps, recipe)
+					continue outerLoop
+				}
+			}
+		}
+
+		json.NewEncoder(w).Encode(filteredRecieps)
+	} else {
+		json.NewEncoder(w).Encode(recipes)
+	}
+
 }
 
 func getRecipe(w http.ResponseWriter, r *http.Request) {
