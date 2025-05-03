@@ -118,9 +118,8 @@ func getRecipes(w http.ResponseWriter, r *http.Request) {
 		recipes = append(recipes, recipe)
 	}
 
-	var filteredRecieps []Recipe
-
 	if ingredientStr != "" {
+		var filteredRecieps []Recipe
 	outerLoop:
 		for _, recipe := range recipes {
 			for _, ingredient := range recipe.Ingredients {
@@ -130,9 +129,12 @@ func getRecipes(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 		}
+
+		json.NewEncoder(w).Encode(filteredRecieps)
+	} else {
+		json.NewEncoder(w).Encode(recipes)
 	}
 
-	json.NewEncoder(w).Encode(ingredientStr)
 }
 
 func getRecipe(w http.ResponseWriter, r *http.Request) {
