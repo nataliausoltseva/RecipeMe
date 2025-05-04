@@ -409,6 +409,7 @@ func getIngredients(w http.ResponseWriter, r *http.Request) {
 			&ingredient.Name,
 			&ingredient.Measurement,
 			&ingredient.Value,
+			&ingredient.SortOrder,
 			&ingredient.RecipeID,
 		)
 

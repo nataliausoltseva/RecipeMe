@@ -52,6 +52,9 @@ interface ApiInterface {
     @DELETE("/ingredient/{id}")
     suspend fun deleteIngredient(@Path("id") id: Int): Response<Void>
 
+    @GET("/ingredients")
+    suspend fun getIngredients(): Response<List<Ingredient>>
+
     // Methods endpoints
     @POST("/methods/{recipeId}")
     suspend fun addOrUpdateMethods(@Path("recipeId") id: Int, @Body request: List<Method>): Response<Recipe>

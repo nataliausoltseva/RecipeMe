@@ -1,5 +1,6 @@
 package com.example.recipe
 
+import android.R
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
@@ -85,6 +86,7 @@ import kotlinx.coroutines.launch
 import java.io.ByteArrayOutputStream
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlin.collections.orEmpty
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -154,6 +156,7 @@ fun Main(recipeViewModel: RecipeViewModel) {
                 )
             }
         } else {
+            var showFilterDialog = remember { mutableStateOf(false)}
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -169,9 +172,18 @@ fun Main(recipeViewModel: RecipeViewModel) {
                     }
                 )
                 Filter(
-                    onToggle = { },
-                    isOpen = true
+                    onToggle = { showFilterDialog.value = !showFilterDialog.value },
                 )
+
+                if (showFilterDialog.value) {
+                    FilterAndSortDialog(
+                        selectedIngredientNames=recipesUIState.selectedIngredientNames,
+                        selectedSortKey = "",
+                        availableIngredientNames = recipesUIState.availableIngredients,
+                        onApply = { selectedNames, sortKey -> recipeViewModel.onFilterOrSort(selectedNames, sortKey) },
+                        onClose = { showFilterDialog.value = false}
+                    )
+                }
             }
 
             Button(
@@ -221,15 +233,14 @@ fun SearchInput(
 
 @Composable
 fun Filter(
-    onToggle: (Boolean) -> Unit,
-    isOpen: Boolean
+    onToggle: () -> Unit
 ) {
     Icon(
         imageVector = Icons.Filled.Settings,
         contentDescription = "Settings Icon",
         modifier = Modifier
             .size(45.dp)
-            .clickable { onToggle(!isOpen) }
+            .clickable { onToggle() }
     )
 }
 
@@ -929,6 +940,54 @@ fun AddOrEditMethodStep(
                 Text("Cancel")
             }
         }
+    )
+}
+
+@Composable
+fun FilterAndSortDialog(
+    selectedIngredientNames: Array<String>,
+    onApply: (ingredientNames: Array<String>, sortKey: String) -> Unit,
+    selectedSortKey: String = "",
+    availableIngredientNames: Array<String>,
+    onClose: () -> Unit
+) {
+    var newSelectedIngredientNames = remember { mutableStateOf(listOf<String>(*selectedIngredientNames)) }
+    var newSelectedSortKey = remember { mutableStateOf(selectedSortKey) }
+
+    AlertDialog(
+        text = {
+            Row {
+                Column {
+                    val rows = (availableIngredientNames.size + 2 - 1) / 2
+                    for (rowIndex in 0 until rows) {
+                        Row {
+                            for (colIndex in 0 until 2) {
+                                val itemIndex = rowIndex * 2 + colIndex
+                                if (itemIndex < availableIngredientNames.size) {
+                                    Text(
+                                        text = availableIngredientNames[itemIndex],
+                                        modifier = Modifier.padding(8.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+            }
+        },
+        onDismissRequest = {
+            onClose()
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    onApply(newSelectedIngredientNames.value.toTypedArray(), newSelectedSortKey.value)
+                }
+            ) {
+                Text("Apply")
+            }
+        },
     )
 }
 

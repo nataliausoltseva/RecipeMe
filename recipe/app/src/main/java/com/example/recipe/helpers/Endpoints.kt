@@ -83,4 +83,20 @@ class Endpoints {
             println("Exception error updateOrCreatePortion: ${e.message}. ${e.printStackTrace()}")
         }
     }
+
+    suspend fun getIngredients(): List<Ingredient>? {
+        try {
+            val response = apiInterface.getIngredients()
+            if (response.isSuccessful) {
+                val data = response.body()
+                return data
+            } else {
+                println("Response error: $response")
+                return null
+            }
+        } catch (e: Exception) {
+            println("Exception error getIngredients: ${e.message}. ${e.printStackTrace()}")
+            return null
+        }
+    }
 }

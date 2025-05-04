@@ -89,6 +89,7 @@ class RecipeViewModel: ViewModel() {
                 println("Error: ${e.message}")
             }
         }
+        getIngredients()
     }
 
     fun backToListView() {
@@ -126,7 +127,35 @@ class RecipeViewModel: ViewModel() {
         return MultipartBody.Part.createFormData("image", "recipe-$recipeId.png", requestBody)
     }
 
+    fun onFilterOrSort(selectedIngredientNames: Array<String>, sortKey: String) {
+        // TODO: check if selected ingredient names are different to saved
+        // TODO: check if sortkey is diff
+        // TODO: based on what is different - do api call
+        // TODO: if nothing is different, do not make api call
+    }
+
+    fun getIngredients() {
+        viewModelScope.launch {
+            try {
+                val endpoints = Endpoints()
+                val ingredients: List<Ingredient>? = endpoints.getIngredients()
+                if (ingredients != null) {
+                    println(ingredients)
+                    val uniqueIngredientNames = ingredients.map { it.name }.distinct()
+                    _uiState.update {
+                        it.copy(
+                            availableIngredients = uniqueIngredientNames.toTypedArray(),
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                println("Error: ${e.message}")
+            }
+        }
+    }
+
     init {
         getRecipes()
+        getIngredients()
     }
 }
