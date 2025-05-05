@@ -74,11 +74,15 @@ class RecipeViewModel: ViewModel() {
                     endpoints.addOrUpdateIngredients(ingredients, recipeResponse.id)
                     endpoints.addOrUpdateMethods(methods, recipeResponse.id)
                     if (imageBytes != null) {
-                        endpoints.addImage(createMultipartFromBytes(imageBytes, recipeResponse.id), recipeResponse.id)
+                        endpoints.addImage(
+                            createMultipartFromBytes(imageBytes, recipeResponse.id),
+                            recipeResponse.id
+                        )
                     }
                 }
 
                 getRecipes()
+                getIngredients()
 
                 if (recipe.id != 0 && recipeResponse != null) {
                     onSaveRecipe()
@@ -89,7 +93,6 @@ class RecipeViewModel: ViewModel() {
                 println("Error: ${e.message}")
             }
         }
-        getIngredients()
     }
 
     fun backToListView() {
@@ -123,7 +126,6 @@ class RecipeViewModel: ViewModel() {
 
     fun createMultipartFromBytes(imageBytes: ByteArray, recipeId: Int): MultipartBody.Part {
         val requestBody = imageBytes.toRequestBody("image/png".toMediaTypeOrNull())
-        println(MultipartBody.Part.createFormData("image", "recipe-$recipeId.png", requestBody))
         return MultipartBody.Part.createFormData("image", "recipe-$recipeId.png", requestBody)
     }
 
@@ -140,7 +142,6 @@ class RecipeViewModel: ViewModel() {
                 val endpoints = Endpoints()
                 val ingredients: List<Ingredient>? = endpoints.getIngredients()
                 if (ingredients != null) {
-                    println(ingredients)
                     val uniqueIngredientNames = ingredients.map { it.name }.distinct()
                     _uiState.update {
                         it.copy(

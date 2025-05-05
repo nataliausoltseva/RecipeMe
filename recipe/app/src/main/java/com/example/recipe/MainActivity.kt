@@ -1,6 +1,5 @@
 package com.example.recipe
 
-import android.R
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
@@ -87,6 +86,7 @@ import java.io.ByteArrayOutputStream
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.collections.orEmpty
+import androidx.compose.material3.Checkbox
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -964,8 +964,21 @@ fun FilterAndSortDialog(
                             for (colIndex in 0 until 2) {
                                 val itemIndex = rowIndex * 2 + colIndex
                                 if (itemIndex < availableIngredientNames.size) {
+                                    val name = availableIngredientNames[itemIndex]
+                                    val isChecked = name in newSelectedIngredientNames.value
+                                    Checkbox(
+                                        checked = isChecked,
+                                        onCheckedChange = { isChecked ->
+                                            if (isChecked) {
+                                                newSelectedIngredientNames.value = newSelectedIngredientNames.value.toMutableList().apply { add(name) }
+                                            } else {
+                                                val selectedIngredientNameIndex = newSelectedIngredientNames.value.indexOfFirst { it == name }
+                                                newSelectedIngredientNames.value = newSelectedIngredientNames.value.toMutableList().apply { removeAt(selectedIngredientNameIndex) }
+                                            }
+                                        }
+                                    )
                                     Text(
-                                        text = availableIngredientNames[itemIndex],
+                                        text = name,
                                         modifier = Modifier.padding(8.dp)
                                     )
                                 }
