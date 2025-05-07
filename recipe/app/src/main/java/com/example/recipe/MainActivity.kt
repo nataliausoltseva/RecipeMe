@@ -180,7 +180,10 @@ fun Main(recipeViewModel: RecipeViewModel) {
                         selectedIngredientNames=recipesUIState.selectedIngredientNames,
                         selectedSortKey = "",
                         availableIngredientNames = recipesUIState.availableIngredients,
-                        onApply = { selectedNames, sortKey -> recipeViewModel.onFilterOrSort(selectedNames, sortKey) },
+                        onApply = { selectedNames, sortKey ->
+                            recipeViewModel.onFilterOrSort(selectedNames, sortKey)
+                            showFilterDialog.value = false
+                        },
                         onClose = { showFilterDialog.value = false}
                     )
                 }
@@ -960,7 +963,9 @@ fun FilterAndSortDialog(
                 Column {
                     val rows = (availableIngredientNames.size + 2 - 1) / 2
                     for (rowIndex in 0 until rows) {
-                        Row {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                             for (colIndex in 0 until 2) {
                                 val itemIndex = rowIndex * 2 + colIndex
                                 if (itemIndex < availableIngredientNames.size) {
@@ -977,9 +982,11 @@ fun FilterAndSortDialog(
                                             }
                                         }
                                     )
+                                    var marginRight = if (colIndex == 0) 8 else 0
+
                                     Text(
                                         text = name,
-                                        modifier = Modifier.padding(8.dp)
+                                        modifier = Modifier.padding(end = marginRight.dp)
                                     )
                                 }
                             }

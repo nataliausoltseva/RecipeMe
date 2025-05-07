@@ -34,6 +34,7 @@ class RecipeViewModel: ViewModel() {
                         )
                     }
                 }
+                getIngredients()
             } catch (e: Exception) {
                 println("Error: ${e.message}")
             }
@@ -82,7 +83,6 @@ class RecipeViewModel: ViewModel() {
                 }
 
                 getRecipes()
-                getIngredients()
 
                 if (recipe.id != 0 && recipeResponse != null) {
                     onSaveRecipe()
@@ -130,29 +130,23 @@ class RecipeViewModel: ViewModel() {
     }
 
     fun onFilterOrSort(selectedIngredientNames: Array<String>, sortKey: String) {
-        if (selectedIngredientNames.isNotEmpty()) {
-            val combinedIngredientNames = selectedIngredientNames.joinToString(",")
-            viewModelScope.launch {
-                try {
-                    val endpoints = Endpoints()
-                    val recipes: List<Recipe>? = endpoints.getRecipes("", combinedIngredientNames)
-                    if (recipes != null) {
-                        _uiState.update {
-                            it.copy(
-                                recipes,
-                                isLoading = false
-                            )
-                        }
+        val combinedIngredientNames = selectedIngredientNames.joinToString(",")
+        viewModelScope.launch {
+            try {
+                val endpoints = Endpoints()
+                val recipes: List<Recipe>? = endpoints.getRecipes("", combinedIngredientNames)
+                if (recipes != null) {
+                    _uiState.update {
+                        it.copy(
+                            recipes,
+                            isLoading = false
+                        )
                     }
-                } catch (e: Exception) {
-                    println("Error: ${e.message}")
                 }
+            } catch (e: Exception) {
+                println("Error: ${e.message}")
             }
         }
-        // TODO: check if selected ingredient names are different to saved
-        // TODO: check if sortkey is diff
-        // TODO: based on what is different - do api call
-        // TODO: if nothing is different, do not make api call
     }
 
     fun getIngredients() {
@@ -176,6 +170,5 @@ class RecipeViewModel: ViewModel() {
 
     init {
         getRecipes()
-        getIngredients()
     }
 }

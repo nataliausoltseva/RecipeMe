@@ -121,7 +121,6 @@ func getRecipes(w http.ResponseWriter, r *http.Request) {
 		recipes = append(recipes, recipe)
 	}
 	ingredientNamesString := queryParams.Get("ingredientNames")
-	fmt.Println(ingredientNamesString)
 	if ingredientNamesString != "" {
 		ingredientNames := strings.Split(ingredientNamesString, ",")
 		lowerIngredientNames := make([]string, len(ingredientNames))
