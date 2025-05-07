@@ -24,7 +24,7 @@ data class RecipeRequest(
 interface ApiInterface {
     // Recipe endpoints
     @GET("/recipes")
-    suspend fun getRecipes(@Query("search") search: String? = null): Response<List<Recipe>>
+    suspend fun getRecipes(@Query("search") search: String? = null, @Query("ingredientNames") ingredientNames: String? = null): Response<List<Recipe>>
 
     @GET("/recipe/{id}")
     suspend fun getRecipe(@Path("id") id: Int): Response<Recipe>
@@ -51,6 +51,9 @@ interface ApiInterface {
 
     @DELETE("/ingredient/{id}")
     suspend fun deleteIngredient(@Path("id") id: Int): Response<Void>
+
+    @GET("/ingredients")
+    suspend fun getIngredients(): Response<List<Ingredient>>
 
     // Methods endpoints
     @POST("/methods/{recipeId}")

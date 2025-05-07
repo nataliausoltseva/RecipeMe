@@ -25,7 +25,7 @@ class RecipeViewModel: ViewModel() {
         viewModelScope.launch {
             try {
                 val endpoints = Endpoints()
-                val recipes: List<Recipe>? = endpoints.getRecipes(search)
+                val recipes: List<Recipe>? = endpoints.getRecipes(search, "")
                 if (recipes != null) {
                     _uiState.update {
                         it.copy(
@@ -34,6 +34,7 @@ class RecipeViewModel: ViewModel() {
                         )
                     }
                 }
+                getIngredients()
             } catch (e: Exception) {
                 println("Error: ${e.message}")
             }
@@ -74,7 +75,10 @@ class RecipeViewModel: ViewModel() {
                     endpoints.addOrUpdateIngredients(ingredients, recipeResponse.id)
                     endpoints.addOrUpdateMethods(methods, recipeResponse.id)
                     if (imageBytes != null) {
-                        endpoints.addImage(createMultipartFromBytes(imageBytes, recipeResponse.id), recipeResponse.id)
+                        endpoints.addImage(
+                            createMultipartFromBytes(imageBytes, recipeResponse.id),
+                            recipeResponse.id
+                        )
                     }
                 }
 
@@ -122,8 +126,46 @@ class RecipeViewModel: ViewModel() {
 
     fun createMultipartFromBytes(imageBytes: ByteArray, recipeId: Int): MultipartBody.Part {
         val requestBody = imageBytes.toRequestBody("image/png".toMediaTypeOrNull())
-        println(MultipartBody.Part.createFormData("image", "recipe-$recipeId.png", requestBody))
         return MultipartBody.Part.createFormData("image", "recipe-$recipeId.png", requestBody)
+    }
+
+    fun onFilterOrSort(selectedIngredientNames: Array<String>, sortKey: String) {
+        val combinedIngredientNames = selectedIngredientNames.joinToString(",")
+        viewModelScope.launch {
+            try {
+                val endpoints = Endpoints()
+                val recipes: List<Recipe>? = endpoints.getRecipes("", combinedIngredientNames)
+                if (recipes != null) {
+                    _uiState.update {
+                        it.copy(
+                            recipes,
+                            isLoading = false
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                println("Error: ${e.message}")
+            }
+        }
+    }
+
+    fun getIngredients() {
+        viewModelScope.launch {
+            try {
+                val endpoints = Endpoints()
+                val ingredients: List<Ingredient>? = endpoints.getIngredients()
+                if (ingredients != null) {
+                    val uniqueIngredientNames = ingredients.map { it.name }.distinct()
+                    _uiState.update {
+                        it.copy(
+                            availableIngredients = uniqueIngredientNames.toTypedArray(),
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                println("Error: ${e.message}")
+            }
+        }
     }
 
     init {

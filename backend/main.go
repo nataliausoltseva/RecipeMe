@@ -11,6 +11,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -60,15 +61,17 @@ type Recipe struct {
 	Type         string       `json:"type"`
 }
 
+type RecipeFilterAndSortRequest struct {
+	IngredientNames []string `json:"ingredientNames"`
+	SortKey         string   `json:"sortKey"`
+}
+
 var recipes []Recipe
 var db *sql.DB
 
 func getRecipes(w http.ResponseWriter, r *http.Request) {
 	queryParams := r.URL.Query()
 	searchString := queryParams.Get("search")
-
-	params := mux.Vars(r)
-	ingredientStr := params["ingredient"]
 
 	var rows *sql.Rows
 	var err error
@@ -117,15 +120,24 @@ func getRecipes(w http.ResponseWriter, r *http.Request) {
 
 		recipes = append(recipes, recipe)
 	}
+	ingredientNamesString := queryParams.Get("ingredientNames")
+	if ingredientNamesString != "" {
+		ingredientNames := strings.Split(ingredientNamesString, ",")
+		lowerIngredientNames := make([]string, len(ingredientNames))
+		for i, name := range ingredientNames {
+			lowerIngredientNames[i] = strings.ToLower(name)
+		}
 
-	if ingredientStr != "" {
 		var filteredRecieps []Recipe
 	outerLoop:
 		for _, recipe := range recipes {
 			for _, ingredient := range recipe.Ingredients {
-				if ingredient.Name == ingredientStr {
-					filteredRecieps = append(filteredRecieps, recipe)
-					continue outerLoop
+				lowerValue := strings.ToLower(ingredient.Name)
+				for _, v := range lowerIngredientNames {
+					if v == lowerValue {
+						filteredRecieps = append(filteredRecieps, recipe)
+						continue outerLoop
+					}
 				}
 			}
 		}
@@ -409,6 +421,7 @@ func getIngredients(w http.ResponseWriter, r *http.Request) {
 			&ingredient.Name,
 			&ingredient.Measurement,
 			&ingredient.Value,
+			&ingredient.SortOrder,
 			&ingredient.RecipeID,
 		)
 

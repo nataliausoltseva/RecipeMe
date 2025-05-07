@@ -9,9 +9,10 @@ import okhttp3.MultipartBody
 class Endpoints {
     private var apiInterface: ApiInterface = RetrofitInstance.getInstance().create(ApiInterface::class.java)
 
-    suspend fun getRecipes(search: String?): List<Recipe>? {
+    suspend fun getRecipes(search: String?, selectedIngredients: String?): List<Recipe>? {
         try {
-            val response = apiInterface.getRecipes(search)
+            println(selectedIngredients)
+            val response = apiInterface.getRecipes(search, selectedIngredients)
             if (response.isSuccessful) {
                 val data = response.body()
                 return data
@@ -81,6 +82,22 @@ class Endpoints {
             apiInterface.uploadImage(recipeId, body)
         } catch (e: Exception) {
             println("Exception error updateOrCreatePortion: ${e.message}. ${e.printStackTrace()}")
+        }
+    }
+
+    suspend fun getIngredients(): List<Ingredient>? {
+        try {
+            val response = apiInterface.getIngredients()
+            if (response.isSuccessful) {
+                val data = response.body()
+                return data
+            } else {
+                println("Response error: $response")
+                return null
+            }
+        } catch (e: Exception) {
+            println("Exception error getIngredients: ${e.message}. ${e.printStackTrace()}")
+            return null
         }
     }
 }
