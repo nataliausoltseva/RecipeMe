@@ -178,10 +178,11 @@ fun Main(recipeViewModel: RecipeViewModel) {
                 if (showFilterDialog.value) {
                     FilterAndSortDialog(
                         selectedIngredientNames=recipesUIState.selectedIngredientNames,
-                        selectedSortKey = "",
+                        selectedSortKey = recipesUIState.selectedSortKey,
+                        selectedSortDirection = recipesUIState.selectedSortDirection,
                         availableIngredientNames = recipesUIState.availableIngredients,
-                        onApply = { selectedNames, sortKey ->
-                            recipeViewModel.onFilterOrSort(selectedNames, sortKey)
+                        onApply = { selectedNames, sortKey, sortDirection ->
+                            recipeViewModel.onFilterOrSort(selectedNames, sortKey, sortDirection)
                             showFilterDialog.value = false
                         },
                         onClose = { showFilterDialog.value = false}
@@ -949,13 +950,15 @@ fun AddOrEditMethodStep(
 @Composable
 fun FilterAndSortDialog(
     selectedIngredientNames: Array<String>,
-    onApply: (ingredientNames: Array<String>, sortKey: String) -> Unit,
+    onApply: (ingredientNames: Array<String>, sortKey: String, sortDirection: String) -> Unit,
     selectedSortKey: String = "",
+    selectedSortDirection: String = "",
     availableIngredientNames: Array<String>,
     onClose: () -> Unit
 ) {
     var newSelectedIngredientNames = remember { mutableStateOf(listOf<String>(*selectedIngredientNames)) }
     var newSelectedSortKey = remember { mutableStateOf(selectedSortKey) }
+    var newSelectedSortDirection = remember { mutableStateOf(selectedSortDirection) }
 
     AlertDialog(
         text = {
@@ -1002,7 +1005,7 @@ fun FilterAndSortDialog(
         confirmButton = {
             TextButton(
                 onClick = {
-                    onApply(newSelectedIngredientNames.value.toTypedArray(), newSelectedSortKey.value)
+                    onApply(newSelectedIngredientNames.value.toTypedArray(), newSelectedSortKey.value, newSelectedSortDirection.value)
                 }
             ) {
                 Text("Apply")

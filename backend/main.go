@@ -61,17 +61,22 @@ type Recipe struct {
 	Type         string       `json:"type"`
 }
 
-type RecipeFilterAndSortRequest struct {
-	IngredientNames []string `json:"ingredientNames"`
-	SortKey         string   `json:"sortKey"`
-}
-
 var recipes []Recipe
 var db *sql.DB
 
 func getRecipes(w http.ResponseWriter, r *http.Request) {
 	queryParams := r.URL.Query()
 	searchString := queryParams.Get("search")
+	sortKey := queryParams.Get("sortKey")
+	sortDirection := queryParams.Get("sortDirection")
+
+	if sortDirection == "" {
+		sortDirection = "DESC"
+	}
+
+	if sortKey == "" {
+		sortKey = "lastEditedAt"
+	}
 
 	var rows *sql.Rows
 	var err error

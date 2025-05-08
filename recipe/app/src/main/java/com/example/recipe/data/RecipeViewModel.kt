@@ -25,7 +25,7 @@ class RecipeViewModel: ViewModel() {
         viewModelScope.launch {
             try {
                 val endpoints = Endpoints()
-                val recipes: List<Recipe>? = endpoints.getRecipes(search, "")
+                val recipes: List<Recipe>? = endpoints.getRecipes(search)
                 if (recipes != null) {
                     _uiState.update {
                         it.copy(
@@ -129,12 +129,12 @@ class RecipeViewModel: ViewModel() {
         return MultipartBody.Part.createFormData("image", "recipe-$recipeId.png", requestBody)
     }
 
-    fun onFilterOrSort(selectedIngredientNames: Array<String>, sortKey: String) {
+    fun onFilterOrSort(selectedIngredientNames: Array<String>, sortKey: String = "", sortDirection: String = "") {
         val combinedIngredientNames = selectedIngredientNames.joinToString(",")
         viewModelScope.launch {
             try {
                 val endpoints = Endpoints()
-                val recipes: List<Recipe>? = endpoints.getRecipes("", combinedIngredientNames)
+                val recipes: List<Recipe>? = endpoints.getRecipes("", combinedIngredientNames, sortKey, sortDirection)
                 if (recipes != null) {
                     _uiState.update {
                         it.copy(

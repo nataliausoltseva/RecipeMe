@@ -7,7 +7,10 @@ data class State(
     val selectedRecipe: Recipe? = null,
     val isEditingRecipe: Boolean = false,
     val selectedIngredientNames: Array<String> = arrayOf(),
-    val availableIngredients: Array<String> = arrayOf()
+    val availableIngredients: Array<String> = arrayOf(),
+    val selectedSortDirection: String = "",
+    val selectedSortKey: String = "",
+
 ) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
