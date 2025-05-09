@@ -956,9 +956,41 @@ fun FilterAndSortDialog(
     availableIngredientNames: Array<String>,
     onClose: () -> Unit
 ) {
+    val sortOptions = listOf(
+        mapOf(
+            "name" to mapOf(
+                "label" to "Name",
+                "directionKeys" to listOf(
+                    mapOf("asc" to "A to Z", "desc" to "Z to A")
+                )
+            ),
+            "portion" to mapOf(
+                "label" to "Portion",
+                "directionKeys" to listOf(
+                    mapOf("asc" to "Small to Large", "desc" to "Large to Small")
+                )
+            ),
+            "createdAt" to mapOf(
+                "label" to "Created at",
+                "directionKeys" to listOf(
+                    mapOf("asc" to "Oldest to Newest", "desc" to "Newest to Oldest")
+                )
+            ),
+            "lastEditedAt" to mapOf(
+                "label" to "Last edited",
+                "directionKeys" to listOf(
+                    mapOf("asc" to "Oldest to Newest", "desc" to "Newest to Oldest")
+                )
+            ),
+        )
+    )
+
     var newSelectedIngredientNames = remember { mutableStateOf(listOf<String>(*selectedIngredientNames)) }
     var newSelectedSortKey = remember { mutableStateOf(selectedSortKey) }
     var newSelectedSortDirection = remember { mutableStateOf(selectedSortDirection) }
+
+    var isSelectedSortKeyExpanded by remember { mutableStateOf(false) }
+    var isSelectedSortDirectionExpanded by remember { mutableStateOf(false) }
 
     AlertDialog(
         text = {
@@ -996,7 +1028,64 @@ fun FilterAndSortDialog(
                         }
                     }
                 }
+                Row {
+                    val keyIndex = sortOptions.indexOfFirst { it.containsKey(newSelectedSortKey.value) }
 
+                    var key = sortOptions[keyIndex]
+                    val directionKeys = key["directionKeys"] as List<Map<String, String>>
+
+
+                    Column {
+                        DropdownMenuItem(
+                            text = { Text(newSelectedSortKey.value) },
+                            onClick = {
+                                isSelectedSortKeyExpanded = !isSelectedSortKeyExpanded
+                            }
+                        )
+                        DropdownMenu(
+                            expanded = isSelectedSortKeyExpanded,
+                            onDismissRequest = { isSelectedSortKeyExpanded = !isSelectedSortKeyExpanded }
+                        ) {
+                            for (sortKey in sortOptions) {
+                                DropdownMenuItem(
+                                    modifier = Modifier
+                                        .background(if (sortKey["label"].toString() == newSelectedSortKey.value) Color.LightGray else Color.Transparent),
+                                    text = { Text(sortKey["label"].toString()) },
+                                    onClick = {
+                                        newSelectedSortKey.value = sortKey["label"].toString()
+                                        isSelectedSortKeyExpanded = false
+                                    },
+                                )
+                            }
+                        }
+                    }
+                    Column {
+                        DropdownMenuItem(
+                            text = { Text(newSelectedSortKey.value) },
+                            onClick = {
+                                isSelectedSortKeyExpanded = !isSelectedSortKeyExpanded
+                            }
+                        )
+                        DropdownMenu(
+                            expanded = isSelectedSortKeyExpanded,
+                            onDismissRequest = { isSelectedSortKeyExpanded = !isSelectedSortKeyExpanded }
+                        ) {
+                            for (sortDirection in directionKeys) {
+                                for ((_, value) in sortDirection) {
+                                    DropdownMenuItem(
+                                        modifier = Modifier
+                                            .background(if (value == newSelectedSortKey.value) Color.LightGray else Color.Transparent),
+                                        text = { Text(value) },
+                                        onClick = {
+                                            newSelectedSortKey.value = value
+                                            isSelectedSortKeyExpanded = false
+                                        },
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
             }
         },
         onDismissRequest = {
