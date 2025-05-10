@@ -8,8 +8,8 @@ data class State(
     val isEditingRecipe: Boolean = false,
     val selectedIngredientNames: Array<String> = arrayOf(),
     val availableIngredients: Array<String> = arrayOf(),
-    val selectedSortDirection: String = "",
-    val selectedSortKey: String = "",
+    val selectedSortDirection: String = "asc",
+    val selectedSortKey: String = "lastEditedAt",
 
 ) {
     override fun equals(other: Any?): Boolean {
