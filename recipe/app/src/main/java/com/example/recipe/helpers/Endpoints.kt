@@ -9,10 +9,9 @@ import okhttp3.MultipartBody
 class Endpoints {
     private var apiInterface: ApiInterface = RetrofitInstance.getInstance().create(ApiInterface::class.java)
 
-    suspend fun getRecipes(search: String?, selectedIngredients: String?): List<Recipe>? {
+    suspend fun getRecipes(search: String?, selectedIngredients: String = "", sortKey: String = "", sortDirection: String = ""): List<Recipe>? {
         try {
-            println(selectedIngredients)
-            val response = apiInterface.getRecipes(search, selectedIngredients)
+            val response = apiInterface.getRecipes(search, selectedIngredients, sortKey, sortDirection)
             if (response.isSuccessful) {
                 val data = response.body()
                 return data

@@ -10,6 +10,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -61,34 +62,37 @@ type Recipe struct {
 	Type         string       `json:"type"`
 }
 
-type RecipeFilterAndSortRequest struct {
-	IngredientNames []string `json:"ingredientNames"`
-	SortKey         string   `json:"sortKey"`
-}
-
 var recipes []Recipe
 var db *sql.DB
 
 func getRecipes(w http.ResponseWriter, r *http.Request) {
 	queryParams := r.URL.Query()
 	searchString := queryParams.Get("search")
+	sortKey := queryParams.Get("sortKey")
+	sortDirection := queryParams.Get("sortDirection")
+
+	if sortDirection == "" {
+		sortDirection = "DESC"
+	}
+
+	if sortKey == "" {
+		sortKey = "lastEditedAt"
+	}
 
 	var rows *sql.Rows
 	var err error
+	query := "SELECT * FROM recipes"
 
-	if searchString == "" {
-		rows, err = db.Query(`
-		SELECT * FROM recipes
-		ORDER BY lastEditedAt DESC
-	`)
-	} else {
+	if searchString != "" {
 		searchPattern := "%" + searchString + "%"
-		rows, err = db.Query(`
-			SELECT * FROM recipes
-			WHERE recipes.name LIKE ?
-			ORDER BY lastEditedAt DESC
-		`, searchPattern)
+		query += fmt.Sprintf(" WHERE recipes.name LIKE %s", searchPattern)
 	}
+
+	if sortKey != "" && sortKey != "portion" {
+		query += fmt.Sprintf(" ORDER BY %s %s", sortKey, sortDirection)
+	}
+
+	rows, err = db.Query(query)
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -141,12 +145,40 @@ func getRecipes(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 		}
-
+		if sortKey == "portion" {
+			json.NewEncoder(w).Encode(sortRecipesByPortion(filteredRecieps, sortDirection))
+			return
+		}
 		json.NewEncoder(w).Encode(filteredRecieps)
 	} else {
+		if sortKey == "portion" {
+			json.NewEncoder(w).Encode(sortRecipesByPortion(recipes, sortDirection))
+			return
+		}
 		json.NewEncoder(w).Encode(recipes)
 	}
+}
 
+func sortRecipesByPortion(recipes []Recipe, sortDirection string) []Recipe {
+	var isAscending = sortDirection == "asc"
+	fmt.Println(isAscending)
+	sort.Slice(recipes, func(i, j int) bool {
+		if recipes[i].Portion == nil && recipes[j].Portion != nil {
+			return false // Place i after j
+		}
+		if recipes[i].Portion != nil && recipes[j].Portion == nil {
+			return true // Place i before j
+		}
+		if recipes[i].Portion != nil && recipes[j].Portion != nil {
+			if isAscending {
+				return recipes[i].Portion.Value < recipes[j].Portion.Value
+			}
+			return recipes[i].Portion.Value > recipes[j].Portion.Value
+		}
+		return false // Keep order unchanged for two nils
+	})
+
+	return recipes
 }
 
 func getRecipe(w http.ResponseWriter, r *http.Request) {

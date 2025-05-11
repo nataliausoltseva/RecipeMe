@@ -25,15 +25,17 @@ class RecipeViewModel: ViewModel() {
         viewModelScope.launch {
             try {
                 val endpoints = Endpoints()
-                val recipes: List<Recipe>? = endpoints.getRecipes(search, "")
-                if (recipes != null) {
-                    _uiState.update {
-                        it.copy(
-                            recipes,
-                            isLoading = false
-                        )
-                    }
+                var recipes: List<Recipe>? = endpoints.getRecipes(search)
+                if (recipes == null) {
+                    recipes = listOf()
                 }
+                _uiState.update {
+                    it.copy(
+                        recipes,
+                        isLoading = false
+                    )
+                }
+
                 getIngredients()
             } catch (e: Exception) {
                 println("Error: ${e.message}")
@@ -129,20 +131,25 @@ class RecipeViewModel: ViewModel() {
         return MultipartBody.Part.createFormData("image", "recipe-$recipeId.png", requestBody)
     }
 
-    fun onFilterOrSort(selectedIngredientNames: Array<String>, sortKey: String) {
+    fun onFilterOrSort(selectedIngredientNames: Array<String>, sortKey: String = "", sortDirection: String = "") {
         val combinedIngredientNames = selectedIngredientNames.joinToString(",")
         viewModelScope.launch {
             try {
                 val endpoints = Endpoints()
-                val recipes: List<Recipe>? = endpoints.getRecipes("", combinedIngredientNames)
-                if (recipes != null) {
-                    _uiState.update {
-                        it.copy(
-                            recipes,
-                            isLoading = false
-                        )
-                    }
+                var recipes: List<Recipe>? = endpoints.getRecipes("", combinedIngredientNames, sortKey, sortDirection)
+                if (recipes == null) {
+                    recipes = listOf()
                 }
+
+                _uiState.update {
+                    it.copy(
+                        recipes,
+                        isLoading = false,
+                        selectedSortDirection = sortDirection,
+                        selectedSortKey = sortKey
+                    )
+                }
+
             } catch (e: Exception) {
                 println("Error: ${e.message}")
             }
