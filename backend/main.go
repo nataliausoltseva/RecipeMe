@@ -161,7 +161,6 @@ func getRecipes(w http.ResponseWriter, r *http.Request) {
 
 func sortRecipesByPortion(recipes []Recipe, sortDirection string) []Recipe {
 	var isAscending = sortDirection == "asc"
-	fmt.Println(isAscending)
 	sort.Slice(recipes, func(i, j int) bool {
 		if recipes[i].Portion == nil && recipes[j].Portion != nil {
 			return false // Place i after j
