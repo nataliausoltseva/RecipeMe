@@ -104,6 +104,10 @@ class MainActivity : ComponentActivity() {
 fun Main(recipeViewModel: RecipeViewModel) {
     val recipesUIState by recipeViewModel.uiState.collectAsState()
     var search by remember { mutableStateOf("") }
+    var sortKeyState by remember { mutableStateOf(recipesUIState.selectedSortKey) }
+    var sortDirectionKeyState by remember { mutableStateOf(recipesUIState.selectedSortDirection) }
+    var showFilterDialog = remember { mutableStateOf(false)}
+
     Column(
         modifier = Modifier
             .windowInsetsPadding(WindowInsets.systemBars)
@@ -156,7 +160,6 @@ fun Main(recipeViewModel: RecipeViewModel) {
                 )
             }
         } else {
-            var showFilterDialog = remember { mutableStateOf(false)}
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -174,20 +177,6 @@ fun Main(recipeViewModel: RecipeViewModel) {
                 Filter(
                     onToggle = { showFilterDialog.value = !showFilterDialog.value },
                 )
-
-                if (showFilterDialog.value) {
-                    FilterAndSortDialog(
-                        selectedIngredientNames=recipesUIState.selectedIngredientNames,
-                        selectedSortKey = recipesUIState.selectedSortKey,
-                        selectedSortDirection = recipesUIState.selectedSortDirection,
-                        availableIngredientNames = recipesUIState.availableIngredients,
-                        onApply = { selectedNames, sortKey, sortDirection ->
-                            recipeViewModel.onFilterOrSort(selectedNames, sortKey, sortDirection)
-                            showFilterDialog.value = false
-                        },
-                        onClose = { showFilterDialog.value = false}
-                    )
-                }
             }
 
             Button(
@@ -215,6 +204,22 @@ fun Main(recipeViewModel: RecipeViewModel) {
                 }
 
             }
+        }
+
+        if (showFilterDialog.value) {
+            FilterAndSortDialog(
+                selectedIngredientNames=recipesUIState.selectedIngredientNames,
+                selectedSortKey = sortKeyState,
+                selectedSortDirection = sortDirectionKeyState,
+                availableIngredientNames = recipesUIState.availableIngredients,
+                onApply = { selectedNames, sortKey, sortDirection ->
+                    recipeViewModel.onFilterOrSort(selectedNames, sortKey, sortDirection)
+                    showFilterDialog.value = false
+                    sortKeyState = sortKey
+                    sortDirectionKeyState = sortDirection
+                },
+                onClose = { showFilterDialog.value = false}
+            )
         }
     }
 }
@@ -991,99 +996,108 @@ fun FilterAndSortDialog(
 
     AlertDialog(
         text = {
-            Row {
-                Column {
-                    val rows = (availableIngredientNames.size + 2 - 1) / 2
-                    for (rowIndex in 0 until rows) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            for (colIndex in 0 until 2) {
-                                val itemIndex = rowIndex * 2 + colIndex
-                                if (itemIndex < availableIngredientNames.size) {
-                                    val name = availableIngredientNames[itemIndex]
-                                    val isChecked = name in newSelectedIngredientNames.value
-                                    Checkbox(
-                                        checked = isChecked,
-                                        onCheckedChange = { isChecked ->
-                                            if (isChecked) {
-                                                newSelectedIngredientNames.value = newSelectedIngredientNames.value.toMutableList().apply { add(name) }
-                                            } else {
-                                                val selectedIngredientNameIndex = newSelectedIngredientNames.value.indexOfFirst { it == name }
-                                                newSelectedIngredientNames.value = newSelectedIngredientNames.value.toMutableList().apply { removeAt(selectedIngredientNameIndex) }
+            Column {
+                Column(
+                    modifier = Modifier.padding(bottom = 10.dp)
+                ) {
+                    Text("Filter by ingredients:")
+                    Column {
+                        val rows = (availableIngredientNames.size + 2 - 1) / 2
+                        for (rowIndex in 0 until rows) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                for (colIndex in 0 until 2) {
+                                    val itemIndex = rowIndex * 2 + colIndex
+                                    if (itemIndex < availableIngredientNames.size) {
+                                        val name = availableIngredientNames[itemIndex]
+                                        val isChecked = name in newSelectedIngredientNames.value
+                                        Checkbox(
+                                            checked = isChecked,
+                                            onCheckedChange = { isChecked ->
+                                                if (isChecked) {
+                                                    newSelectedIngredientNames.value = newSelectedIngredientNames.value.toMutableList().apply { add(name) }
+                                                } else {
+                                                    val selectedIngredientNameIndex = newSelectedIngredientNames.value.indexOfFirst { it == name }
+                                                    newSelectedIngredientNames.value = newSelectedIngredientNames.value.toMutableList().apply { removeAt(selectedIngredientNameIndex) }
+                                                }
                                             }
-                                        }
-                                    )
-                                    var marginRight = if (colIndex == 0) 8 else 0
+                                        )
+                                        var marginRight = if (colIndex == 0) 8 else 0
 
-                                    Text(
-                                        text = name,
-                                        modifier = Modifier.padding(end = marginRight.dp)
-                                    )
+                                        Text(
+                                            text = name,
+                                            modifier = Modifier.padding(end = marginRight.dp)
+                                        )
+                                    }
                                 }
                             }
                         }
                     }
                 }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    var key = sortOptions[newSelectedSortKey.value]!!
-                    var directionKeys = key["directionKeys"] as List<Map<String, String>>
 
-                    Column (
-                        modifier = Modifier.weight(1f)
+                Column {
+                    Text("Sort by:")
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        DropdownMenuItem(
-                            text = { Text(key["label"].toString()) },
-                            onClick = {
-                                isSelectedSortKeyExpanded = !isSelectedSortKeyExpanded
-                            }
-                        )
-                        DropdownMenu(
-                            expanded = isSelectedSortKeyExpanded,
-                            onDismissRequest = { isSelectedSortKeyExpanded = !isSelectedSortKeyExpanded }
+                        var key = sortOptions[newSelectedSortKey.value]!!
+                        var directionKeys = key["directionKeys"] as List<Map<String, String>>
+
+                        Column (
+                            modifier = Modifier.weight(1f)
                         ) {
-                            for ((key, value) in sortOptions) {
-                                DropdownMenuItem(
-                                    modifier = Modifier
-                                        .background(if (key == newSelectedSortKey.value) Color.LightGray else Color.Transparent),
-                                    text = { Text(value["label"].toString()) },
-                                    onClick = {
-                                        newSelectedSortKey.value = key.toString()
-                                        isSelectedSortKeyExpanded = false
-                                        directionKeys = value["directionKeys"] as List<Map<String, String>>
-                                    },
-                                )
-                            }
-                        }
-                    }
-                    Column (
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        var currentDirection = directionKeys.firstOrNull()?.get(newSelectedSortDirection.value)
-                        DropdownMenuItem(
-                            text = { Text(currentDirection.toString()) },
-                            onClick = {
-                                isSelectedSortDirectionExpanded = !isSelectedSortDirectionExpanded
-                            }
-                        )
-                        DropdownMenu(
-                            expanded = isSelectedSortDirectionExpanded,
-                            onDismissRequest = { isSelectedSortDirectionExpanded = !isSelectedSortDirectionExpanded }
-                        ) {
-                            for (map in directionKeys) {
-                                for ((key, value) in map) {
+                            DropdownMenuItem(
+                                text = { Text(key["label"].toString()) },
+                                onClick = {
+                                    isSelectedSortKeyExpanded = !isSelectedSortKeyExpanded
+                                }
+                            )
+                            DropdownMenu(
+                                expanded = isSelectedSortKeyExpanded,
+                                onDismissRequest = { isSelectedSortKeyExpanded = !isSelectedSortKeyExpanded }
+                            ) {
+                                for ((key, value) in sortOptions) {
                                     DropdownMenuItem(
                                         modifier = Modifier
-                                            .background(if (key == newSelectedSortDirection.value) Color.LightGray else Color.Transparent),
-                                        text = { Text(value) },
+                                            .background(if (key == newSelectedSortKey.value) Color.LightGray else Color.Transparent),
+                                        text = { Text(value["label"].toString()) },
                                         onClick = {
-                                            newSelectedSortDirection.value = key
-                                            isSelectedSortDirectionExpanded = false
+                                            newSelectedSortKey.value = key.toString()
+                                            isSelectedSortKeyExpanded = false
+                                            directionKeys = value["directionKeys"] as List<Map<String, String>>
                                         },
                                     )
+                                }
+                            }
+                        }
+                        Column (
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            var currentDirection = directionKeys.firstOrNull()?.get(newSelectedSortDirection.value)
+                            DropdownMenuItem(
+                                text = { Text(currentDirection.toString()) },
+                                onClick = {
+                                    isSelectedSortDirectionExpanded = !isSelectedSortDirectionExpanded
+                                }
+                            )
+                            DropdownMenu(
+                                expanded = isSelectedSortDirectionExpanded,
+                                onDismissRequest = { isSelectedSortDirectionExpanded = !isSelectedSortDirectionExpanded }
+                            ) {
+                                for (map in directionKeys) {
+                                    for ((key, value) in map) {
+                                        DropdownMenuItem(
+                                            modifier = Modifier
+                                                .background(if (key == newSelectedSortDirection.value) Color.LightGray else Color.Transparent),
+                                            text = { Text(value) },
+                                            onClick = {
+                                                newSelectedSortDirection.value = key
+                                                isSelectedSortDirectionExpanded = false
+                                            },
+                                        )
+                                    }
                                 }
                             }
                         }

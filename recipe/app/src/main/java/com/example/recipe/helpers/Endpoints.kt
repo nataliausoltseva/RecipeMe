@@ -11,7 +11,6 @@ class Endpoints {
 
     suspend fun getRecipes(search: String?, selectedIngredients: String = "", sortKey: String = "", sortDirection: String = ""): List<Recipe>? {
         try {
-            println(selectedIngredients)
             val response = apiInterface.getRecipes(search, selectedIngredients, sortKey, sortDirection)
             if (response.isSuccessful) {
                 val data = response.body()
