@@ -87,7 +87,7 @@ class RecipeViewModel: ViewModel() {
                 getRecipes()
 
                 if (recipe.id != 0 && recipeResponse != null) {
-                    onSaveRecipe()
+                    onSaveRecipe(recipeResponse)
                 } else {
                     backToListView()
                 }
@@ -114,10 +114,11 @@ class RecipeViewModel: ViewModel() {
         }
     }
 
-    fun onSaveRecipe() {
+    fun onSaveRecipe(recipe: Recipe) {
         _uiState.update {
             it.copy(
                 isEditingRecipe = false,
+                selectedRecipe = recipe
             )
         }
     }
