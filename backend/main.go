@@ -60,6 +60,7 @@ type Recipe struct {
 	CreatedAt    string       `json:"createdAt"`
 	LastEditedAt string       `json:"lastEditedAt"`
 	Type         string       `json:"type"`
+	SortOrder    int          `json:"sortOrder"`
 }
 
 var recipes []Recipe
@@ -115,6 +116,7 @@ func getRecipes(w http.ResponseWriter, r *http.Request) {
 			&recipe.CreatedAt,
 			&recipe.LastEditedAt,
 			&recipe.Type,
+			&recipe.SortOrder,
 		)
 
 		recipe.Ingredients = getRecipeIngredients(recipe.ID, searchString)
@@ -207,6 +209,7 @@ func getRecipeById(id int) Recipe {
 		&recipe.CreatedAt,
 		&recipe.LastEditedAt,
 		&recipe.Type,
+		&recipe.SortOrder,
 	)
 
 	recipe.Ingredients = getRecipeIngredients(id, "")
@@ -220,8 +223,17 @@ func getRecipeById(id int) Recipe {
 func createRecipe(w http.ResponseWriter, r *http.Request) {
 	var recipe Recipe
 	json.NewDecoder(r.Body).Decode(&recipe)
+
+	var count int
+	err := db.QueryRow("SELECT COUNT(*) FROM recipes").Scan(&count)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	sortOrder := 1 + count
+
 	stmt, err := db.Prepare(`
-		INSERT INTO recipes(name, url, createdAt, type) VALUES(?,?,?,?)
+		INSERT INTO recipes(name, url, createdAt, type, sortOrder) VALUES(?,?,?,?,?)
 	`)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -229,7 +241,7 @@ func createRecipe(w http.ResponseWriter, r *http.Request) {
 	}
 
 	now := time.Now()
-	result, err := stmt.Exec(recipe.Name, recipe.Url, now.Format("2006-01-02 15:04:05"), recipe.Type)
+	result, err := stmt.Exec(recipe.Name, recipe.Url, now.Format("2006-01-02 15:04:05"), recipe.Type, sortOrder)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -313,6 +325,73 @@ func deleteRecipe(w http.ResponseWriter, r *http.Request) {
 	}
 
 	json.NewEncoder(w).Encode(recipes)
+}
+
+func reorderRecipes(w http.ResponseWriter, r *http.Request) {
+	var passedRecipes []Recipe
+	json.NewDecoder(r.Body).Decode(&passedRecipes)
+
+	var existingRecipes = getAllRecipes()
+
+	if existingRecipes != nil {
+		for _, passedRecipe := range passedRecipes {
+			for existingRecipeIndex, existingRecipe := range existingRecipes {
+				if passedRecipe.ID == existingRecipe.ID {
+					sortOrder := passedRecipe.SortOrder
+					if existingRecipeIndex == 0 && passedRecipe.SortOrder == 0 {
+						sortOrder += 1
+					} else if existingRecipeIndex != 0 && passedRecipe.SortOrder == 0 {
+						sortOrder = existingRecipeIndex + 1
+					}
+
+					_, err := db.Exec("UPDATE recipes SET sortOrder = ? WHERE id = ?", sortOrder, passedRecipe.ID)
+					if err != nil {
+						fmt.Println("Error updating recipe:", err)
+						http.Error(w, err.Error(), http.StatusInternalServerError)
+						return
+					}
+					break
+				}
+			}
+		}
+	}
+
+	json.NewEncoder(w).Encode(getAllRecipes())
+}
+
+func getAllRecipes() []Recipe {
+	rows, err := db.Query("SELECT * FROM recipes")
+
+	if err != nil {
+		return nil
+	}
+
+	defer rows.Close()
+
+	var recipes []Recipe
+	for rows.Next() {
+		var recipe Recipe
+		recipe.Ingredients = []Ingredient{}
+		recipe.Methods = []Method{}
+
+		rows.Scan(
+			&recipe.ID,
+			&recipe.Name,
+			&recipe.Url,
+			&recipe.CreatedAt,
+			&recipe.LastEditedAt,
+			&recipe.Type,
+			&recipe.SortOrder,
+		)
+
+		recipe.Ingredients = getRecipeIngredients(recipe.ID, "")
+		recipe.Methods = getRecipeMethods(recipe.ID)
+		recipe.Portion = getRecipePortion(recipe.ID)
+		recipe.Image = getRecipeImage(recipe.ID)
+
+		recipes = append(recipes, recipe)
+	}
+	return recipes
 }
 
 func getRecipePortion(recipeId int) *Portion {
@@ -943,6 +1022,7 @@ func main() {
 	router.HandleFunc("/recipe", createRecipe).Methods("POST")
 	router.HandleFunc("/recipe/{id}", updateRecipe).Methods("PUT")
 	router.HandleFunc("/recipe/{id}", deleteRecipe).Methods("DELETE")
+	router.HandleFunc("/recipes", reorderRecipes).Methods("PUT")
 
 	// Portion routes
 	router.HandleFunc("/portion/{recipe_id}", addPortion).Methods("POST")
