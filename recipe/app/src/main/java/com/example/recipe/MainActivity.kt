@@ -31,6 +31,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.items
+import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -76,6 +77,7 @@ import com.example.recipe.data.Recipe
 import com.example.recipe.helpers.RecipeRequest
 import com.example.recipe.helpers.getResizedBitmap
 import sh.calvin.reorderable.ReorderableColumn
+import sh.calvin.reorderable.ReorderableItem
 import androidx.compose.runtime.key
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -87,6 +89,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.collections.orEmpty
 import androidx.compose.material3.Checkbox
+import sh.calvin.reorderable.rememberReorderableLazyStaggeredGridState
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -278,73 +281,90 @@ fun ListOfRecipes(
     recipes: List<Recipe>,
     onView: (recipe: Recipe) -> Unit
 ) {
+    println(recipes)
+    var reorderableRecipes by remember { mutableStateOf<List<Recipe>>(recipes) }
+    val lazyStaggeredGridState = rememberLazyStaggeredGridState()
+    val reorderableLazyStaggeredGridState = rememberReorderableLazyStaggeredGridState(lazyStaggeredGridState) { from, to ->
+        reorderableRecipes = reorderableRecipes.toMutableList().apply {
+            add(to.index, removeAt(from.index))
+        }
+    }
+
+    println(reorderableRecipes)
+
     LazyVerticalStaggeredGrid(
+        state = lazyStaggeredGridState,
         columns = StaggeredGridCells.Adaptive(200.dp),
         verticalItemSpacing = 4.dp,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         content = {
-            items(recipes) { recipe ->
-                Card(
-                    modifier = Modifier.padding(bottom = 10.dp)
+            items(reorderableRecipes, key = { it.id }) { recipe ->
+                ReorderableItem(
+                    reorderableLazyStaggeredGridState,
+                    key = recipe
                 ) {
-                    Column(
-                        modifier = Modifier
-                            .padding(0.dp, 10.dp)
+                    Card(
+                        modifier = Modifier.padding(bottom = 10.dp)
                     ) {
-                        Box(
-                            Modifier
-                                .fillMaxWidth(0.5f)
-                                .clickable { onView(recipe) }
+                        Column(
+                            modifier = Modifier
+                                .padding(0.dp, 10.dp)
                         ) {
-                            Column {
-                                if (recipe.image?.url != null) {
-                                    val decodedBytes = Base64.decode(recipe.image.url, Base64.DEFAULT)
-                                    if (decodedBytes != null) {
-                                        val bitmap = byteArrayToBitmap(decodedBytes)
-                                        val imageBitmap = bitmap.asImageBitmap()
-                                        Image(
-                                            bitmap = imageBitmap,
-                                            contentDescription = recipe.name + " image",
-                                            modifier = Modifier
-                                                .size(200.dp)
-                                                .clip(RoundedCornerShape(8.dp))
-                                        )
+                            Box(
+                                Modifier
+                                    .fillMaxWidth(0.5f)
+                                    .clickable { onView(recipe) }
+                            ) {
+                                Column {
+                                    if (recipe.image?.url != null) {
+                                        val decodedBytes = Base64.decode(recipe.image.url, Base64.DEFAULT)
+                                        if (decodedBytes != null) {
+                                            val bitmap = byteArrayToBitmap(decodedBytes)
+                                            val imageBitmap = bitmap.asImageBitmap()
+                                            Image(
+                                                bitmap = imageBitmap,
+                                                contentDescription = recipe.name + " image",
+                                                modifier = Modifier
+                                                    .size(200.dp)
+                                                    .clip(RoundedCornerShape(8.dp))
+                                            )
+                                        }
                                     }
-                                }
 
-                                Text(
-                                    text = recipe.name,
-                                )
-
-                                if (recipe.portion != null) {
                                     Text(
-                                        text = recipe.portion.value.toString() + " " + recipe.portion.measurement,
+                                        text = recipe.name,
                                     )
-                                }
 
-                                Text(
-                                    text = "Ingredients:",
-                                )
-
-                                if (recipe.ingredients != null) {
-                                    for (ingredient in recipe.ingredients) {
+                                    if (recipe.portion != null) {
                                         Text(
-                                            text = ingredient.name + " " + ingredient.value + " " + ingredient.measurement,
+                                            text = recipe.portion.value.toString() + " " + recipe.portion.measurement,
                                         )
                                     }
-                                }
 
-                                Text(
-                                    text = "Methods:",
-                                )
+                                    Text(
+                                        text = "Ingredients:",
+                                    )
 
-                                if (recipe.methods != null) {
-                                    for (method in recipe.methods) {
-                                        val indicator =
-                                            if (method.sortOrder != null) (method.sortOrder + 1) else 1;
-                                        Text(
-                                            text = indicator.toString() + ". " + method.value,
-                                        )
+                                    if (recipe.ingredients != null) {
+                                        for (ingredient in recipe.ingredients) {
+                                            Text(
+                                                text = ingredient.name + " " + ingredient.value + " " + ingredient.measurement,
+                                            )
+                                        }
+                                    }
+
+                                    Text(
+                                        text = "Methods:",
+                                    )
+
+                                    if (recipe.methods != null) {
+                                        for (method in recipe.methods) {
+                                            val indicator =
+                                                if (method.sortOrder != null) (method.sortOrder + 1) else 1;
+                                            Text(
+                                                text = indicator.toString() + ". " + method.value,
+                                            )
+                                        }
                                     }
                                 }
                             }
