@@ -13,6 +13,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -63,7 +64,6 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
@@ -89,6 +89,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.collections.orEmpty
 import androidx.compose.material3.Checkbox
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.Modifier
 import sh.calvin.reorderable.rememberReorderableLazyStaggeredGridState
 
 class MainActivity : ComponentActivity() {
@@ -110,6 +112,7 @@ fun Main(recipeViewModel: RecipeViewModel) {
     var sortKeyState by remember { mutableStateOf(recipesUIState.selectedSortKey) }
     var sortDirectionKeyState by remember { mutableStateOf(recipesUIState.selectedSortDirection) }
     var showFilterDialog = remember { mutableStateOf(false)}
+    var recipes = remember { mutableStateOf(recipesUIState.recipes) }
 
     Column(
         modifier = Modifier
@@ -281,16 +284,20 @@ fun ListOfRecipes(
     recipes: List<Recipe>,
     onView: (recipe: Recipe) -> Unit
 ) {
-    println(recipes)
     var reorderableRecipes by remember { mutableStateOf<List<Recipe>>(recipes) }
     val lazyStaggeredGridState = rememberLazyStaggeredGridState()
+    LaunchedEffect(recipes) {
+        if (reorderableRecipes !== recipes) {
+            reorderableRecipes = recipes
+        }
+    }
+
     val reorderableLazyStaggeredGridState = rememberReorderableLazyStaggeredGridState(lazyStaggeredGridState) { from, to ->
+        println("inside")
         reorderableRecipes = reorderableRecipes.toMutableList().apply {
             add(to.index, removeAt(from.index))
         }
     }
-
-    println(reorderableRecipes)
 
     LazyVerticalStaggeredGrid(
         state = lazyStaggeredGridState,
@@ -300,8 +307,8 @@ fun ListOfRecipes(
         content = {
             items(reorderableRecipes, key = { it.id }) { recipe ->
                 ReorderableItem(
-                    reorderableLazyStaggeredGridState,
-                    key = recipe
+                    state = reorderableLazyStaggeredGridState,
+                    key = recipe.id
                 ) {
                     Card(
                         modifier = Modifier.padding(bottom = 10.dp)
@@ -313,7 +320,7 @@ fun ListOfRecipes(
                             Box(
                                 Modifier
                                     .fillMaxWidth(0.5f)
-                                    .clickable { onView(recipe) }
+//                                    .clickable { onView(recipe) }
                             ) {
                                 Column {
                                     if (recipe.image?.url != null) {
