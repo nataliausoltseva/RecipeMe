@@ -9,11 +9,11 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -89,8 +89,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.collections.orEmpty
 import androidx.compose.material3.Checkbox
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.HapticFeedbackConstantsCompat
+import androidx.core.view.ViewCompat
 import sh.calvin.reorderable.rememberReorderableLazyStaggeredGridState
 
 class MainActivity : ComponentActivity() {
@@ -284,17 +287,12 @@ fun ListOfRecipes(
     recipes: List<Recipe>,
     onView: (recipe: Recipe) -> Unit
 ) {
-    var reorderableRecipes by remember { mutableStateOf<List<Recipe>>(recipes) }
-    val lazyStaggeredGridState = rememberLazyStaggeredGridState()
-    LaunchedEffect(recipes) {
-        if (reorderableRecipes !== recipes) {
-            reorderableRecipes = recipes
-        }
-    }
+    val view = LocalView.current
 
+    var list by remember { mutableStateOf(recipes) }
+    val lazyStaggeredGridState = rememberLazyStaggeredGridState()
     val reorderableLazyStaggeredGridState = rememberReorderableLazyStaggeredGridState(lazyStaggeredGridState) { from, to ->
-        println("inside")
-        reorderableRecipes = reorderableRecipes.toMutableList().apply {
+        list = list.toMutableList().apply {
             add(to.index, removeAt(from.index))
         }
     }
@@ -305,72 +303,86 @@ fun ListOfRecipes(
         verticalItemSpacing = 4.dp,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         content = {
-            items(reorderableRecipes, key = { it.id }) { recipe ->
-                ReorderableItem(
-                    state = reorderableLazyStaggeredGridState,
-                    key = recipe.id
-                ) {
-                    Card(
-                        modifier = Modifier.padding(bottom = 10.dp)
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .padding(0.dp, 10.dp)
+            items(list, key = { it.id.toString() }) { recipe ->
+                ReorderableItem(reorderableLazyStaggeredGridState, key = recipe.id.toString()) { isDragging ->
+                    val elevation by animateDpAsState(if (isDragging) 4.dp else 0.dp)
+                    Surface (shadowElevation = elevation) {
+                        Card(
+                            modifier = Modifier.padding(bottom = 10.dp)
                         ) {
-                            Box(
-                                Modifier
-                                    .fillMaxWidth(0.5f)
-//                                    .clickable { onView(recipe) }
+                            Column(
+                                modifier = Modifier
+                                    .padding(0.dp, 10.dp)
                             ) {
-                                Column {
-                                    if (recipe.image?.url != null) {
-                                        val decodedBytes = Base64.decode(recipe.image.url, Base64.DEFAULT)
-                                        if (decodedBytes != null) {
-                                            val bitmap = byteArrayToBitmap(decodedBytes)
-                                            val imageBitmap = bitmap.asImageBitmap()
-                                            Image(
-                                                bitmap = imageBitmap,
-                                                contentDescription = recipe.name + " image",
-                                                modifier = Modifier
-                                                    .size(200.dp)
-                                                    .clip(RoundedCornerShape(8.dp))
-                                            )
-                                        }
-                                    }
-
-                                    Text(
-                                        text = recipe.name,
-                                    )
-
-                                    if (recipe.portion != null) {
-                                        Text(
-                                            text = recipe.portion.value.toString() + " " + recipe.portion.measurement,
+                                Box(
+                                    Modifier
+                                        .fillMaxWidth(0.5f)
+                                        .draggableHandle(
+                                            onDragStarted = {
+                                                ViewCompat.performHapticFeedback(
+                                                    view,
+                                                    HapticFeedbackConstantsCompat.GESTURE_START
+                                                )
+                                            },
+                                            onDragStopped = {
+                                                ViewCompat.performHapticFeedback(
+                                                    view,
+                                                    HapticFeedbackConstantsCompat.GESTURE_END
+                                                )
+                                            },
                                         )
-                                    }
+                                        .clickable { onView(recipe) }
+                                ) {
+                                    Column {
+                                        if (recipe.image?.url != null) {
+                                            val decodedBytes = Base64.decode(recipe.image.url, Base64.DEFAULT)
+                                            if (decodedBytes != null) {
+                                                val bitmap = byteArrayToBitmap(decodedBytes)
+                                                val imageBitmap = bitmap.asImageBitmap()
+                                                Image(
+                                                    bitmap = imageBitmap,
+                                                    contentDescription = recipe.name + " image",
+                                                    modifier = Modifier
+                                                        .size(200.dp)
+                                                        .clip(RoundedCornerShape(8.dp))
+                                                )
+                                            }
+                                        }
 
-                                    Text(
-                                        text = "Ingredients:",
-                                    )
+                                        Text(
+                                            text = recipe.name,
+                                        )
 
-                                    if (recipe.ingredients != null) {
-                                        for (ingredient in recipe.ingredients) {
+                                        if (recipe.portion != null) {
                                             Text(
-                                                text = ingredient.name + " " + ingredient.value + " " + ingredient.measurement,
+                                                text = recipe.portion.value.toString() + " " + recipe.portion.measurement,
                                             )
                                         }
-                                    }
 
-                                    Text(
-                                        text = "Methods:",
-                                    )
+                                        Text(
+                                            text = "Ingredients:",
+                                        )
 
-                                    if (recipe.methods != null) {
-                                        for (method in recipe.methods) {
-                                            val indicator =
-                                                if (method.sortOrder != null) (method.sortOrder + 1) else 1;
-                                            Text(
-                                                text = indicator.toString() + ". " + method.value,
-                                            )
+                                        if (recipe.ingredients != null) {
+                                            for (ingredient in recipe.ingredients) {
+                                                Text(
+                                                    text = ingredient.name + " " + ingredient.value + " " + ingredient.measurement,
+                                                )
+                                            }
+                                        }
+
+                                        Text(
+                                            text = "Methods:",
+                                        )
+
+                                        if (recipe.methods != null) {
+                                            for (method in recipe.methods) {
+                                                val indicator =
+                                                    if (method.sortOrder != null) (method.sortOrder + 1) else 1;
+                                                Text(
+                                                    text = indicator.toString() + ". " + method.value,
+                                                )
+                                            }
                                         }
                                     }
                                 }
