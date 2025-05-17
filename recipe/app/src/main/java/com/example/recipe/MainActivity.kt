@@ -41,8 +41,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
@@ -90,6 +92,7 @@ import kotlinx.coroutines.withContext
 import kotlin.collections.orEmpty
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.HapticFeedbackConstantsCompat
@@ -199,9 +202,13 @@ fun Main(recipeViewModel: RecipeViewModel) {
             Box(
                 modifier = Modifier.fillMaxSize(),
             ) {
+                var list by remember { mutableStateOf(recipes) }
+
                 ListOfRecipes(
-                    recipesUIState.recipes,
-                    onView = { recipeViewModel.viewRecipe(it) }
+                    recipes = recipesUIState.recipes,
+                    onView = { recipeViewModel.viewRecipe(it) },
+                    onReorder = { recipeViewModel.onReorder() },
+                    onSave = { list.value = it }
                 )
                 FloatingActionButton(
                     onClick = { recipeViewModel.createRecipe() },
@@ -211,7 +218,24 @@ fun Main(recipeViewModel: RecipeViewModel) {
                 ) {
                     Add()
                 }
-
+                if (recipesUIState.isReordered) {
+                    FloatingActionButton(
+                        onClick = { recipeViewModel.createRecipe() },
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(16.dp, 16.dp, 80.dp, 16.dp)
+                    ) {
+                        Revert()
+                    }
+                    FloatingActionButton(
+                        onClick = { recipeViewModel.onSaveReorder(list.value) },
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(16.dp, 16.dp, 145.dp, 16.dp)
+                    ) {
+                        Save()
+                    }
+                }
             }
         }
 
@@ -283,13 +307,63 @@ fun Add() {
 }
 
 @Composable
+fun Revert() {
+    Box(
+        modifier = Modifier
+            .clip(CircleShape)
+            .border(
+                width = 1.dp,
+                color = Color.Black,
+                shape = RoundedCornerShape(50.dp)
+            )
+    ) {
+        Icon(
+            imageVector = Icons.Filled.Refresh,
+            contentDescription = "Revert Icon",
+            modifier = Modifier
+                .size(45.dp)
+        )
+    }
+}
+
+
+@Composable
+fun Save() {
+    Box(
+        modifier = Modifier
+            .clip(CircleShape)
+            .border(
+                width = 1.dp,
+                color = Color.Black,
+                shape = RoundedCornerShape(50.dp)
+            )
+    ) {
+        Icon(
+            imageVector = Icons.Filled.Check,
+            contentDescription = "Revert Icon",
+            modifier = Modifier
+                .size(45.dp)
+        )
+    }
+}
+
+@Composable
 fun ListOfRecipes(
     recipes: List<Recipe>,
-    onView: (recipe: Recipe) -> Unit
+    onView: (recipe: Recipe) -> Unit,
+    onReorder: () -> Unit,
+    onSave: (List<Recipe>) -> Unit
 ) {
     val view = LocalView.current
 
     var list by remember { mutableStateOf(recipes) }
+
+    LaunchedEffect(recipes) {
+        if (list !== recipes) {
+            list = recipes
+        }
+    }
+
     val lazyStaggeredGridState = rememberLazyStaggeredGridState()
     val reorderableLazyStaggeredGridState = rememberReorderableLazyStaggeredGridState(lazyStaggeredGridState) { from, to ->
         list = list.toMutableList().apply {

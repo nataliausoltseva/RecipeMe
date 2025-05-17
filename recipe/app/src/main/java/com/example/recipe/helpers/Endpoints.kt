@@ -99,4 +99,20 @@ class Endpoints {
             return null
         }
     }
+
+    suspend fun reorderRecipes(recipes: List<Recipe>): List<Recipe>? {
+        try {
+            val response = apiInterface.reorderRecipes(recipes)
+            if (response.isSuccessful) {
+                val data = response.body()
+                return data
+            } else {
+                println("Response error: $response")
+                return null
+            }
+        } catch (e: Exception) {
+            println("Exception error getIngredients: ${e.message}. ${e.printStackTrace()}")
+            return null
+        }
+    }
 }
