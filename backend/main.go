@@ -77,7 +77,7 @@ func getRecipes(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if sortKey == "" {
-		sortKey = "lastEditedAt"
+		sortKey = "sortOrder"
 	}
 
 	var rows *sql.Rows
@@ -224,24 +224,37 @@ func createRecipe(w http.ResponseWriter, r *http.Request) {
 	var recipe Recipe
 	json.NewDecoder(r.Body).Decode(&recipe)
 
-	var count int
-	err := db.QueryRow("SELECT COUNT(*) FROM recipes").Scan(&count)
-	if err != nil {
-		log.Fatal(err)
+	existingRecipes := getAllRecipes()
+
+	sortOrder := max(1+len(existingRecipes), 1)
+	var name = ""
+	if recipe.Name != "" {
+		name = recipe.Name
 	}
 
-	sortOrder := 1 + count
+	var url = ""
+	if recipe.Url != "" {
+		url = recipe.Url
+	}
+
+	var recipeType = ""
+	if recipe.Type != "" {
+		recipeType = recipe.Type
+	}
 
 	stmt, err := db.Prepare(`
-		INSERT INTO recipes(name, url, createdAt, type, sortOrder) VALUES(?,?,?,?,?)
+		INSERT INTO recipes(name, url, createdAt, lastEditedAt,  type, sortOrder) VALUES(?,?,?,?,?,?)
 	`)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
+	fmt.Println(sortOrder)
+	fmt.Println(len(existingRecipes))
+
 	now := time.Now()
-	result, err := stmt.Exec(recipe.Name, recipe.Url, now.Format("2006-01-02 15:04:05"), recipe.Type, sortOrder)
+	result, err := stmt.Exec(name, url, now.Format("2006-01-02 15:04:05"), now.Format("2006-01-02 15:04:05"), recipeType, sortOrder)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -334,15 +347,10 @@ func reorderRecipes(w http.ResponseWriter, r *http.Request) {
 	var existingRecipes = getAllRecipes()
 
 	if existingRecipes != nil {
-		for _, passedRecipe := range passedRecipes {
-			for existingRecipeIndex, existingRecipe := range existingRecipes {
+		for passedRecipeIndex, passedRecipe := range passedRecipes {
+			for _, existingRecipe := range existingRecipes {
 				if passedRecipe.ID == existingRecipe.ID {
-					sortOrder := passedRecipe.SortOrder
-					if existingRecipeIndex == 0 && passedRecipe.SortOrder == 0 {
-						sortOrder += 1
-					} else if existingRecipeIndex != 0 && passedRecipe.SortOrder == 0 {
-						sortOrder = existingRecipeIndex + 1
-					}
+					sortOrder := passedRecipeIndex + 1
 
 					_, err := db.Exec("UPDATE recipes SET sortOrder = ? WHERE id = ?", sortOrder, passedRecipe.ID)
 					if err != nil {

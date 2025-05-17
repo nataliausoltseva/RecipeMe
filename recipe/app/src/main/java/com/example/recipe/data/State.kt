@@ -9,7 +9,7 @@ data class State(
     val selectedIngredientNames: Array<String> = arrayOf(),
     val availableIngredients: Array<String> = arrayOf(),
     val selectedSortDirection: String = "asc",
-    val selectedSortKey: String = "lastEditedAt",
+    val selectedSortKey: String = "sortOrder",
     val isReordered: Boolean = false,
     val shouldReset: Boolean = false,
 ) {

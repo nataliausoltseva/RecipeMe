@@ -184,18 +184,39 @@ class RecipeViewModel: ViewModel() {
         }
     }
 
-    fun onSaveReorder(recipes: List<Recipe>) {
+    fun onReset() {
+        _uiState.update {
+            it.copy(
+                shouldReset = true,
+            )
+        }
+    }
+
+    fun onSaveReset() {
+        _uiState.update {
+            it.copy(
+                shouldReset = false,
+                isReordered = false
+            )
+        }
+    }
+
+    fun onSaveReorder(newOrderRecipes: List<Recipe>) {
         viewModelScope.launch {
             try {
                 val endpoints = Endpoints()
-                var recipes: List<Recipe>? = endpoints.reorderRecipes(recipes)
+                println(newOrderRecipes)
+                var recipes: List<Recipe>? = endpoints.reorderRecipes(newOrderRecipes)
+                println(recipes)
                 if (recipes == null) {
                     recipes = listOf()
                 }
                 _uiState.update {
                     it.copy(
                         recipes,
-                        isLoading = false
+                        isLoading = false,
+                        shouldReset = false,
+                        isReordered = false
                     )
                 }
             } catch (e: Exception) {

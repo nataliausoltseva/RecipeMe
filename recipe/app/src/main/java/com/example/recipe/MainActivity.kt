@@ -207,8 +207,12 @@ fun Main(recipeViewModel: RecipeViewModel) {
                 ListOfRecipes(
                     recipes = recipesUIState.recipes,
                     onView = { recipeViewModel.viewRecipe(it) },
-                    onReorder = { recipeViewModel.onReorder() },
-                    onSave = { list.value = it }
+                    onReorder = {
+                        recipeViewModel.onReorder()
+                        list.value = it
+                    },
+                    shouldReset = recipesUIState.shouldReset,
+                    onSaveReset = { recipeViewModel.onSaveReset() }
                 )
                 FloatingActionButton(
                     onClick = { recipeViewModel.createRecipe() },
@@ -220,7 +224,7 @@ fun Main(recipeViewModel: RecipeViewModel) {
                 }
                 if (recipesUIState.isReordered) {
                     FloatingActionButton(
-                        onClick = { recipeViewModel.createRecipe() },
+                        onClick = { recipeViewModel.onReset() },
                         modifier = Modifier
                             .align(Alignment.BottomEnd)
                             .padding(16.dp, 16.dp, 80.dp, 16.dp)
@@ -351,16 +355,21 @@ fun Save() {
 fun ListOfRecipes(
     recipes: List<Recipe>,
     onView: (recipe: Recipe) -> Unit,
-    onReorder: () -> Unit,
-    onSave: (List<Recipe>) -> Unit
+    onReorder: (List<Recipe>) -> Unit,
+    shouldReset: Boolean,
+    onSaveReset: () -> Unit,
 ) {
     val view = LocalView.current
 
     var list by remember { mutableStateOf(recipes) }
 
-    LaunchedEffect(recipes) {
-        if (list !== recipes) {
+    LaunchedEffect(recipes, shouldReset) {
+        if (list !== recipes || shouldReset) {
             list = recipes
+
+            if (shouldReset) {
+                onSaveReset()
+            }
         }
     }
 
@@ -369,6 +378,7 @@ fun ListOfRecipes(
         list = list.toMutableList().apply {
             add(to.index, removeAt(from.index))
         }
+        onReorder(list)
     }
 
     LazyVerticalStaggeredGrid(
@@ -425,6 +435,9 @@ fun ListOfRecipes(
 
                                         Text(
                                             text = recipe.name,
+                                        )
+                                        Text(
+                                            text = "SortOrder: " + recipe.sortOrder.toString(),
                                         )
 
                                         if (recipe.portion != null) {
@@ -1097,6 +1110,12 @@ fun FilterAndSortDialog(
                 mapOf("asc" to "Oldest to Newest", "desc" to "Newest to Oldest")
             )
         ),
+        "sortOrder" to mapOf(
+            "label" to "Defined Order",
+            "directionKeys" to listOf(
+                mapOf("asc" to "First to Last", "desc" to "Last to First")
+            )
+        )
     )
 
 
