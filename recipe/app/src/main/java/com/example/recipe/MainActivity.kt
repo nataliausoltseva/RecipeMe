@@ -94,6 +94,7 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.modifier.modifierLocalOf
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.HapticFeedbackConstantsCompat
 import androidx.core.view.ViewCompat
@@ -212,7 +213,8 @@ fun Main(recipeViewModel: RecipeViewModel) {
                         list.value = it
                     },
                     shouldReset = recipesUIState.shouldReset,
-                    onSaveReset = { recipeViewModel.onSaveReset() }
+                    onSaveReset = { recipeViewModel.onSaveReset() },
+                    isSortedByOrder = recipesUIState.selectedSortKey == "sortOrder"
                 )
                 FloatingActionButton(
                     onClick = { recipeViewModel.createRecipe() },
@@ -250,6 +252,9 @@ fun Main(recipeViewModel: RecipeViewModel) {
                 selectedSortDirection = sortDirectionKeyState,
                 availableIngredientNames = recipesUIState.availableIngredients,
                 onApply = { selectedNames, sortKey, sortDirection ->
+                    if (sortKeyState == "sortOrder" && sortKey != "sortOrder" && recipesUIState.isReordered) {
+                        recipeViewModel.onReset()
+                    }
                     recipeViewModel.onFilterOrSort(selectedNames, sortKey, sortDirection)
                     showFilterDialog.value = false
                     sortKeyState = sortKey
@@ -358,6 +363,7 @@ fun ListOfRecipes(
     onReorder: (List<Recipe>) -> Unit,
     shouldReset: Boolean,
     onSaveReset: () -> Unit,
+    isSortedByOrder: Boolean,
 ) {
     val view = LocalView.current
 
@@ -375,10 +381,12 @@ fun ListOfRecipes(
 
     val lazyStaggeredGridState = rememberLazyStaggeredGridState()
     val reorderableLazyStaggeredGridState = rememberReorderableLazyStaggeredGridState(lazyStaggeredGridState) { from, to ->
-        list = list.toMutableList().apply {
-            add(to.index, removeAt(from.index))
+        if (isSortedByOrder) {
+            list = list.toMutableList().apply {
+                add(to.index, removeAt(from.index))
+            }
+            onReorder(list)
         }
-        onReorder(list)
     }
 
     LazyVerticalStaggeredGrid(
@@ -389,7 +397,7 @@ fun ListOfRecipes(
         content = {
             items(list, key = { it.id.toString() }) { recipe ->
                 ReorderableItem(reorderableLazyStaggeredGridState, key = recipe.id.toString()) { isDragging ->
-                    val elevation by animateDpAsState(if (isDragging) 4.dp else 0.dp)
+                    val elevation by animateDpAsState(if (isDragging && isSortedByOrder) 4.dp else 0.dp)
                     Surface (shadowElevation = elevation) {
                         Card(
                             modifier = Modifier.padding(bottom = 10.dp)
@@ -398,24 +406,29 @@ fun ListOfRecipes(
                                 modifier = Modifier
                                     .padding(0.dp, 10.dp)
                             ) {
-                                Box(
-                                    Modifier
-                                        .fillMaxWidth(0.5f)
-                                        .draggableHandle(
-                                            onDragStarted = {
+                                var modifier = Modifier.fillMaxWidth(0.5f).clickable { onView(recipe) }
+                                if (isSortedByOrder) {
+                                    modifier = modifier.draggableHandle(
+                                        onDragStarted = {
+                                            if (isSortedByOrder) {
                                                 ViewCompat.performHapticFeedback(
                                                     view,
                                                     HapticFeedbackConstantsCompat.GESTURE_START
                                                 )
-                                            },
-                                            onDragStopped = {
+                                            }
+                                        },
+                                        onDragStopped = {
+                                            if (isSortedByOrder) {
                                                 ViewCompat.performHapticFeedback(
                                                     view,
                                                     HapticFeedbackConstantsCompat.GESTURE_END
                                                 )
-                                            },
-                                        )
-                                        .clickable { onView(recipe) }
+                                            }
+                                        },
+                                    )
+                                }
+                                Box(
+                                    modifier = modifier
                                 ) {
                                     Column {
                                         if (recipe.image?.url != null) {
