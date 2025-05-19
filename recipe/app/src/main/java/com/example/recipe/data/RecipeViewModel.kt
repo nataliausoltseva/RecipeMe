@@ -176,6 +176,55 @@ class RecipeViewModel: ViewModel() {
         }
     }
 
+    fun onReorder() {
+        _uiState.update {
+            it.copy(
+                isReordered = true
+            )
+        }
+    }
+
+    fun onReset() {
+        _uiState.update {
+            it.copy(
+                shouldReset = true,
+            )
+        }
+    }
+
+    fun onSaveReset() {
+        _uiState.update {
+            it.copy(
+                shouldReset = false,
+                isReordered = false
+            )
+        }
+    }
+
+    fun onSaveReorder(newOrderRecipes: List<Recipe>) {
+        viewModelScope.launch {
+            try {
+                val endpoints = Endpoints()
+                println(newOrderRecipes)
+                var recipes: List<Recipe>? = endpoints.reorderRecipes(newOrderRecipes)
+                println(recipes)
+                if (recipes == null) {
+                    recipes = listOf()
+                }
+                _uiState.update {
+                    it.copy(
+                        recipes,
+                        isLoading = false,
+                        shouldReset = false,
+                        isReordered = false
+                    )
+                }
+            } catch (e: Exception) {
+                println("Error: ${e.message}")
+            }
+        }
+    }
+
     init {
         getRecipes()
     }

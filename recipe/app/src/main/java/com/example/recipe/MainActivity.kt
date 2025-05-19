@@ -9,6 +9,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -31,6 +32,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.items
+import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -39,8 +41,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
@@ -62,7 +66,6 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
@@ -76,6 +79,7 @@ import com.example.recipe.data.Recipe
 import com.example.recipe.helpers.RecipeRequest
 import com.example.recipe.helpers.getResizedBitmap
 import sh.calvin.reorderable.ReorderableColumn
+import sh.calvin.reorderable.ReorderableItem
 import androidx.compose.runtime.key
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -87,6 +91,14 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.collections.orEmpty
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.Surface
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.modifier.modifierLocalOf
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.HapticFeedbackConstantsCompat
+import androidx.core.view.ViewCompat
+import sh.calvin.reorderable.rememberReorderableLazyStaggeredGridState
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -107,6 +119,7 @@ fun Main(recipeViewModel: RecipeViewModel) {
     var sortKeyState by remember { mutableStateOf(recipesUIState.selectedSortKey) }
     var sortDirectionKeyState by remember { mutableStateOf(recipesUIState.selectedSortDirection) }
     var showFilterDialog = remember { mutableStateOf(false)}
+    var recipes = remember { mutableStateOf(recipesUIState.recipes) }
 
     Column(
         modifier = Modifier
@@ -190,9 +203,18 @@ fun Main(recipeViewModel: RecipeViewModel) {
             Box(
                 modifier = Modifier.fillMaxSize(),
             ) {
+                var list by remember { mutableStateOf(recipes) }
+
                 ListOfRecipes(
-                    recipesUIState.recipes,
-                    onView = { recipeViewModel.viewRecipe(it) }
+                    recipes = recipesUIState.recipes,
+                    onView = { recipeViewModel.viewRecipe(it) },
+                    onReorder = {
+                        recipeViewModel.onReorder()
+                        list.value = it
+                    },
+                    shouldReset = recipesUIState.shouldReset,
+                    onSaveReset = { recipeViewModel.onSaveReset() },
+                    isSortedByOrder = recipesUIState.selectedSortKey == "sortOrder"
                 )
                 FloatingActionButton(
                     onClick = { recipeViewModel.createRecipe() },
@@ -202,7 +224,24 @@ fun Main(recipeViewModel: RecipeViewModel) {
                 ) {
                     Add()
                 }
-
+                if (recipesUIState.isReordered) {
+                    FloatingActionButton(
+                        onClick = { recipeViewModel.onReset() },
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(16.dp, 16.dp, 80.dp, 16.dp)
+                    ) {
+                        Revert()
+                    }
+                    FloatingActionButton(
+                        onClick = { recipeViewModel.onSaveReorder(list.value) },
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(16.dp, 16.dp, 145.dp, 16.dp)
+                    ) {
+                        Save()
+                    }
+                }
             }
         }
 
@@ -213,6 +252,9 @@ fun Main(recipeViewModel: RecipeViewModel) {
                 selectedSortDirection = sortDirectionKeyState,
                 availableIngredientNames = recipesUIState.availableIngredients,
                 onApply = { selectedNames, sortKey, sortDirection ->
+                    if (sortKeyState == "sortOrder" && sortKey != "sortOrder" && recipesUIState.isReordered) {
+                        recipeViewModel.onReset()
+                    }
                     recipeViewModel.onFilterOrSort(selectedNames, sortKey, sortDirection)
                     showFilterDialog.value = false
                     sortKeyState = sortKey
@@ -274,77 +316,174 @@ fun Add() {
 }
 
 @Composable
+fun Revert() {
+    Box(
+        modifier = Modifier
+            .clip(CircleShape)
+            .border(
+                width = 1.dp,
+                color = Color.Black,
+                shape = RoundedCornerShape(50.dp)
+            )
+    ) {
+        Icon(
+            imageVector = Icons.Filled.Refresh,
+            contentDescription = "Revert Icon",
+            modifier = Modifier
+                .size(45.dp)
+        )
+    }
+}
+
+
+@Composable
+fun Save() {
+    Box(
+        modifier = Modifier
+            .clip(CircleShape)
+            .border(
+                width = 1.dp,
+                color = Color.Black,
+                shape = RoundedCornerShape(50.dp)
+            )
+    ) {
+        Icon(
+            imageVector = Icons.Filled.Check,
+            contentDescription = "Revert Icon",
+            modifier = Modifier
+                .size(45.dp)
+        )
+    }
+}
+
+@Composable
 fun ListOfRecipes(
     recipes: List<Recipe>,
-    onView: (recipe: Recipe) -> Unit
+    onView: (recipe: Recipe) -> Unit,
+    onReorder: (List<Recipe>) -> Unit,
+    shouldReset: Boolean,
+    onSaveReset: () -> Unit,
+    isSortedByOrder: Boolean,
 ) {
+    val view = LocalView.current
+
+    var list by remember { mutableStateOf(recipes) }
+
+    LaunchedEffect(recipes, shouldReset) {
+        if (list !== recipes || shouldReset) {
+            list = recipes
+
+            if (shouldReset) {
+                onSaveReset()
+            }
+        }
+    }
+
+    val lazyStaggeredGridState = rememberLazyStaggeredGridState()
+    val reorderableLazyStaggeredGridState = rememberReorderableLazyStaggeredGridState(lazyStaggeredGridState) { from, to ->
+        if (isSortedByOrder) {
+            list = list.toMutableList().apply {
+                add(to.index, removeAt(from.index))
+            }
+            onReorder(list)
+        }
+    }
+
     LazyVerticalStaggeredGrid(
+        state = lazyStaggeredGridState,
         columns = StaggeredGridCells.Adaptive(200.dp),
         verticalItemSpacing = 4.dp,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         content = {
-            items(recipes) { recipe ->
-                Card(
-                    modifier = Modifier.padding(bottom = 10.dp)
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .padding(0.dp, 10.dp)
-                    ) {
-                        Box(
-                            Modifier
-                                .fillMaxWidth(0.5f)
-                                .clickable { onView(recipe) }
+            items(list, key = { it.id.toString() }) { recipe ->
+                ReorderableItem(reorderableLazyStaggeredGridState, key = recipe.id.toString()) { isDragging ->
+                    val elevation by animateDpAsState(if (isDragging && isSortedByOrder) 4.dp else 0.dp)
+                    Surface (shadowElevation = elevation) {
+                        Card(
+                            modifier = Modifier.padding(bottom = 10.dp)
                         ) {
-                            Column {
-                                if (recipe.image?.url != null) {
-                                    val decodedBytes = Base64.decode(recipe.image.url, Base64.DEFAULT)
-                                    if (decodedBytes != null) {
-                                        val bitmap = byteArrayToBitmap(decodedBytes)
-                                        val imageBitmap = bitmap.asImageBitmap()
-                                        Image(
-                                            bitmap = imageBitmap,
-                                            contentDescription = recipe.name + " image",
-                                            modifier = Modifier
-                                                .size(200.dp)
-                                                .clip(RoundedCornerShape(8.dp))
-                                        )
-                                    }
-                                }
-
-                                Text(
-                                    text = recipe.name,
-                                )
-
-                                if (recipe.portion != null) {
-                                    Text(
-                                        text = recipe.portion.value.toString() + " " + recipe.portion.measurement,
+                            Column(
+                                modifier = Modifier
+                                    .padding(0.dp, 10.dp)
+                            ) {
+                                var modifier = Modifier.fillMaxWidth(0.5f).clickable { onView(recipe) }
+                                if (isSortedByOrder) {
+                                    modifier = modifier.draggableHandle(
+                                        onDragStarted = {
+                                            if (isSortedByOrder) {
+                                                ViewCompat.performHapticFeedback(
+                                                    view,
+                                                    HapticFeedbackConstantsCompat.GESTURE_START
+                                                )
+                                            }
+                                        },
+                                        onDragStopped = {
+                                            if (isSortedByOrder) {
+                                                ViewCompat.performHapticFeedback(
+                                                    view,
+                                                    HapticFeedbackConstantsCompat.GESTURE_END
+                                                )
+                                            }
+                                        },
                                     )
                                 }
+                                Box(
+                                    modifier = modifier
+                                ) {
+                                    Column {
+                                        if (recipe.image?.url != null) {
+                                            val decodedBytes = Base64.decode(recipe.image.url, Base64.DEFAULT)
+                                            if (decodedBytes != null) {
+                                                val bitmap = byteArrayToBitmap(decodedBytes)
+                                                val imageBitmap = bitmap.asImageBitmap()
+                                                Image(
+                                                    bitmap = imageBitmap,
+                                                    contentDescription = recipe.name + " image",
+                                                    modifier = Modifier
+                                                        .size(200.dp)
+                                                        .clip(RoundedCornerShape(8.dp))
+                                                )
+                                            }
+                                        }
 
-                                Text(
-                                    text = "Ingredients:",
-                                )
-
-                                if (recipe.ingredients != null) {
-                                    for (ingredient in recipe.ingredients) {
                                         Text(
-                                            text = ingredient.name + " " + ingredient.value + " " + ingredient.measurement,
+                                            text = recipe.name,
                                         )
-                                    }
-                                }
-
-                                Text(
-                                    text = "Methods:",
-                                )
-
-                                if (recipe.methods != null) {
-                                    for (method in recipe.methods) {
-                                        val indicator =
-                                            if (method.sortOrder != null) (method.sortOrder + 1) else 1;
                                         Text(
-                                            text = indicator.toString() + ". " + method.value,
+                                            text = "SortOrder: " + recipe.sortOrder.toString(),
                                         )
+
+                                        if (recipe.portion != null) {
+                                            Text(
+                                                text = recipe.portion.value.toString() + " " + recipe.portion.measurement,
+                                            )
+                                        }
+
+                                        Text(
+                                            text = "Ingredients:",
+                                        )
+
+                                        if (recipe.ingredients != null) {
+                                            for (ingredient in recipe.ingredients) {
+                                                Text(
+                                                    text = ingredient.name + " " + ingredient.value + " " + ingredient.measurement,
+                                                )
+                                            }
+                                        }
+
+                                        Text(
+                                            text = "Methods:",
+                                        )
+
+                                        if (recipe.methods != null) {
+                                            for (method in recipe.methods) {
+                                                val indicator =
+                                                    if (method.sortOrder != null) (method.sortOrder + 1) else 1;
+                                                Text(
+                                                    text = indicator.toString() + ". " + method.value,
+                                                )
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -984,6 +1123,12 @@ fun FilterAndSortDialog(
                 mapOf("asc" to "Oldest to Newest", "desc" to "Newest to Oldest")
             )
         ),
+        "sortOrder" to mapOf(
+            "label" to "Defined Order",
+            "directionKeys" to listOf(
+                mapOf("asc" to "First to Last", "desc" to "Last to First")
+            )
+        )
     )
 
 
