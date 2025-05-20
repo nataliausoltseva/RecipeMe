@@ -3,7 +3,15 @@
 ## API and database
 SQLite is used for this application as the database engine. The API is using [go-sqlite3](https://github.com/mattn/go-sqlite3) for storing/retrieving the data from the endpoints.
 
-All backend logic is located in the `/backend` directory. It also includes the `docker-compose.yml` and `Dockerfile` that setup the container for the API. On the docker container, the `/database` directory is created that includes `database.db` file. So that, there is no need to install SQLite on your machine and handle that on the docker instead. By default, the following tables are created:
+All backend logic is located in the `/backend` directory. It also includes the `docker-compose.yml` and `Dockerfile` that setup the container for the API.
+
+The database is on its one volume so that if you need to rebuild the docker image once the Go code is changed, you do not need to lose all the data. Also as part of that, if you decide to add a column to a table, it can be done by `docker exec my_app /root/entrypoint.sh table_name new_column column_type`
+- `my_app` is the name of the docker container
+- `table_name` is the name of the table you are trying to modify
+- `new_column` is the name of the column you would like to add 
+- `column_type` is the type of the column. e.g. `TEXT`, `INTEGER`
+
+By default, the following tables are created:
 
 1. The **recipe** table:
 ```sqlite
@@ -104,17 +112,15 @@ On the left screen: at the top have a search bar and filter/sort icon. The recip
 
 The right screen represents the modal for filter/sort dropdown. The ingredients' dropdown will offer multi checkbox and in sort dropdown a user can only select 1 item.
 
+
+
 ## Roadmap:
 - Implement and update the design of the application.
-- DB should not be wiped if rebuilding image. If any new columns, they should just be aded to the DB rather than removing all data.
+- Add Type (breakfast, lunch, dinner, dessert, snack) to the recipe creation.
+- Add split view based on the type
 - Add functionality of increasing or decreasing the portion which results in the updated list of ingredients. 
 - Exporting functionality of the recipe as a long screenshot.
 - Make a companion watch app.
-- Add Sort functionality in the app by:
-    1. Name
-    2. Portion
-    3. Create Date
-- Filter out the reipecs by ingredients. Being able to uncheck the ingredients and hide the recipes.
 - Look into Gemini integration so that when asking to look for a recipe, it looks through this app first.
 - Ability to have "Cooking mode" so that the phone screen does not turn off.
     1. Look into this feature on the watch as well.
@@ -172,5 +178,11 @@ example of possible data for API
 ```
 
 - Setup basic mobile app using Kotlin. The app should be able to connect to the API and the CRUD functionality works as expected.
+- DB should not be wiped if rebuilding image. If any new columns, they should just be aded to the DB rather than removing all data.
+- Add Sort functionality in the app by:
+    1. Name
+    2. Portion
+    3. Create Date
+- Filter out the reipecs by ingredients. Being able to uncheck the ingredients and hide the recipes.
 
 </details>
