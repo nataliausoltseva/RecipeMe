@@ -250,9 +250,6 @@ func createRecipe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Println(sortOrder)
-	fmt.Println(len(existingRecipes))
-
 	now := time.Now()
 	result, err := stmt.Exec(name, url, now.Format("2006-01-02 15:04:05"), now.Format("2006-01-02 15:04:05"), recipeType, sortOrder)
 	if err != nil {
