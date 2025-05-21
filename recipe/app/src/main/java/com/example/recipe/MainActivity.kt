@@ -449,9 +449,6 @@ fun ListOfRecipes(
                                         Text(
                                             text = recipe.name,
                                         )
-                                        Text(
-                                            text = "SortOrder: " + recipe.sortOrder.toString(),
-                                        )
 
                                         if (recipe.portion != null) {
                                             Text(
@@ -516,10 +513,13 @@ fun ViewRecipe(
             }
         }
 
-        Text(
-            text = recipe.name,
-            modifier = Modifier.padding(top = 20.dp)
-        )
+        Row(
+            horizontalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier.fillMaxWidth().padding(top = 20.dp)
+        ) {
+            Text(text = recipe.name)
+            Text(text = recipe.type)
+        }
 
         if (recipe.portion?.value != null) {
             val portionValue = if (recipe.portion.value % 1 == 0f) recipe.portion.value.toUInt() else recipe.portion.value
@@ -573,6 +573,8 @@ fun CreateOrEditRecipe(
     var name by remember { mutableStateOf(recipe?.name ?: "") }
     val decodedBytes = Base64.decode(recipe?.image?.url ?: "", Base64.DEFAULT)
     var imageBytes by remember { mutableStateOf(if (recipe?.image?.url != null) decodedBytes else null) }
+    var isExpandedTypeSelector by remember { mutableStateOf(false) }
+    var typeSelection by remember { mutableStateOf(recipe?.type ?: "Choose") }
 
     // portion handlers
     var isExpandedPortionSelector by remember { mutableStateOf(false) }
@@ -659,6 +661,35 @@ fun CreateOrEditRecipe(
                 }
             }
         }
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("Type: ")
+            DropdownMenuItem(
+                text = { Text(typeSelection) },
+                onClick = {
+                    isExpandedTypeSelector = !isExpandedTypeSelector
+                }
+            )
+            DropdownMenu(
+                expanded = isExpandedTypeSelector,
+                onDismissRequest = { isExpandedTypeSelector = !isExpandedTypeSelector }
+            ) {
+                for (type in arrayOf("breakfast", "lunch", "dinner", "dessert", "snack")) {
+                    DropdownMenuItem(
+                        modifier = Modifier
+                            .background(if (type == typeSelection) Color.LightGray else Color.Transparent),
+                        text = { Text(type) },
+                        onClick = {
+                            typeSelection = type
+                            isExpandedTypeSelector = false
+                        },
+                    )
+                }
+            }
+        }
+
         Row(
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -814,7 +845,8 @@ fun CreateOrEditRecipe(
                 onSave(
                     RecipeRequest(
                         id = recipe?.id ?: 0,
-                        name = name
+                        name = name,
+                        type = if (typeSelection === "Choose") "" else typeSelection
                     ),
                     Portion(
                         id = recipe?.portion?.id ?: 0,

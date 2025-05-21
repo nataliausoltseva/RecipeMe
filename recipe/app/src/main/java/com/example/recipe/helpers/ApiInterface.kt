@@ -19,6 +19,7 @@ import retrofit2.http.Query
 data class RecipeRequest(
     var id: Int,
     var name: String,
+    var type: String,
 )
 
 interface ApiInterface {

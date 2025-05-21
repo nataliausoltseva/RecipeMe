@@ -116,7 +116,6 @@ The right screen represents the modal for filter/sort dropdown. The ingredients'
 
 ## Roadmap:
 - Implement and update the design of the application.
-- Add Type (breakfast, lunch, dinner, dessert, snack) to the recipe creation.
 - Add split view based on the type
 - Add functionality of increasing or decreasing the portion which results in the updated list of ingredients. 
 - Exporting functionality of the recipe as a long screenshot.
@@ -184,5 +183,6 @@ example of possible data for API
     2. Portion
     3. Create Date
 - Filter out the reipecs by ingredients. Being able to uncheck the ingredients and hide the recipes.
+- Add Type (breakfast, lunch, dinner, dessert, snack) to the recipe creation.
 
 </details>
