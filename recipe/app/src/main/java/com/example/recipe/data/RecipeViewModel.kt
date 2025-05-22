@@ -17,10 +17,6 @@ class RecipeViewModel: ViewModel() {
     private val _uiState = MutableStateFlow(State())
     val uiState: StateFlow<State> = _uiState.asStateFlow()
 
-    fun reloadRecipes() {
-        getRecipes()
-    }
-
     private fun getRecipes(search: String? = null) {
         viewModelScope.launch {
             try {

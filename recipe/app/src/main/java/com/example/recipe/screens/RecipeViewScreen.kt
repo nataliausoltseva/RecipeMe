@@ -1,0 +1,126 @@
+package com.example.recipe.screens
+
+import android.util.Base64
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.unit.dp
+import com.example.recipe.byteArrayToBitmap
+import com.example.recipe.data.Recipe
+import com.example.recipe.data.RecipeViewModel
+
+@Composable
+fun RecipeViewScreen(
+    recipeViewModel: RecipeViewModel,
+) {
+    val recipesUIState by recipeViewModel.uiState.collectAsState()
+
+    Column(
+        modifier = Modifier
+            .windowInsetsPadding(WindowInsets.systemBars)
+    ) {
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+            contentDescription = "Go back",
+            modifier = Modifier
+                .clickable { recipeViewModel.backToListView() }
+                .size(50.dp, 50.dp)
+        )
+        Recipe(
+            recipesUIState.selectedRecipe!!
+        )
+        Icon(
+            imageVector = Icons.Filled.Edit,
+            contentDescription = "Edit button",
+            modifier = Modifier
+                .clickable { recipeViewModel.onEditRecipe() }
+                .size(50.dp, 50.dp)
+        )
+    }
+}
+
+@Composable
+fun Recipe(
+    recipe: Recipe
+) {
+    Column {
+        if (recipe.image?.url != null) {
+            val decodedBytes = Base64.decode(recipe.image.url, Base64.DEFAULT)
+            if (decodedBytes != null) {
+                val bitmap = byteArrayToBitmap(decodedBytes)
+                val imageBitmap = bitmap.asImageBitmap()
+                Image(
+                    bitmap = imageBitmap,
+                    contentDescription = recipe.name + " image",
+                    modifier = Modifier
+                        .size(200.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                )
+            }
+        }
+
+        Row(
+            horizontalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier.fillMaxWidth().padding(top = 20.dp)
+        ) {
+            Text(text = recipe.name)
+            Text(text = recipe.type)
+        }
+
+        if (recipe.portion?.value != null) {
+            val portionValue = if (recipe.portion.value % 1 == 0f) recipe.portion.value.toUInt() else recipe.portion.value
+            val portionLabel = if (recipe.portion.value >= 2.0) recipe.portion.measurement + "s" else recipe.portion.measurement
+            Text(
+                text = "$portionValue $portionLabel",
+                modifier = Modifier.padding(top = 20.dp)
+            )
+        }
+
+        if (recipe.ingredients != null) {
+            Text(
+                text = "Ingredients:",
+                modifier = Modifier.padding(top = 20.dp)
+            )
+
+            for (ingredient in recipe.ingredients) {
+                Text(
+                    text = ingredient.name + " " + ingredient.value + " " + ingredient.measurement,
+                )
+            }
+        }
+
+        if (recipe.methods != null) {
+            Text(
+                text = "Methods:",
+                modifier = Modifier.padding(top = 20.dp)
+            )
+
+            for (method in recipe.methods) {
+                val indicator = if (method.sortOrder != null) (method.sortOrder + 1) else 1;
+                Text(
+                    text = indicator.toString() + ". " + method.value,
+                )
+            }
+        }
+    }
+}
