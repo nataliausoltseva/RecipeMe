@@ -1,12 +1,16 @@
 package com.example.recipe.screens
 
 import android.util.Base64
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -23,7 +27,12 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.recipe.byteArrayToBitmap
 import com.example.recipe.data.Recipe
@@ -63,7 +72,12 @@ fun RecipeViewScreen(
 fun Recipe(
     recipe: Recipe
 ) {
-    Column {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(10.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
         if (recipe.image?.url != null) {
             val decodedBytes = Base64.decode(recipe.image.url, Base64.DEFAULT)
             if (decodedBytes != null) {
@@ -80,11 +94,33 @@ fun Recipe(
         }
 
         Row(
-            horizontalArrangement = Arrangement.SpaceBetween,
-            modifier = Modifier.fillMaxWidth().padding(top = 20.dp)
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(text = recipe.name)
-            Text(text = recipe.type)
+            Row {
+                Text(
+                    text = recipe.name,
+                    textAlign = TextAlign.Center,
+                    fontWeight = FontWeight.Bold,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                if (recipe.portion != null) {
+                    Text(
+                        text = "(" + recipe.portion.value.toString() + " " + recipe.portion.measurement + ")",
+                        modifier = Modifier.padding(start = 5.dp),
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+
+            if (recipe.type != "") {
+                Text(
+                    text = recipe.type,
+                    fontStyle = FontStyle.Italic,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
         }
 
         if (recipe.portion?.value != null) {
@@ -99,14 +135,34 @@ fun Recipe(
         if (recipe.ingredients != null) {
             Text(
                 text = "Ingredients:",
-                modifier = Modifier.padding(top = 20.dp)
+                modifier = Modifier.padding(top = 20.dp),
+                fontWeight = FontWeight.Bold
             )
 
-            for (ingredient in recipe.ingredients) {
-                Text(
-                    text = ingredient.name + " " + ingredient.value + " " + ingredient.measurement,
-                )
+            val chunkedItems = recipe.ingredients.toList().chunked((recipe.ingredients.size + 1) / 2) // Splits into two roughly equal lists
+
+            Row(modifier = Modifier.fillMaxWidth()) {
+                chunkedItems.forEach { columnItems ->
+                    Column(
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        columnItems.forEach { item ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 5.dp, end = 10.dp),
+                                horizontalArrangement = Arrangement.spacedBy(20.dp)
+                            ) {
+                                Text(text = item.name)
+                                Text(
+                                    text = item.value.toString() + " " + item.measurement,
+                                )
+                            }
+                        }
+                    }
+                }
             }
+
         }
 
         if (recipe.methods != null) {
@@ -116,7 +172,7 @@ fun Recipe(
             )
 
             for (method in recipe.methods) {
-                val indicator = if (method.sortOrder != null) (method.sortOrder + 1) else 1;
+                val indicator = method.sortOrder ?: 1;
                 Text(
                     text = indicator.toString() + ". " + method.value,
                 )
