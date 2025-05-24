@@ -1,10 +1,7 @@
 package com.example.recipe.screens
 
 import android.util.Base64
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -25,9 +22,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -46,25 +43,34 @@ fun RecipeViewScreen(
 
     Column(
         modifier = Modifier
+            .fillMaxSize()
             .windowInsetsPadding(WindowInsets.systemBars)
     ) {
-        Icon(
-            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
-            contentDescription = "Go back",
-            modifier = Modifier
-                .clickable { recipeViewModel.backToListView() }
-                .size(50.dp, 50.dp)
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                contentDescription = "Go back",
+                modifier = Modifier
+                    .clickable { recipeViewModel.backToListView() }
+                    .size(50.dp, 50.dp)
+            )
+            Icon(
+                imageVector = Icons.Filled.Edit,
+                contentDescription = "Edit button",
+                modifier = Modifier
+                    .clickable { recipeViewModel.onEditRecipe() }
+                    .padding(end = 10.dp)
+                    .size(30.dp, 30.dp)
+            )
+        }
         Recipe(
             recipesUIState.selectedRecipe!!
         )
-        Icon(
-            imageVector = Icons.Filled.Edit,
-            contentDescription = "Edit button",
-            modifier = Modifier
-                .clickable { recipeViewModel.onEditRecipe() }
-                .size(50.dp, 50.dp)
-        )
+
     }
 }
 
@@ -74,7 +80,6 @@ fun Recipe(
 ) {
     Column(
         modifier = Modifier
-            .fillMaxSize()
             .padding(10.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {

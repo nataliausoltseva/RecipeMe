@@ -31,6 +31,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
@@ -62,7 +63,6 @@ import com.example.recipe.data.Image
 import com.example.recipe.data.Ingredient
 import com.example.recipe.data.Method
 import com.example.recipe.data.Portion
-import com.example.recipe.data.Recipe
 import com.example.recipe.data.RecipeViewModel
 import com.example.recipe.helpers.RecipeRequest
 import com.example.recipe.helpers.getResizedBitmap
@@ -83,336 +83,306 @@ fun RecipeModifyScreen(
         modifier = Modifier
             .windowInsetsPadding(WindowInsets.systemBars)
     ) {
+        var recipe = recipesUIState.selectedRecipe
+        var name by remember { mutableStateOf(recipe?.name ?: "") }
+        val decodedBytes = Base64.decode(recipe?.image?.url ?: "", Base64.DEFAULT)
+        var imageBytes by remember { mutableStateOf(if (recipe?.image?.url != null) decodedBytes else null) }
+        var isExpandedTypeSelector by remember { mutableStateOf(false) }
+        var typeSelection by remember { mutableStateOf((if(recipe?.type != "") recipe?.type else "Choose") ?: "Choose") }
+
+        // portion handlers
+        var isExpandedPortionSelector by remember { mutableStateOf(false) }
+        var portionSelection by remember { mutableStateOf(recipe?.portion?.measurement ?: "day") }
+        var portionValue by remember { mutableStateOf(recipe?.portion?.value ?: 1) }
+        var placeholderPortionValue by remember {
+            mutableStateOf(
+                recipe?.portion?.value?.toString() ?: "1"
+            )
+        }
+
+        // ingredients handlers
+        var ingredients =
+            remember { mutableStateOf(listOf<Ingredient>(*recipe?.ingredients.orEmpty())) }
+        var showIngredientModal by remember { mutableStateOf(false) }
+        val selectedIngredient = remember { mutableStateOf<Ingredient?>(null) }
+        val selectedIngredientIndex = remember { mutableIntStateOf(0) }
+
+        // methods handlers
+        var methods = remember { mutableStateOf(listOf<Method>(*recipe?.methods.orEmpty())) }
+        var showMethodModal by remember { mutableStateOf(false) }
+        val selectedMethod = remember { mutableStateOf<Method?>(null) }
+        val selectedMethodIndex = remember { mutableIntStateOf(0) }
+
         Icon(
             imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
             contentDescription = "Go back",
             modifier = Modifier
-                .clickable { recipeViewModel.backToListView() }
+                .clickable {
+                    recipeViewModel.saveRecipe(
+                        RecipeRequest(
+                            id = recipe?.id ?: 0,
+                            name = name,
+                            type = if (typeSelection === "Choose") "" else typeSelection
+                        ),
+                        Portion(
+                            id = recipe?.portion?.id ?: 0,
+                            value = portionValue.toFloat(),
+                            measurement = if (portionSelection === "Choose") "days" else portionSelection
+                        ),
+                        ingredients.value,
+                        methods.value,
+                        imageBytes,
+                    )
+                }
                 .size(50.dp, 50.dp)
         )
-        CreateOrEditRecipe(
-            onSave = { recipe, portion, ingredients, methods, imageBytes ->
-                recipeViewModel.saveRecipe(
-                    recipe,
-                    portion,
-                    ingredients,
-                    methods,
-                    imageBytes
-                )
-            },
-            recipe = recipesUIState.selectedRecipe
-        )
-    }
-}
 
-@Composable
-fun CreateOrEditRecipe(
-    onSave: (
-        recipeRequest: RecipeRequest,
-        portionRequest: Portion,
-        ingredientRequests: List<Ingredient>,
-        methodRequests: List<Method>,
-        imageBytes: ByteArray?
-    ) -> Unit,
-    recipe: Recipe? = null
-) {
-    var name by remember { mutableStateOf(recipe?.name ?: "") }
-    val decodedBytes = Base64.decode(recipe?.image?.url ?: "", Base64.DEFAULT)
-    var imageBytes by remember { mutableStateOf(if (recipe?.image?.url != null) decodedBytes else null) }
-    var isExpandedTypeSelector by remember { mutableStateOf(false) }
-    var typeSelection by remember { mutableStateOf(recipe?.type ?: "Choose") }
-
-    // portion handlers
-    var isExpandedPortionSelector by remember { mutableStateOf(false) }
-    var portionSelection by remember { mutableStateOf(recipe?.portion?.measurement ?: "day") }
-    var portionValue by remember { mutableStateOf(recipe?.portion?.value ?: 1) }
-    var placeholderPortionValue by remember {
-        mutableStateOf(
-            recipe?.portion?.value?.toString() ?: "1"
-        )
-    }
-
-    // ingredients handlers
-    var ingredients =
-        remember { mutableStateOf(listOf<Ingredient>(*recipe?.ingredients.orEmpty())) }
-    var showIngredientModal by remember { mutableStateOf(false) }
-    val selectedIngredient = remember { mutableStateOf<Ingredient?>(null) }
-    val selectedIngredientIndex = remember { mutableIntStateOf(0) }
-
-    // methods handlers
-    var methods = remember { mutableStateOf(listOf<Method>(*recipe?.methods.orEmpty())) }
-    var showMethodModal by remember { mutableStateOf(false) }
-    val selectedMethod = remember { mutableStateOf<Method?>(null) }
-    val selectedMethodIndex = remember { mutableIntStateOf(0) }
-
-    Column(
-        modifier = Modifier.fillMaxHeight().verticalScroll(rememberScrollState()),
-    ) {
-        ImageUploader(
-            onImageUpload = { imageBytes = it },
-            image = recipe?.image
-        )
-        Row {
-            TextField(
-                value = name,
-                onValueChange = {
-                    name = it
-                },
-                label = { Text("Name") },
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = Color.Transparent,
-                    unfocusedContainerColor = Color.Transparent,
-                ),
-                modifier = Modifier.fillMaxWidth(0.6F)
+        Column(
+            modifier = Modifier
+                .fillMaxHeight()
+                .verticalScroll(rememberScrollState())
+                .padding(10.dp, 0.dp),
+        ) {
+            ImageUploader(
+                onImageUpload = { imageBytes = it },
+                image = recipe?.image
             )
-            Column(
-                modifier = Modifier.padding(start = 20.dp)
-            ) {
+            Row {
                 TextField(
-                    value = placeholderPortionValue,
+                    value = name,
                     onValueChange = {
-                        if (it.toFloatOrNull() != null) {
-                            portionValue = it.toFloat()
-                        }
-                        placeholderPortionValue = it
+                        name = it
                     },
-                    keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
+                    label = { Text("Name") },
                     colors = TextFieldDefaults.colors(
                         focusedContainerColor = Color.Transparent,
                         unfocusedContainerColor = Color.Transparent,
                     ),
+                    modifier = Modifier.fillMaxWidth(0.6F)
                 )
+                Column(
+                    modifier = Modifier.padding(start = 20.dp)
+                ) {
+                    TextField(
+                        value = placeholderPortionValue,
+                        onValueChange = {
+                            if (it.toFloatOrNull() != null) {
+                                portionValue = it.toFloat()
+                            }
+                            placeholderPortionValue = it
+                        },
+                        keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = Color.Transparent,
+                            unfocusedContainerColor = Color.Transparent,
+                        ),
+                    )
 
+                    DropdownMenuItem(
+                        text = { Text(portionSelection) },
+                        onClick = {
+                            isExpandedPortionSelector = !isExpandedPortionSelector
+                        }
+                    )
+                    DropdownMenu(
+                        expanded = isExpandedPortionSelector,
+                        onDismissRequest = { isExpandedPortionSelector = !isExpandedPortionSelector }
+                    ) {
+                        for (portion in arrayOf("day", "portion")) {
+                            DropdownMenuItem(
+                                modifier = Modifier
+                                    .background(if (portion == portionSelection) Color.LightGray else Color.Transparent),
+                                text = { Text(portion) },
+                                onClick = {
+                                    portionSelection = portion
+                                    isExpandedPortionSelector = false
+                                },
+                            )
+                        }
+                    }
+                }
+            }
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("Type: ")
                 DropdownMenuItem(
-                    text = { Text(portionSelection) },
+                    text = { Text(typeSelection) },
                     onClick = {
-                        isExpandedPortionSelector = !isExpandedPortionSelector
+                        isExpandedTypeSelector = !isExpandedTypeSelector
                     }
                 )
                 DropdownMenu(
-                    expanded = isExpandedPortionSelector,
-                    onDismissRequest = { isExpandedPortionSelector = !isExpandedPortionSelector }
+                    expanded = isExpandedTypeSelector,
+                    onDismissRequest = { isExpandedTypeSelector = !isExpandedTypeSelector }
                 ) {
-                    for (portion in arrayOf("day", "portion")) {
+                    for (type in arrayOf("breakfast", "lunch", "dinner", "dessert", "snack")) {
                         DropdownMenuItem(
                             modifier = Modifier
-                                .background(if (portion == portionSelection) Color.LightGray else Color.Transparent),
-                            text = { Text(portion) },
+                                .background(if (type == typeSelection) Color.LightGray else Color.Transparent),
+                            text = { Text(type) },
                             onClick = {
-                                portionSelection = portion
-                                isExpandedPortionSelector = false
+                                typeSelection = type
+                                isExpandedTypeSelector = false
                             },
                         )
                     }
                 }
             }
-        }
 
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text("Type: ")
-            DropdownMenuItem(
-                text = { Text(typeSelection) },
-                onClick = {
-                    isExpandedTypeSelector = !isExpandedTypeSelector
-                }
-            )
-            DropdownMenu(
-                expanded = isExpandedTypeSelector,
-                onDismissRequest = { isExpandedTypeSelector = !isExpandedTypeSelector }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                for (type in arrayOf("breakfast", "lunch", "dinner", "dessert", "snack")) {
-                    DropdownMenuItem(
-                        modifier = Modifier
-                            .background(if (type == typeSelection) Color.LightGray else Color.Transparent),
-                        text = { Text(type) },
-                        onClick = {
-                            typeSelection = type
-                            isExpandedTypeSelector = false
-                        },
-                    )
-                }
-            }
-        }
-
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text("Ingredients")
-            Icon(
-                imageVector = Icons.Filled.Add,
-                contentDescription = "Add Icon",
-                modifier = Modifier
-                    .padding(start = 20.dp)
-                    .size(20.dp)
-                    .clickable {
-                        showIngredientModal = true
-                        selectedIngredient.value = null
-                    }
-            )
-        }
-        ReorderableColumn(
-            list = ingredients.value,
-            onSettle = { fromIndex, toIndex ->
-                {
-                    ingredients.value = ingredients.value.toMutableList().apply {
-                        add(toIndex, removeAt(fromIndex))
-                    }
-                }
-            }
-        ) { index, ingredient, isDragging ->
-            key(index) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
+                Text("Ingredients")
+                Icon(
+                    imageVector = Icons.Filled.Add,
+                    contentDescription = "Add Icon",
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(12.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.clickable {
+                        .padding(start = 20.dp)
+                        .size(20.dp)
+                        .clickable {
                             showIngredientModal = true
-                            selectedIngredient.value = ingredient
-                            selectedIngredientIndex.intValue = index
+                            selectedIngredient.value = null
                         }
-                    ) {
-                        Text(ingredient.name)
-                        Text(" - ")
-                        Text(ingredient.value.toString())
-                        Text(ingredient.measurement)
-                    }
-                    Icon(
-                        imageVector = Icons.Default.FavoriteBorder,
-                        contentDescription = "Drag Handle",
-                        modifier = Modifier
-                            .size(24.dp)
-                            .draggableHandle() // This is correct for the drag handle
-                    )
-                }
-            }
-        }
-
-        if (showIngredientModal) {
-            AddOrEditIngredient(
-                ingredient = selectedIngredient.value,
-                onConfirmation = {
-                    if (selectedIngredient.value != null) {
-                        val updatedList = ingredients.value.toMutableList()
-                        updatedList[selectedIngredientIndex.intValue] = it
-                        ingredients.value = updatedList
-                    } else {
-                        ingredients.value = ingredients.value.toMutableList().apply { add(it) }
-                    }
-                    selectedIngredient.value = null
-                    showIngredientModal = false
-                },
-                onDismissRequest = { showIngredientModal = false },
-                dialogTitle = if (selectedIngredient.value != null) "Edit ingredient" else "New ingredient"
-            )
-        }
-
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(top = 20.dp)
-        ) {
-            Text("Methods")
-            Icon(
-                imageVector = Icons.Filled.Add,
-                contentDescription = "Add Icon",
-                modifier = Modifier
-                    .padding(start = 20.dp)
-                    .size(20.dp)
-                    .clickable {
-                        showMethodModal = true
-                        selectedMethod.value = null
-                    }
-            )
-        }
-
-        ReorderableColumn(
-            list = methods.value,
-            onSettle = { fromIndex, toIndex ->
-                {
-                    methods.value = methods.value.toMutableList().apply {
-                        add(toIndex, removeAt(fromIndex))
-                    }
-                }
-            }
-        ) { index, method, isDragging ->
-            key(index) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(12.dp)
-                ) {
-                    val methodDivider = index.inc().toString() + ". "
-                    Row(
-                        modifier = Modifier.clickable {
-                            showMethodModal = true
-                            selectedMethod.value = method
-                            selectedMethodIndex.intValue = index
-                        }
-                    ) {
-                        Text(methodDivider + method.value)
-                    }
-                    Icon(
-                        imageVector = Icons.Default.FavoriteBorder,
-                        contentDescription = "Drag Handle",
-                        modifier = Modifier
-                            .size(24.dp)
-                            .draggableHandle() // This is correct for the drag handle
-                    )
-                }
-            }
-        }
-
-        if (showMethodModal) {
-            AddOrEditMethodStep(
-                method = selectedMethod.value,
-                onConfirmation = {
-                    if (selectedIngredient.value != null) {
-                        val updatedList = methods.value.toMutableList()
-                        updatedList[selectedMethodIndex.intValue] = it
-                        methods.value = updatedList
-                    } else {
-                        methods.value = methods.value.toMutableList().apply { add(it) }
-                    }
-                    selectedMethod.value = null
-                    showMethodModal = false
-                },
-                onDismissRequest = { showMethodModal = false },
-                dialogTitle = if (selectedMethod.value != null) "Edit method step" else "New method step"
-            )
-        }
-
-        Button(
-            onClick = {
-                onSave(
-                    RecipeRequest(
-                        id = recipe?.id ?: 0,
-                        name = name,
-                        type = if (typeSelection === "Choose") "" else typeSelection
-                    ),
-                    Portion(
-                        id = recipe?.portion?.id ?: 0,
-                        value = portionValue.toFloat(),
-                        measurement = if (portionSelection === "Choose") "days" else portionSelection
-                    ),
-                    ingredients.value,
-                    methods.value,
-                    imageBytes,
                 )
-            },
-            modifier = Modifier
-                .align(Alignment.End),
-            enabled = name !== ""
-        ) {
-            Text("Save")
+            }
+            ReorderableColumn(
+                list = ingredients.value,
+                onSettle = { fromIndex, toIndex ->
+                    {
+                        ingredients.value = ingredients.value.toMutableList().apply {
+                            add(toIndex, removeAt(fromIndex))
+                        }
+                    }
+                }
+            ) { index, ingredient, isDragging ->
+                key(index) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.clickable {
+                                showIngredientModal = true
+                                selectedIngredient.value = ingredient
+                                selectedIngredientIndex.intValue = index
+                            }
+                        ) {
+                            Text(ingredient.name)
+                            Text(" - ")
+                            Text(ingredient.value.toString())
+                            Text(ingredient.measurement)
+                        }
+                        Icon(
+                            imageVector = Icons.Default.Star,
+                            contentDescription = "Drag Handle",
+                            modifier = Modifier
+                                .size(24.dp)
+                                .draggableHandle()
+                        )
+                    }
+                }
+            }
+
+            if (showIngredientModal) {
+                AddOrEditIngredient(
+                    ingredient = selectedIngredient.value,
+                    onConfirmation = {
+                        if (selectedIngredient.value != null) {
+                            val updatedList = ingredients.value.toMutableList()
+                            updatedList[selectedIngredientIndex.intValue] = it
+                            ingredients.value = updatedList
+                        } else {
+                            ingredients.value = ingredients.value.toMutableList().apply { add(it) }
+                        }
+                        selectedIngredient.value = null
+                        showIngredientModal = false
+                    },
+                    onDismissRequest = { showIngredientModal = false },
+                    dialogTitle = if (selectedIngredient.value != null) "Edit ingredient" else "New ingredient"
+                )
+            }
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(top = 20.dp)
+            ) {
+                Text("Methods")
+                Icon(
+                    imageVector = Icons.Filled.Add,
+                    contentDescription = "Add Icon",
+                    modifier = Modifier
+                        .padding(start = 20.dp)
+                        .size(20.dp)
+                        .clickable {
+                            showMethodModal = true
+                            selectedMethod.value = null
+                        }
+                )
+            }
+
+            ReorderableColumn(
+                list = methods.value,
+                onSettle = { fromIndex, toIndex ->
+                    {
+                        methods.value = methods.value.toMutableList().apply {
+                            add(toIndex, removeAt(fromIndex))
+                        }
+                    }
+                }
+            ) { index, method, isDragging ->
+                key(index) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp)
+                    ) {
+                        val methodDivider = index.inc().toString() + ". "
+                        Row(
+                            modifier = Modifier.clickable {
+                                showMethodModal = true
+                                selectedMethod.value = method
+                                selectedMethodIndex.intValue = index
+                            }
+                        ) {
+                            Text(methodDivider + method.value)
+                        }
+                        Icon(
+                            imageVector = Icons.Default.FavoriteBorder,
+                            contentDescription = "Drag Handle",
+                            modifier = Modifier
+                                .size(24.dp)
+                                .draggableHandle() // This is correct for the drag handle
+                        )
+                    }
+                }
+            }
+
+            if (showMethodModal) {
+                AddOrEditMethodStep(
+                    method = selectedMethod.value,
+                    onConfirmation = {
+                        if (selectedIngredient.value != null) {
+                            val updatedList = methods.value.toMutableList()
+                            updatedList[selectedMethodIndex.intValue] = it
+                            methods.value = updatedList
+                        } else {
+                            methods.value = methods.value.toMutableList().apply { add(it) }
+                        }
+                        selectedMethod.value = null
+                        showMethodModal = false
+                    },
+                    onDismissRequest = { showMethodModal = false },
+                    dialogTitle = if (selectedMethod.value != null) "Edit method step" else "New method step"
+                )
+            }
         }
     }
 }
-
 
 @Composable
 fun ImageUploader(

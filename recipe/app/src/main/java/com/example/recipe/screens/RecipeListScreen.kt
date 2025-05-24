@@ -206,7 +206,7 @@ fun RecipeList(
 
     LazyVerticalStaggeredGrid(
         state = lazyStaggeredGridState,
-        columns = StaggeredGridCells.Adaptive(200.dp),
+        columns = StaggeredGridCells.Adaptive(minSize = 300.dp),
         modifier = Modifier.fillMaxSize().padding(5.dp),
         verticalItemSpacing = 4.dp,
         horizontalArrangement = Arrangement.spacedBy(5.dp),
@@ -217,6 +217,7 @@ fun RecipeList(
                     Surface (shadowElevation = elevation) {
                         Card(
                             modifier = Modifier
+                                .fillMaxWidth()
                                 .padding(bottom = 10.dp)
                                 .clickable { onView(recipe) }
                         ) {
@@ -270,12 +271,30 @@ fun RecipeList(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
-                                    Row {
+                                    val currentHorizontalArrangement = if (recipe.type == "") {
+                                        Arrangement.SpaceBetween
+                                    } else {
+                                        Arrangement.Start
+                                    }
+
+                                    val modifier = if (recipe.type == "") {
+                                        Modifier.fillMaxWidth()
+                                    } else {
+                                        Modifier
+                                    }
+
+                                    Row (
+                                        modifier = modifier,
+                                        horizontalArrangement = currentHorizontalArrangement,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        val maxWidth = if (recipe.type != "") 170.dp else 230.dp
                                         Text(
                                             text = recipe.name,
                                             textAlign = TextAlign.Center,
                                             fontWeight = FontWeight.Bold,
-                                            overflow = TextOverflow.Ellipsis
+                                            overflow = TextOverflow.Visible,
+                                            modifier = Modifier.widthIn(max = maxWidth)
                                         )
 
                                         if (recipe.portion != null) {
