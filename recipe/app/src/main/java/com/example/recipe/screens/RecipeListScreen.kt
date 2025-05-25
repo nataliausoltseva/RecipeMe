@@ -3,6 +3,7 @@ package com.example.recipe.screens
 import android.util.Base64
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -10,10 +11,13 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -21,6 +25,8 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.items
@@ -28,8 +34,11 @@ import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridS
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
@@ -40,6 +49,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -62,7 +72,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.view.HapticFeedbackConstantsCompat
 import androidx.core.view.ViewCompat
 import com.example.recipe.byteArrayToBitmap
@@ -82,6 +94,7 @@ fun RecipeListScreen(
     var sortKeyState by remember { mutableStateOf(recipesUIState.selectedSortKey) }
     var sortDirectionKeyState by remember { mutableStateOf(recipesUIState.selectedSortDirection) }
     var recipes = remember { mutableStateOf(recipesUIState.recipes) }
+    var isSplitView = remember { mutableStateOf(recipesUIState.isTypeSplitView)}
 
     Column(
         modifier = Modifier
@@ -101,6 +114,13 @@ fun RecipeListScreen(
                     recipeViewModel.onSearch(it)
                 }
             )
+            LayoutToggle(
+                onToggle = {
+                    recipeViewModel.onSplitViewToggle()
+                    isSplitView.value = !isSplitView.value
+                },
+                isSplitView = isSplitView.value,
+            )
             Filter(
                 onToggle = { showFilterDialog.value = !showFilterDialog.value },
             )
@@ -108,19 +128,46 @@ fun RecipeListScreen(
         Box(
             modifier = Modifier.fillMaxSize(),
         ) {
-            var list by remember { mutableStateOf(recipes) }
+            if (isSplitView.value) {
+                RecipeSplitList(
+                    recipes = recipesUIState.recipes,
+                    onView = { recipeViewModel.viewRecipe(it) },
+                )
+            } else {
+                var list by remember { mutableStateOf(recipes) }
 
-            RecipeList(
-                recipes = recipesUIState.recipes,
-                onView = { recipeViewModel.viewRecipe(it) },
-                onReorder = {
-                    recipeViewModel.onReorder()
-                    list.value = it
-                },
-                shouldReset = recipesUIState.shouldReset,
-                onSaveReset = { recipeViewModel.onSaveReset() },
-                isSortedByOrder = recipesUIState.selectedSortKey == "sortOrder"
-            )
+                RecipeList(
+                    recipes = recipesUIState.recipes,
+                    onView = { recipeViewModel.viewRecipe(it) },
+                    onReorder = {
+                        recipeViewModel.onReorder()
+                        list.value = it
+                    },
+                    shouldReset = recipesUIState.shouldReset,
+                    onSaveReset = { recipeViewModel.onSaveReset() },
+                    isSortedByOrder = recipesUIState.selectedSortKey == "sortOrder"
+                )
+
+                if (recipesUIState.isReordered) {
+                    FloatingActionButton(
+                        onClick = { recipeViewModel.onReset() },
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(16.dp, 16.dp, 80.dp, 16.dp)
+                    ) {
+                        Revert()
+                    }
+                    FloatingActionButton(
+                        onClick = { recipeViewModel.onSaveReorder(list.value) },
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(16.dp, 16.dp, 145.dp, 16.dp)
+                    ) {
+                        Save()
+                    }
+                }
+            }
+
             FloatingActionButton(
                 onClick = { recipeViewModel.createRecipe() },
                 modifier = Modifier
@@ -128,24 +175,6 @@ fun RecipeListScreen(
                     .padding(16.dp)
             ) {
                 Add()
-            }
-            if (recipesUIState.isReordered) {
-                FloatingActionButton(
-                    onClick = { recipeViewModel.onReset() },
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(16.dp, 16.dp, 80.dp, 16.dp)
-                ) {
-                    Revert()
-                }
-                FloatingActionButton(
-                    onClick = { recipeViewModel.onSaveReorder(list.value) },
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(16.dp, 16.dp, 145.dp, 16.dp)
-                ) {
-                    Save()
-                }
             }
         }
 
@@ -169,6 +198,75 @@ fun RecipeListScreen(
         }
     }
 
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun RecipeSplitList(
+    recipes: List<Recipe>,
+    onView: (recipe: Recipe) -> Unit
+) {
+    val typeOrder = remember {
+        listOf("breakfast", "lunch", "dinner", "dessert", "snack")
+    }
+
+    val groupedByType: Map<String, List<Recipe>> = remember(recipes) {
+        recipes.groupBy { it.type.lowercase() }
+    }
+
+    val orderedGroupedRecipes: List<Pair<String, List<Recipe>>> = remember(groupedByType, typeOrder) {
+        val result = mutableListOf<Pair<String, List<Recipe>>>()
+        typeOrder.forEach { desiredType ->
+            groupedByType[desiredType]?.let { recipesForType ->
+                val displayType = desiredType.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
+                result.add(Pair(displayType, recipesForType))
+            }
+        }
+
+        val remainingTypes = groupedByType.keys - typeOrder.toSet()
+        remainingTypes.sorted().forEach { remainingType ->
+            groupedByType[remainingType]?.let { recipesForType ->
+                val displayType = remainingType.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
+                result.add(Pair(displayType, recipesForType))
+            }
+        }
+        result
+    }
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+    ) {
+        orderedGroupedRecipes.forEachIndexed { index, (type, recipesOfType) ->
+            stickyHeader {
+                Surface(
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 20.dp),
+                ) {
+                    Text(
+                        text = if (type.isNotBlank()) type else "Uncategorized",
+                        modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 20.sp
+                    )
+                }
+            }
+            items(
+                items = recipesOfType,
+                key = { recipe -> recipe.id }
+            ) { recipe ->
+                RecipeCard(
+                    recipe = recipe,
+                    onView = { onView(recipe) },
+                    modifier = Modifier.padding(vertical = 4.dp)
+                )
+            }
+            if (index < orderedGroupedRecipes.size - 1) {
+                item {
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+            }
+        }
+    }
 }
 
 @Composable
@@ -215,179 +313,191 @@ fun RecipeList(
                 ReorderableItem(reorderableLazyStaggeredGridState, key = recipe.id.toString()) { isDragging ->
                     val elevation by animateDpAsState(if (isDragging && isSortedByOrder) 4.dp else 0.dp)
                     Surface (shadowElevation = elevation) {
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(bottom = 10.dp)
-                                .clickable { onView(recipe) }
-                        ) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(10.dp),
-                                verticalArrangement = Arrangement.spacedBy(10.dp)
-                            ) {
-                                var modifier = Modifier.fillMaxWidth(0.5f)
+                        var modifier = Modifier.fillMaxWidth()
 
-                                if (isSortedByOrder) {
-                                    modifier = modifier.draggableHandle(
-                                        onDragStarted = {
-                                            if (isSortedByOrder) {
-                                                ViewCompat.performHapticFeedback(
-                                                    view,
-                                                    HapticFeedbackConstantsCompat.GESTURE_START
-                                                )
-                                            }
-                                        },
-                                        onDragStopped = {
-                                            if (isSortedByOrder) {
-                                                ViewCompat.performHapticFeedback(
-                                                    view,
-                                                    HapticFeedbackConstantsCompat.GESTURE_END
-                                                )
-                                            }
-                                        },
-                                    )
-                                }
-
-                                if (recipe.image?.url != null) {
-                                    val decodedBytes = Base64.decode(recipe.image.url, Base64.DEFAULT)
-                                    if (decodedBytes != null) {
-                                        val bitmap = byteArrayToBitmap(decodedBytes)
-                                        val imageBitmap = bitmap.asImageBitmap()
-                                        Image(
-                                            bitmap = imageBitmap,
-                                            contentDescription = recipe.name + " image",
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .heightIn(max = 100.dp)
-                                                .clip(RoundedCornerShape(8.dp))
-
+                        if (isSortedByOrder) {
+                            modifier = modifier.draggableHandle(
+                                onDragStarted = {
+                                    if (isSortedByOrder) {
+                                        ViewCompat.performHapticFeedback(
+                                            view,
+                                            HapticFeedbackConstantsCompat.GESTURE_START
                                         )
                                     }
-                                }
-
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    val currentHorizontalArrangement = if (recipe.type == "") {
-                                        Arrangement.SpaceBetween
-                                    } else {
-                                        Arrangement.Start
-                                    }
-
-                                    val modifier = if (recipe.type == "") {
-                                        Modifier.fillMaxWidth()
-                                    } else {
-                                        Modifier
-                                    }
-
-                                    Row (
-                                        modifier = modifier,
-                                        horizontalArrangement = currentHorizontalArrangement,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        val maxWidth = if (recipe.type != "") 170.dp else 230.dp
-                                        Text(
-                                            text = recipe.name,
-                                            textAlign = TextAlign.Center,
-                                            fontWeight = FontWeight.Bold,
-                                            overflow = TextOverflow.Visible,
-                                            modifier = Modifier.widthIn(max = maxWidth)
-                                        )
-
-                                        if (recipe.portion != null) {
-                                            Text(
-                                                text = "(" + recipe.portion.value.toString() + " " + recipe.portion.measurement + ")",
-                                                modifier = Modifier.padding(start = 5.dp),
-                                                overflow = TextOverflow.Ellipsis
-                                            )
-                                        }
-                                    }
-
-                                    if (recipe.type != "") {
-                                        Text(
-                                            text = recipe.type,
-                                            fontStyle = FontStyle.Italic,
-                                            overflow = TextOverflow.Ellipsis
+                                },
+                                onDragStopped = {
+                                    if (isSortedByOrder) {
+                                        ViewCompat.performHapticFeedback(
+                                            view,
+                                            HapticFeedbackConstantsCompat.GESTURE_END
                                         )
                                     }
-                                }
-
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Text(
-                                        text = "Ingredients:",
-                                        overflow = TextOverflow.Ellipsis,
-                                    )
-
-                                    var itemLabel = "item"
-
-                                    if (recipe.ingredients == null || recipe.ingredients.size > 1) {
-                                        itemLabel = "items"
-                                    }
-
-                                    Text(
-                                        text = (if (recipe.ingredients == null) "0" else recipe.ingredients.size.toString()) + " " + itemLabel,
-                                        fontStyle = FontStyle.Italic,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                }
-
-                                if (recipe.ingredients != null) {
-                                    var allIngredients = recipe.ingredients.joinToString("\n") { "${it.name} ${it.value} ${it.measurement}" }
-                                    Text(
-                                        text = allIngredients,
-                                        overflow = TextOverflow.Ellipsis,maxLines = 5
-
-                                    )
-                                }
-
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Text(
-                                        text = "Methods:",
-                                        overflow = TextOverflow.Ellipsis,
-                                    )
-
-                                    var itemLabel = "step"
-
-                                    if (recipe.methods == null || recipe.methods.size > 1) {
-                                        itemLabel = "steps"
-                                    }
-
-                                    Text(
-                                        text = (if (recipe.methods == null) "0" else recipe.methods.size.toString()) + " " + itemLabel,
-                                        fontStyle = FontStyle.Italic,
-                                        overflow = TextOverflow.Ellipsis,
-                                        maxLines = 3
-                                    )
-                                }
-
-                                if (recipe.methods != null) {
-                                    var allMethods = recipe.methods.joinToString("\n") { method ->
-                                        val indicator =
-                                            method.sortOrder ?: (recipe.methods.indexOf(method) + 1)
-                                        "$indicator. ${method.value}"
-                                    }
-
-                                    Text(
-                                        text = allMethods,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                }
-                            }
+                                },
+                            )
                         }
+                        RecipeCard(
+                            recipe = recipe,
+                            onView = { onView(it) },
+                            modifier = modifier
+                        )
                     }
                 }
             }
         }
     )
+}
+
+@Composable
+fun RecipeCard(
+    recipe: Recipe,
+    onView: (recipe: Recipe) -> Unit,
+    modifier: Modifier
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 10.dp)
+            .clickable { onView(recipe) }
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(10.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            if (recipe.image?.url != null) {
+                val decodedBytes = Base64.decode(recipe.image.url, Base64.DEFAULT)
+                if (decodedBytes != null) {
+                    val bitmap = byteArrayToBitmap(decodedBytes)
+                    val imageBitmap = bitmap.asImageBitmap()
+                    Image(
+                        bitmap = imageBitmap,
+                        contentDescription = recipe.name + " image",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 100.dp)
+                            .clip(RoundedCornerShape(8.dp))
+
+                    )
+                }
+            }
+
+            Row(
+                modifier = modifier,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                val currentHorizontalArrangement = if (recipe.type == "") {
+                    Arrangement.SpaceBetween
+                } else {
+                    Arrangement.Start
+                }
+
+                val modifier = if (recipe.type == "") {
+                    Modifier.fillMaxWidth()
+                } else {
+                    Modifier
+                }
+
+                Row (
+                    modifier = modifier,
+                    horizontalArrangement = currentHorizontalArrangement,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    val maxWidth = if (recipe.type != "") 170.dp else 230.dp
+                    Text(
+                        text = recipe.name,
+                        textAlign = TextAlign.Center,
+                        fontWeight = FontWeight.Bold,
+                        overflow = TextOverflow.Visible,
+                        modifier = Modifier.widthIn(max = maxWidth)
+                    )
+
+                    if (recipe.portion != null) {
+                        Text(
+                            text = "(" + recipe.portion.value.toString() + " " + recipe.portion.measurement + ")",
+                            modifier = Modifier.padding(start = 5.dp),
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+
+                if (recipe.type != "") {
+                    Text(
+                        text = recipe.type,
+                        fontStyle = FontStyle.Italic,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "Ingredients:",
+                    overflow = TextOverflow.Ellipsis,
+                )
+
+                var itemLabel = "item"
+
+                if (recipe.ingredients == null || recipe.ingredients.size > 1) {
+                    itemLabel = "items"
+                }
+
+                Text(
+                    text = (if (recipe.ingredients == null) "0" else recipe.ingredients.size.toString()) + " " + itemLabel,
+                    fontStyle = FontStyle.Italic,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            if (recipe.ingredients != null) {
+                var allIngredients = recipe.ingredients.joinToString("\n") { "${it.name} ${it.value} ${it.measurement}" }
+                Text(
+                    text = allIngredients,
+                    overflow = TextOverflow.Ellipsis,maxLines = 5
+
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "Methods:",
+                    overflow = TextOverflow.Ellipsis,
+                )
+
+                var itemLabel = "step"
+
+                if (recipe.methods == null || recipe.methods.size > 1) {
+                    itemLabel = "steps"
+                }
+
+                Text(
+                    text = (if (recipe.methods == null) "0" else recipe.methods.size.toString()) + " " + itemLabel,
+                    fontStyle = FontStyle.Italic,
+                    overflow = TextOverflow.Ellipsis,
+                    maxLines = 3
+                )
+            }
+
+            if (recipe.methods != null) {
+                var allMethods = recipe.methods.joinToString("\n") { method ->
+                    val indicator =
+                        method.sortOrder ?: (recipe.methods.indexOf(method) + 1)
+                    "$indicator. ${method.value}"
+                }
+
+                Text(
+                    text = allMethods,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
 }
 
 
@@ -651,6 +761,20 @@ fun Filter(
     Icon(
         imageVector = Icons.Filled.Settings,
         contentDescription = "Settings Icon",
+        modifier = Modifier
+            .size(45.dp)
+            .clickable { onToggle() }
+    )
+}
+
+@Composable
+fun LayoutToggle(
+    onToggle: () -> Unit,
+    isSplitView: Boolean,
+) {
+    Icon(
+        imageVector = if (isSplitView) Icons.AutoMirrored.Filled.List else Icons.Filled.Menu,
+        contentDescription = "Layout Toggle Icon",
         modifier = Modifier
             .size(45.dp)
             .clickable { onToggle() }

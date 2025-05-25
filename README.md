@@ -117,8 +117,8 @@ The right screen represents the modal for filter/sort dropdown. The ingredients'
 ## Roadmap:
 - Implement and update the design of the application.
 - Add split view based on the type
+- Implement delete functionality
 - Add functionality of increasing or decreasing the portion which results in the updated list of ingredients. 
-- Exporting functionality of the recipe as a long screenshot.
 - Make a companion watch app.
 - Look into Gemini integration so that when asking to look for a recipe, it looks through this app first.
 - Ability to have "Cooking mode" so that the phone screen does not turn off.

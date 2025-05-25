@@ -221,6 +221,12 @@ class RecipeViewModel: ViewModel() {
         }
     }
 
+    fun onSplitViewToggle() {
+        _uiState.update { currentState ->
+            currentState.copy(isTypeSplitView = !currentState.isTypeSplitView)
+        }
+    }
+
     init {
         getRecipes()
     }

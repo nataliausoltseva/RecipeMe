@@ -12,6 +12,7 @@ data class State(
     val selectedSortKey: String = "sortOrder",
     val isReordered: Boolean = false,
     val shouldReset: Boolean = false,
+    val isTypeSplitView: Boolean = false,
 ) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
