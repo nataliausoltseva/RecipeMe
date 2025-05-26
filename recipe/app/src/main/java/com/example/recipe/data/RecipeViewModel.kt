@@ -1,9 +1,12 @@
 package com.example.recipe.data
 
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.recipe.helpers.Endpoints
 import com.example.recipe.helpers.RecipeRequest
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,7 +21,7 @@ class RecipeViewModel: ViewModel() {
     val uiState: StateFlow<State> = _uiState.asStateFlow()
 
     private fun getRecipes(search: String? = null) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             try {
                 val endpoints = Endpoints()
                 var recipes: List<Recipe>? = endpoints.getRecipes(search)
@@ -128,7 +131,8 @@ class RecipeViewModel: ViewModel() {
         return MultipartBody.Part.createFormData("image", "recipe-$recipeId.png", requestBody)
     }
 
-    fun onFilterOrSort(selectedIngredientNames: Array<String>, sortKey: String = "", sortDirection: String = "") {
+    fun onFilterOrSort(selectedIngredientNames: List<String>, sortKey: String = "", sortDirection: String = "") {
+        println(selectedIngredientNames)
         val combinedIngredientNames = selectedIngredientNames.joinToString(",")
         viewModelScope.launch {
             try {
@@ -162,7 +166,7 @@ class RecipeViewModel: ViewModel() {
                     val uniqueIngredientNames = ingredients.map { it.name }.distinct()
                     _uiState.update {
                         it.copy(
-                            availableIngredients = uniqueIngredientNames.toTypedArray(),
+                            availableIngredients = uniqueIngredientNames,
                         )
                     }
                 }
@@ -201,9 +205,7 @@ class RecipeViewModel: ViewModel() {
         viewModelScope.launch {
             try {
                 val endpoints = Endpoints()
-                println(newOrderRecipes)
                 var recipes: List<Recipe>? = endpoints.reorderRecipes(newOrderRecipes)
-                println(recipes)
                 if (recipes == null) {
                     recipes = listOf()
                 }
@@ -221,7 +223,17 @@ class RecipeViewModel: ViewModel() {
         }
     }
 
+    fun onSplitViewToggle() {
+        _uiState.update { currentState ->
+            currentState.copy(isTypeSplitView = !currentState.isTypeSplitView)
+        }
+    }
+
     init {
         getRecipes()
     }
+}
+
+fun byteArrayToBitmap(bytes: ByteArray): Bitmap {
+    return BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
 }

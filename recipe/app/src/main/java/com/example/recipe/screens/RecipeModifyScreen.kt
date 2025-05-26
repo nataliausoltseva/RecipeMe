@@ -58,7 +58,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import com.example.recipe.byteArrayToBitmap
+import com.example.recipe.data.byteArrayToBitmap
 import com.example.recipe.data.Image
 import com.example.recipe.data.Ingredient
 import com.example.recipe.data.Method
