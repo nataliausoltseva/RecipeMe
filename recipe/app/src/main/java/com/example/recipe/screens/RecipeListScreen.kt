@@ -1,7 +1,6 @@
 package com.example.recipe.screens
 
 import android.util.Base64
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
@@ -22,7 +21,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -37,7 +35,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
@@ -49,7 +46,6 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -70,16 +66,14 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.view.HapticFeedbackConstantsCompat
 import androidx.core.view.ViewCompat
-import com.example.recipe.byteArrayToBitmap
 import com.example.recipe.data.Recipe
 import com.example.recipe.data.RecipeViewModel
+import com.example.recipe.data.byteArrayToBitmap
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyStaggeredGridState
 
@@ -91,10 +85,6 @@ fun RecipeListScreen(
 
     var search by remember { mutableStateOf("") }
     var showFilterDialog = remember { mutableStateOf(false)}
-    var sortKeyState by remember { mutableStateOf(recipesUIState.selectedSortKey) }
-    var sortDirectionKeyState by remember { mutableStateOf(recipesUIState.selectedSortDirection) }
-    var recipes = remember { mutableStateOf(recipesUIState.recipes) }
-    var isSplitView = remember { mutableStateOf(recipesUIState.isTypeSplitView)}
 
     Column(
         modifier = Modifier
@@ -117,9 +107,8 @@ fun RecipeListScreen(
             LayoutToggle(
                 onToggle = {
                     recipeViewModel.onSplitViewToggle()
-                    isSplitView.value = !isSplitView.value
                 },
-                isSplitView = isSplitView.value,
+                isSplitView = recipesUIState.isTypeSplitView,
             )
             Filter(
                 onToggle = { showFilterDialog.value = !showFilterDialog.value },
@@ -128,20 +117,20 @@ fun RecipeListScreen(
         Box(
             modifier = Modifier.fillMaxSize(),
         ) {
-            if (isSplitView.value) {
+            if (recipesUIState.isTypeSplitView) {
                 RecipeSplitList(
                     recipes = recipesUIState.recipes,
                     onView = { recipeViewModel.viewRecipe(it) },
                 )
             } else {
-                var list by remember { mutableStateOf(recipes) }
+                var list by remember { mutableStateOf(recipesUIState.recipes) }
 
                 RecipeList(
                     recipes = recipesUIState.recipes,
                     onView = { recipeViewModel.viewRecipe(it) },
                     onReorder = {
                         recipeViewModel.onReorder()
-                        list.value = it
+                        list = it
                     },
                     shouldReset = recipesUIState.shouldReset,
                     onSaveReset = { recipeViewModel.onSaveReset() },
@@ -158,7 +147,7 @@ fun RecipeListScreen(
                         Revert()
                     }
                     FloatingActionButton(
-                        onClick = { recipeViewModel.onSaveReorder(list.value) },
+                        onClick = { recipeViewModel.onSaveReorder(list) },
                         modifier = Modifier
                             .align(Alignment.BottomEnd)
                             .padding(16.dp, 16.dp, 145.dp, 16.dp)
@@ -180,18 +169,16 @@ fun RecipeListScreen(
 
         if (showFilterDialog.value) {
             FilterAndSortDialog(
-                selectedIngredientNames=recipesUIState.selectedIngredientNames,
-                selectedSortKey = sortKeyState,
-                selectedSortDirection = sortDirectionKeyState,
+                selectedIngredientNames = recipesUIState.selectedIngredientNames,
+                selectedSortKey = recipesUIState.selectedSortKey,
+                selectedSortDirection = recipesUIState.selectedSortDirection,
                 availableIngredientNames = recipesUIState.availableIngredients,
                 onApply = { selectedNames, sortKey, sortDirection ->
-                    if (sortKeyState == "sortOrder" && sortKey != "sortOrder" && recipesUIState.isReordered) {
+                    if (recipesUIState.selectedSortKey == "sortOrder" && sortKey != "sortOrder" && recipesUIState.isReordered) {
                         recipeViewModel.onReset()
                     }
                     recipeViewModel.onFilterOrSort(selectedNames, sortKey, sortDirection)
                     showFilterDialog.value = false
-                    sortKeyState = sortKey
-                    sortDirectionKeyState = sortDirection
                 },
                 onClose = { showFilterDialog.value = false}
             )
@@ -503,11 +490,11 @@ fun RecipeCard(
 
 @Composable
 fun FilterAndSortDialog(
-    selectedIngredientNames: Array<String>,
-    onApply: (ingredientNames: Array<String>, sortKey: String, sortDirection: String) -> Unit,
+    selectedIngredientNames: List<String>,
+    onApply: (List<String>, String, String) -> Unit,
     selectedSortKey: String = "",
     selectedSortDirection: String = "",
-    availableIngredientNames: Array<String>,
+    availableIngredientNames: List<String>,
     onClose: () -> Unit
 ) {
     val sortOptions = mapOf(
@@ -543,8 +530,7 @@ fun FilterAndSortDialog(
         )
     )
 
-
-    var newSelectedIngredientNames = remember { mutableStateOf(listOf<String>(*selectedIngredientNames)) }
+    var newSelectedIngredientNames = remember { mutableStateOf(selectedIngredientNames) }
     var newSelectedSortKey = remember { mutableStateOf(selectedSortKey) }
     var newSelectedSortDirection = remember { mutableStateOf(selectedSortDirection) }
 
@@ -668,7 +654,7 @@ fun FilterAndSortDialog(
         confirmButton = {
             TextButton(
                 onClick = {
-                    onApply(newSelectedIngredientNames.value.toTypedArray(), newSelectedSortKey.value, newSelectedSortDirection.value)
+                    onApply(newSelectedIngredientNames.value, newSelectedSortKey.value, newSelectedSortDirection.value)
                 }
             ) {
                 Text("Apply")
@@ -750,7 +736,7 @@ fun SearchInput(
         placeholder = { Text(text = "Search") },
         shape = RoundedCornerShape(50),
         modifier = Modifier
-            .fillMaxWidth(0.85F)
+            .fillMaxWidth(0.75F)
     )
 }
 

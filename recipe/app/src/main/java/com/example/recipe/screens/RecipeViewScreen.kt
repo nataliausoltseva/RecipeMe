@@ -31,7 +31,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.example.recipe.byteArrayToBitmap
+import com.example.recipe.data.byteArrayToBitmap
 import com.example.recipe.data.Recipe
 import com.example.recipe.data.RecipeViewModel
 
