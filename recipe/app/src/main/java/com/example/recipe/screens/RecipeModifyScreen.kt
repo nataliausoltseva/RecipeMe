@@ -113,29 +113,62 @@ fun RecipeModifyScreen(
         val selectedMethod = remember { mutableStateOf<Method?>(null) }
         val selectedMethodIndex = remember { mutableIntStateOf(0) }
 
-        Icon(
-            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
-            contentDescription = "Go back",
-            modifier = Modifier
-                .clickable {
-                    recipeViewModel.saveRecipe(
-                        RecipeRequest(
-                            id = recipe?.id ?: 0,
-                            name = name,
-                            type = if (typeSelection === "Choose") "" else typeSelection
-                        ),
-                        Portion(
-                            id = recipe?.portion?.id ?: 0,
-                            value = portionValue.toFloat(),
-                            measurement = if (portionSelection === "Choose") "days" else portionSelection
-                        ),
-                        ingredients.value,
-                        methods.value,
-                        imageBytes,
-                    )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                contentDescription = "Go back",
+                modifier = Modifier
+                    .clickable {
+                        if (recipe != null) {
+                            recipeViewModel.saveRecipe(
+                                RecipeRequest(
+                                    id = recipe.id ?: 0,
+                                    name = name,
+                                    type = if (typeSelection === "Choose") "" else typeSelection
+                                ),
+                                Portion(
+                                    id = recipe.portion?.id ?: 0,
+                                    value = portionValue.toFloat(),
+                                    measurement = if (portionSelection === "Choose") "days" else portionSelection
+                                ),
+                                ingredients.value,
+                                methods.value,
+                                imageBytes,
+                            )
+                        } else {
+                            recipeViewModel.backToListView()
+                        }
+                    }
+                    .size(50.dp, 50.dp)
+            )
+            if (recipe == null) {
+                Button(
+                    onClick = {
+                        recipeViewModel.saveRecipe(
+                            RecipeRequest(
+                                id = recipe?.id ?: 0,
+                                name = name,
+                                type = if (typeSelection === "Choose") "" else typeSelection
+                            ),
+                            Portion(
+                                id = recipe?.portion?.id ?: 0,
+                                value = portionValue.toFloat(),
+                                measurement = if (portionSelection === "Choose") "days" else portionSelection
+                            ),
+                            ingredients.value,
+                            methods.value,
+                            imageBytes,
+                        )
+                    }
+                ) {
+                    Text("Save")
                 }
-                .size(50.dp, 50.dp)
-        )
+            }
+        }
 
         Column(
             modifier = Modifier

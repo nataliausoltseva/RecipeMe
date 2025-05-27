@@ -115,4 +115,15 @@ class Endpoints {
             return null
         }
     }
+
+    suspend fun deleteRecipe(recipeId: Int) {
+        try {
+            val response = apiInterface.deleteRecipe(recipeId)
+            if (!response.isSuccessful) {
+                println("Response error: $response")
+            }
+        } catch (e: Exception) {
+            println("Exception error getRecipes: ${e.message}. ${e.printStackTrace()}")
+        }
+    }
 }

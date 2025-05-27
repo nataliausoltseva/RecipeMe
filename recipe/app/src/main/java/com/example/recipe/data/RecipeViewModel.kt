@@ -229,6 +229,28 @@ class RecipeViewModel: ViewModel() {
         }
     }
 
+    fun onDeleteRecipe(recipe: Recipe) {
+        viewModelScope.launch {
+            try {
+                val endpoints = Endpoints()
+                endpoints.deleteRecipe(recipe.id)
+                var recipes = endpoints.getRecipes("")
+                if (recipes == null) {
+                    recipes = listOf()
+                }
+                _uiState.update {
+                    it.copy(
+                        recipes,
+                        isFullScreen = false,
+                        selectedRecipe = null
+                    )
+                }
+            } catch (e: Exception) {
+                println("Error: ${e.message}")
+            }
+        }
+    }
+
     init {
         getRecipes()
     }

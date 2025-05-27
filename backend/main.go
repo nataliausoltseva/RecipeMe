@@ -632,13 +632,35 @@ func addIngredients(w http.ResponseWriter, r *http.Request) {
 		}
 		if !found {
 			sortOrder := passedIngredientIndex + 1 + len(existingIngredients)
-
 			_, err := db.Exec("INSERT INTO ingredients(name, measurement, value, sortOrder, recipe_id) VALUES(?,?,?,?,?)", passedIngredient.Name, passedIngredient.Measurement, passedIngredient.Value, sortOrder, recipeId)
 			if err != nil {
 				fmt.Println("Error inserting ingredient:", err)
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
+		}
+	}
+
+	var deleteIds []string
+	for _, existing := range existingIngredients {
+		found := false
+		for _, passed := range passedIngredients {
+			if existing.ID == passed.ID {
+				found = true
+				break
+			}
+		}
+		if !found {
+			deleteIds = append(deleteIds, fmt.Sprintf("%d", existing.ID))
+		}
+	}
+
+	if len(deleteIds) > 0 {
+		query := fmt.Sprintf("DELETE FROM ingredients WHERE id IN (%s)", strings.Join(deleteIds, ", "))
+
+		_, err = db.Exec(query)
+		if err != nil {
+			fmt.Println("Error executing query:", err)
 		}
 	}
 
@@ -808,6 +830,29 @@ func addMethods(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
+		}
+	}
+
+	var deleteIds []string
+	for _, existing := range existingMethods {
+		found := false
+		for _, passed := range passedMethods {
+			if existing.ID == passed.ID {
+				found = true
+				break
+			}
+		}
+		if !found {
+			deleteIds = append(deleteIds, fmt.Sprintf("%d", existing.ID))
+		}
+	}
+
+	if len(deleteIds) > 0 {
+		query := fmt.Sprintf("DELETE FROM methods WHERE id IN (%s)", strings.Join(deleteIds, ", "))
+
+		_, err = db.Exec(query)
+		if err != nil {
+			fmt.Println("Error executing query:", err)
 		}
 	}
 

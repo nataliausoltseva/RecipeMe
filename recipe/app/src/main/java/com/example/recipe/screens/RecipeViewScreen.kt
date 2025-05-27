@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -31,6 +32,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.recipe.data.byteArrayToBitmap
 import com.example.recipe.data.Recipe
 import com.example.recipe.data.RecipeViewModel
@@ -58,15 +60,32 @@ fun RecipeViewScreen(
                     .clickable { recipeViewModel.backToListView() }
                     .size(50.dp, 50.dp)
             )
-            Icon(
-                imageVector = Icons.Filled.Edit,
-                contentDescription = "Edit button",
-                modifier = Modifier
-                    .clickable { recipeViewModel.onEditRecipe() }
-                    .padding(end = 10.dp)
-                    .size(30.dp, 30.dp)
+            Text(
+                text = recipesUIState.selectedRecipe?.name ?: "",
+                fontWeight = FontWeight.Bold,
+                overflow = TextOverflow.Ellipsis,
+                fontSize = 22.sp
             )
+            Row {
+                Icon(
+                    imageVector = Icons.Filled.Edit,
+                    contentDescription = "Edit button",
+                    modifier = Modifier
+                        .clickable { recipeViewModel.onEditRecipe() }
+                        .padding(end = 10.dp)
+                        .size(30.dp, 30.dp)
+                )
+                Icon(
+                    imageVector = Icons.Filled.Delete,
+                    contentDescription = "Delete button",
+                    modifier = Modifier
+                        .clickable { recipeViewModel.onDeleteRecipe(recipesUIState.selectedRecipe!!) }
+                        .padding(end = 10.dp)
+                        .size(30.dp, 30.dp)
+                )
+            }
         }
+
         Recipe(
             recipesUIState.selectedRecipe!!
         )
@@ -136,7 +155,6 @@ fun Recipe(
                 modifier = Modifier.padding(top = 20.dp)
             )
         }
-
         if (recipe.ingredients != null) {
             Text(
                 text = "Ingredients:",
