@@ -131,7 +131,6 @@ class RecipeViewModel: ViewModel() {
     }
 
     fun onFilterOrSort(selectedIngredientNames: List<String>, sortKey: String = "", sortDirection: String = "") {
-        println(selectedIngredientNames)
         val combinedIngredientNames = selectedIngredientNames.joinToString(",")
         viewModelScope.launch {
             try {

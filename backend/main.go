@@ -617,14 +617,9 @@ func addIngredients(w http.ResponseWriter, r *http.Request) {
 
 	for passedIngredientIndex, passedIngredient := range passedIngredients {
 		found := false
-		for existingIngredientIndex, existingIngredient := range existingIngredients {
+		for _, existingIngredient := range existingIngredients {
 			if passedIngredient.ID == existingIngredient.ID {
-				sortOrder := passedIngredient.SortOrder
-				if existingIngredientIndex == 0 && passedIngredient.SortOrder == 0 {
-					sortOrder += 1
-				} else if existingIngredientIndex != 0 && passedIngredient.SortOrder == 0 {
-					sortOrder = existingIngredientIndex + 1
-				}
+				sortOrder := passedIngredientIndex + 1
 
 				_, err := db.Exec("UPDATE ingredients SET name = ?, measurement = ?, value = ?, sortOrder = ? WHERE id = ?", passedIngredient.Name, passedIngredient.Measurement, passedIngredient.Value, sortOrder, passedIngredient.ID)
 				if err != nil {
@@ -697,12 +692,7 @@ func addIngredient(w http.ResponseWriter, r *http.Request) {
 	found := false
 	for existingIngredientIndex, existingIngredient := range existingIngredients {
 		if passedIngredient.ID == existingIngredient.ID {
-			sortOrder := passedIngredient.SortOrder
-			if existingIngredientIndex == 0 && passedIngredient.SortOrder == 0 {
-				sortOrder += 1
-			} else if existingIngredientIndex != 0 && passedIngredient.SortOrder == 0 {
-				sortOrder = existingIngredientIndex + 1
-			}
+			sortOrder := existingIngredientIndex + 1
 
 			_, err := db.Exec("UPDATE ingredients SET name = ?, measurement = ?, value = ?, sortOrder = ? WHERE id = ?", passedIngredient.Name, passedIngredient.Measurement, passedIngredient.Value, sortOrder, passedIngredient.ID)
 			if err != nil {
@@ -810,13 +800,8 @@ func addMethods(w http.ResponseWriter, r *http.Request) {
 	for passedMethodIndex, passedMethod := range passedMethods {
 		found := false
 
-		for existingMethodIndex, existingMethod := range existingMethods {
-			sortOrder := passedMethod.SortOrder
-			if existingMethodIndex == 0 && sortOrder == 0 {
-				sortOrder += 1
-			} else if existingMethodIndex != 0 && sortOrder == 0 {
-				sortOrder = existingMethodIndex + 1
-			}
+		for _, existingMethod := range existingMethods {
+			sortOrder := passedMethodIndex + 1
 
 			if passedMethod.ID == existingMethod.ID {
 				_, err := db.Exec("UPDATE methods SET value = ?, sortOrder = ? WHERE id = ?", passedMethod.Value, sortOrder, passedMethod.ID)
@@ -891,12 +876,7 @@ func addMethod(w http.ResponseWriter, r *http.Request) {
 	found := false
 
 	for existingMethodIndex, existingMethod := range existingMethods {
-		sortOrder := passedMethod.SortOrder
-		if existingMethodIndex == 0 && sortOrder == 0 {
-			sortOrder += 1
-		} else if existingMethodIndex != 0 && sortOrder == 0 {
-			sortOrder = existingMethodIndex + 1
-		}
+		sortOrder := existingMethodIndex + 1
 
 		if passedMethod.ID == existingMethod.ID {
 			_, err := db.Exec("UPDATE methods SET value = ?, sortOrder = ? WHERE id = ?", passedMethod.Value, sortOrder, passedMethod.ID)
