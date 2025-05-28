@@ -30,6 +30,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AlertDialog
@@ -101,41 +102,73 @@ fun RecipeModifyScreen(
         }
 
         // ingredients handlers
-        var ingredients =
-            remember { mutableStateOf(listOf<Ingredient>(*recipe?.ingredients.orEmpty())) }
+        var ingredients = remember { mutableStateOf<List<Ingredient>>(recipe?.ingredients ?: listOf()) }
         var showIngredientModal by remember { mutableStateOf(false) }
         val selectedIngredient = remember { mutableStateOf<Ingredient?>(null) }
         val selectedIngredientIndex = remember { mutableIntStateOf(0) }
 
         // methods handlers
-        var methods = remember { mutableStateOf(listOf<Method>(*recipe?.methods.orEmpty())) }
+        var methods = remember { mutableStateOf<List<Method>>(recipe?.methods ?: listOf()) }
         var showMethodModal by remember { mutableStateOf(false) }
         val selectedMethod = remember { mutableStateOf<Method?>(null) }
         val selectedMethodIndex = remember { mutableIntStateOf(0) }
 
-        Icon(
-            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
-            contentDescription = "Go back",
-            modifier = Modifier
-                .clickable {
-                    recipeViewModel.saveRecipe(
-                        RecipeRequest(
-                            id = recipe?.id ?: 0,
-                            name = name,
-                            type = if (typeSelection === "Choose") "" else typeSelection
-                        ),
-                        Portion(
-                            id = recipe?.portion?.id ?: 0,
-                            value = portionValue.toFloat(),
-                            measurement = if (portionSelection === "Choose") "days" else portionSelection
-                        ),
-                        ingredients.value,
-                        methods.value,
-                        imageBytes,
-                    )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                contentDescription = "Go back",
+                modifier = Modifier
+                    .clickable {
+                        if (recipe != null) {
+                            recipeViewModel.saveRecipe(
+                                RecipeRequest(
+                                    id = recipe.id ?: 0,
+                                    name = name,
+                                    type = if (typeSelection === "Choose") "" else typeSelection
+                                ),
+                                Portion(
+                                    id = recipe.portion?.id ?: 0,
+                                    value = portionValue.toFloat(),
+                                    measurement = if (portionSelection === "Choose") "days" else portionSelection
+                                ),
+                                ingredients.value,
+                                methods.value,
+                                imageBytes,
+                            )
+                        } else {
+                            recipeViewModel.backToListView()
+                        }
+                    }
+                    .size(50.dp, 50.dp)
+            )
+            if (recipe == null) {
+                Button(
+                    onClick = {
+                        recipeViewModel.saveRecipe(
+                            RecipeRequest(
+                                id = recipe?.id ?: 0,
+                                name = name,
+                                type = if (typeSelection === "Choose") "" else typeSelection
+                            ),
+                            Portion(
+                                id = recipe?.portion?.id ?: 0,
+                                value = portionValue.toFloat(),
+                                measurement = if (portionSelection === "Choose") "days" else portionSelection
+                            ),
+                            ingredients.value,
+                            methods.value,
+                            imageBytes,
+                        )
+                    }
+                ) {
+                    Text("Save")
                 }
-                .size(50.dp, 50.dp)
-        )
+            }
+        }
 
         Column(
             modifier = Modifier
@@ -250,10 +283,8 @@ fun RecipeModifyScreen(
             ReorderableColumn(
                 list = ingredients.value,
                 onSettle = { fromIndex, toIndex ->
-                    {
-                        ingredients.value = ingredients.value.toMutableList().apply {
-                            add(toIndex, removeAt(fromIndex))
-                        }
+                    ingredients.value = ingredients.value.toMutableList().apply {
+                        add(toIndex, removeAt(fromIndex))
                     }
                 }
             ) { index, ingredient, isDragging ->
@@ -262,7 +293,9 @@ fun RecipeModifyScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(12.dp)
+                            .padding(8.dp)
+                            .draggableHandle(),
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Row(
                             modifier = Modifier.clickable {
@@ -277,11 +310,13 @@ fun RecipeModifyScreen(
                             Text(ingredient.measurement)
                         }
                         Icon(
-                            imageVector = Icons.Default.Star,
-                            contentDescription = "Drag Handle",
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Delete ingredient button",
                             modifier = Modifier
                                 .size(24.dp)
-                                .draggableHandle()
+                                .clickable{
+                                    ingredients.value.toMutableList().remove(ingredient)
+                                }
                         )
                     }
                 }
@@ -292,12 +327,12 @@ fun RecipeModifyScreen(
                     ingredient = selectedIngredient.value,
                     onConfirmation = {
                         if (selectedIngredient.value != null) {
-                            val updatedList = ingredients.value.toMutableList()
-                            updatedList[selectedIngredientIndex.intValue] = it
-                            ingredients.value = updatedList
+                           ingredients.value.toMutableList().add(selectedMethodIndex.intValue, it)
                         } else {
-                            ingredients.value = ingredients.value.toMutableList().apply { add(it) }
+                            ingredients.value.toMutableList().add(it)
                         }
+
+
                         selectedIngredient.value = null
                         showIngredientModal = false
                     },
@@ -327,19 +362,19 @@ fun RecipeModifyScreen(
             ReorderableColumn(
                 list = methods.value,
                 onSettle = { fromIndex, toIndex ->
-                    {
-                        methods.value = methods.value.toMutableList().apply {
-                            add(toIndex, removeAt(fromIndex))
-                        }
+                    methods.value = methods.value.toMutableList().apply {
+                        add(toIndex, removeAt(fromIndex))
                     }
                 }
             ) { index, method, isDragging ->
-                key(index) {
+                key(method.id) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(12.dp)
+                            .padding(8.dp)
+                            .draggableHandle(),
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         val methodDivider = index.inc().toString() + ". "
                         Row(
@@ -352,11 +387,13 @@ fun RecipeModifyScreen(
                             Text(methodDivider + method.value)
                         }
                         Icon(
-                            imageVector = Icons.Default.FavoriteBorder,
-                            contentDescription = "Drag Handle",
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Delete method button",
                             modifier = Modifier
                                 .size(24.dp)
-                                .draggableHandle() // This is correct for the drag handle
+                                .clickable{
+                                    methods.value.toMutableList().remove(method)
+                                }
                         )
                     }
                 }
@@ -367,11 +404,9 @@ fun RecipeModifyScreen(
                     method = selectedMethod.value,
                     onConfirmation = {
                         if (selectedIngredient.value != null) {
-                            val updatedList = methods.value.toMutableList()
-                            updatedList[selectedMethodIndex.intValue] = it
-                            methods.value = updatedList
+                            methods.value.toMutableList().add(selectedMethodIndex.intValue, it)
                         } else {
-                            methods.value = methods.value.toMutableList().apply { add(it) }
+                            methods.value.toMutableList().add(it)
                         }
                         selectedMethod.value = null
                         showMethodModal = false

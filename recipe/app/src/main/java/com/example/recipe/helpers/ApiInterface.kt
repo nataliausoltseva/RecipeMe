@@ -27,9 +27,6 @@ interface ApiInterface {
     @GET("/recipes")
     suspend fun getRecipes(@Query("search") search: String? = null, @Query("ingredientNames") ingredientNames: String = "", @Query("sortKey") sortKey: String, @Query("sortDirection") sortDirection: String): Response<List<Recipe>>
 
-    @GET("/recipe/{id}")
-    suspend fun getRecipe(@Path("id") id: Int): Response<Recipe>
-
     @POST("/recipe")
     suspend fun createRecipe(@Body request: RecipeRequest): Response<Recipe>
 
@@ -45,9 +42,6 @@ interface ApiInterface {
     // Portion endpoints
     @POST("/portion/{recipeId}")
     suspend fun addOrUpdatePortion(@Path("recipeId") id: Int, @Body request: Portion): Response<Portion>
-
-    @DELETE("/portion/{id}")
-    suspend fun deletePortion(@Path("id") id: Int): Response<Void>
 
     // Ingredient endpoints
     @POST("/ingredients/{recipeId}")

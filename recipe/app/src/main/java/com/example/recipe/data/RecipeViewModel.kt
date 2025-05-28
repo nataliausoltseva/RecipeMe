@@ -70,22 +70,21 @@ class RecipeViewModel: ViewModel() {
         viewModelScope.launch {
             try {
                 val endpoints = Endpoints()
-                val recipeResponse = endpoints.updateOrCreateRecipe(recipe)
-                if (recipeResponse != null) {
-                    endpoints.updateOrCreatePortion(portion, recipeResponse.id)
-                    endpoints.addOrUpdateIngredients(ingredients, recipeResponse.id)
-                    endpoints.addOrUpdateMethods(methods, recipeResponse.id)
-                    if (imageBytes != null) {
-                        endpoints.addImage(
-                            createMultipartFromBytes(imageBytes, recipeResponse.id),
-                            recipeResponse.id
-                        )
-                    }
+                endpoints.updateOrCreatePortion(portion, recipe.id)
+                endpoints.addOrUpdateIngredients(ingredients, recipe.id)
+                endpoints.addOrUpdateMethods(methods, recipe.id)
+                if (imageBytes != null) {
+                    endpoints.addImage(
+                        createMultipartFromBytes(imageBytes, recipe.id),
+                        recipe.id
+                    )
                 }
+
+                val recipeResponse = endpoints.updateOrCreateRecipe(recipe)
 
                 getRecipes()
 
-                if (recipe.id != 0 && recipeResponse != null) {
+                if (recipeResponse != null) {
                     onSaveRecipe(recipeResponse)
                 } else {
                     backToListView()
@@ -132,7 +131,6 @@ class RecipeViewModel: ViewModel() {
     }
 
     fun onFilterOrSort(selectedIngredientNames: List<String>, sortKey: String = "", sortDirection: String = "") {
-        println(selectedIngredientNames)
         val combinedIngredientNames = selectedIngredientNames.joinToString(",")
         viewModelScope.launch {
             try {
@@ -226,6 +224,28 @@ class RecipeViewModel: ViewModel() {
     fun onSplitViewToggle() {
         _uiState.update { currentState ->
             currentState.copy(isTypeSplitView = !currentState.isTypeSplitView)
+        }
+    }
+
+    fun onDeleteRecipe(recipe: Recipe) {
+        viewModelScope.launch {
+            try {
+                val endpoints = Endpoints()
+                endpoints.deleteRecipe(recipe.id)
+                var recipes = endpoints.getRecipes("")
+                if (recipes == null) {
+                    recipes = listOf()
+                }
+                _uiState.update {
+                    it.copy(
+                        recipes,
+                        isFullScreen = false,
+                        selectedRecipe = null
+                    )
+                }
+            } catch (e: Exception) {
+                println("Error: ${e.message}")
+            }
         }
     }
 
