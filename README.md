@@ -116,9 +116,8 @@ The right screen represents the modal for filter/sort dropdown. The ingredients'
 
 ## Roadmap:
 - Implement and update the design of the application.
-- Add split view based on the type
-- Implement delete functionality
-- Add functionality of increasing or decreasing the portion which results in the updated list of ingredients. 
+- Implement Docker image build job on Github that would be triggered every time a change is commited/merged to **main** branch.
+- ~~Add functionality of increasing or decreasing the portion which results in the updated list of ingredients.~~
 - Make a companion watch app.
 - Look into Gemini integration so that when asking to look for a recipe, it looks through this app first.
 - Ability to have "Cooking mode" so that the phone screen does not turn off.
@@ -184,5 +183,7 @@ example of possible data for API
     3. Create Date
 - Filter out the reipecs by ingredients. Being able to uncheck the ingredients and hide the recipes.
 - Add Type (breakfast, lunch, dinner, dessert, snack) to the recipe creation.
+- Add split view based on the type
+- Implement delete functionality
 
 </details>
