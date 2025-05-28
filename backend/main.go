@@ -296,6 +296,12 @@ func updateRecipe(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	recipe.Ingredients = getRecipeIngredients(id, "")
+	recipe.Methods = getRecipeMethods(id)
+	recipe.Portion = getRecipePortion(id)
+	recipe.Image = getRecipeImage(id)
+
 	json.NewEncoder(w).Encode(recipe)
 }
 

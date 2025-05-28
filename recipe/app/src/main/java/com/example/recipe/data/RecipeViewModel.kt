@@ -70,22 +70,21 @@ class RecipeViewModel: ViewModel() {
         viewModelScope.launch {
             try {
                 val endpoints = Endpoints()
-                val recipeResponse = endpoints.updateOrCreateRecipe(recipe)
-                if (recipeResponse != null) {
-                    endpoints.updateOrCreatePortion(portion, recipeResponse.id)
-                    endpoints.addOrUpdateIngredients(ingredients, recipeResponse.id)
-                    endpoints.addOrUpdateMethods(methods, recipeResponse.id)
-                    if (imageBytes != null) {
-                        endpoints.addImage(
-                            createMultipartFromBytes(imageBytes, recipeResponse.id),
-                            recipeResponse.id
-                        )
-                    }
+                endpoints.updateOrCreatePortion(portion, recipe.id)
+                endpoints.addOrUpdateIngredients(ingredients, recipe.id)
+                endpoints.addOrUpdateMethods(methods, recipe.id)
+                if (imageBytes != null) {
+                    endpoints.addImage(
+                        createMultipartFromBytes(imageBytes, recipe.id),
+                        recipe.id
+                    )
                 }
+
+                val recipeResponse = endpoints.updateOrCreateRecipe(recipe)
 
                 getRecipes()
 
-                if (recipe.id != 0 && recipeResponse != null) {
+                if (recipeResponse != null) {
                     onSaveRecipe(recipeResponse)
                 } else {
                     backToListView()
