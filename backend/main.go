@@ -296,6 +296,12 @@ func updateRecipe(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	recipe.Ingredients = getRecipeIngredients(id, "")
+	recipe.Methods = getRecipeMethods(id)
+	recipe.Portion = getRecipePortion(id)
+	recipe.Image = getRecipeImage(id)
+
 	json.NewEncoder(w).Encode(recipe)
 }
 
@@ -611,14 +617,9 @@ func addIngredients(w http.ResponseWriter, r *http.Request) {
 
 	for passedIngredientIndex, passedIngredient := range passedIngredients {
 		found := false
-		for existingIngredientIndex, existingIngredient := range existingIngredients {
+		for _, existingIngredient := range existingIngredients {
 			if passedIngredient.ID == existingIngredient.ID {
-				sortOrder := passedIngredient.SortOrder
-				if existingIngredientIndex == 0 && passedIngredient.SortOrder == 0 {
-					sortOrder += 1
-				} else if existingIngredientIndex != 0 && passedIngredient.SortOrder == 0 {
-					sortOrder = existingIngredientIndex + 1
-				}
+				sortOrder := passedIngredientIndex + 1
 
 				_, err := db.Exec("UPDATE ingredients SET name = ?, measurement = ?, value = ?, sortOrder = ? WHERE id = ?", passedIngredient.Name, passedIngredient.Measurement, passedIngredient.Value, sortOrder, passedIngredient.ID)
 				if err != nil {
@@ -632,13 +633,35 @@ func addIngredients(w http.ResponseWriter, r *http.Request) {
 		}
 		if !found {
 			sortOrder := passedIngredientIndex + 1 + len(existingIngredients)
-
 			_, err := db.Exec("INSERT INTO ingredients(name, measurement, value, sortOrder, recipe_id) VALUES(?,?,?,?,?)", passedIngredient.Name, passedIngredient.Measurement, passedIngredient.Value, sortOrder, recipeId)
 			if err != nil {
 				fmt.Println("Error inserting ingredient:", err)
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
+		}
+	}
+
+	var deleteIds []string
+	for _, existing := range existingIngredients {
+		found := false
+		for _, passed := range passedIngredients {
+			if existing.ID == passed.ID {
+				found = true
+				break
+			}
+		}
+		if !found {
+			deleteIds = append(deleteIds, fmt.Sprintf("%d", existing.ID))
+		}
+	}
+
+	if len(deleteIds) > 0 {
+		query := fmt.Sprintf("DELETE FROM ingredients WHERE id IN (%s)", strings.Join(deleteIds, ", "))
+
+		_, err = db.Exec(query)
+		if err != nil {
+			fmt.Println("Error executing query:", err)
 		}
 	}
 
@@ -669,12 +692,7 @@ func addIngredient(w http.ResponseWriter, r *http.Request) {
 	found := false
 	for existingIngredientIndex, existingIngredient := range existingIngredients {
 		if passedIngredient.ID == existingIngredient.ID {
-			sortOrder := passedIngredient.SortOrder
-			if existingIngredientIndex == 0 && passedIngredient.SortOrder == 0 {
-				sortOrder += 1
-			} else if existingIngredientIndex != 0 && passedIngredient.SortOrder == 0 {
-				sortOrder = existingIngredientIndex + 1
-			}
+			sortOrder := existingIngredientIndex + 1
 
 			_, err := db.Exec("UPDATE ingredients SET name = ?, measurement = ?, value = ?, sortOrder = ? WHERE id = ?", passedIngredient.Name, passedIngredient.Measurement, passedIngredient.Value, sortOrder, passedIngredient.ID)
 			if err != nil {
@@ -782,13 +800,8 @@ func addMethods(w http.ResponseWriter, r *http.Request) {
 	for passedMethodIndex, passedMethod := range passedMethods {
 		found := false
 
-		for existingMethodIndex, existingMethod := range existingMethods {
-			sortOrder := passedMethod.SortOrder
-			if existingMethodIndex == 0 && sortOrder == 0 {
-				sortOrder += 1
-			} else if existingMethodIndex != 0 && sortOrder == 0 {
-				sortOrder = existingMethodIndex + 1
-			}
+		for _, existingMethod := range existingMethods {
+			sortOrder := passedMethodIndex + 1
 
 			if passedMethod.ID == existingMethod.ID {
 				_, err := db.Exec("UPDATE methods SET value = ?, sortOrder = ? WHERE id = ?", passedMethod.Value, sortOrder, passedMethod.ID)
@@ -808,6 +821,29 @@ func addMethods(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
+		}
+	}
+
+	var deleteIds []string
+	for _, existing := range existingMethods {
+		found := false
+		for _, passed := range passedMethods {
+			if existing.ID == passed.ID {
+				found = true
+				break
+			}
+		}
+		if !found {
+			deleteIds = append(deleteIds, fmt.Sprintf("%d", existing.ID))
+		}
+	}
+
+	if len(deleteIds) > 0 {
+		query := fmt.Sprintf("DELETE FROM methods WHERE id IN (%s)", strings.Join(deleteIds, ", "))
+
+		_, err = db.Exec(query)
+		if err != nil {
+			fmt.Println("Error executing query:", err)
 		}
 	}
 
@@ -840,12 +876,7 @@ func addMethod(w http.ResponseWriter, r *http.Request) {
 	found := false
 
 	for existingMethodIndex, existingMethod := range existingMethods {
-		sortOrder := passedMethod.SortOrder
-		if existingMethodIndex == 0 && sortOrder == 0 {
-			sortOrder += 1
-		} else if existingMethodIndex != 0 && sortOrder == 0 {
-			sortOrder = existingMethodIndex + 1
-		}
+		sortOrder := existingMethodIndex + 1
 
 		if passedMethod.ID == existingMethod.ID {
 			_, err := db.Exec("UPDATE methods SET value = ?, sortOrder = ? WHERE id = ?", passedMethod.Value, sortOrder, passedMethod.ID)
