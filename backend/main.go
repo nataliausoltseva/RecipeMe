@@ -1044,7 +1044,6 @@ func getImages(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	fmt.Println("Testing actions")
 	var err error
 	db, err = sql.Open("sqlite3", "./database/database.db")
 	if err != nil {
