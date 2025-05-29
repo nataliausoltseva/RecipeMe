@@ -29,4 +29,4 @@ jobs:
       with:
         context: ./backend
         push: true
-        tags: your-dockerhub-username/your-image-name:latest
+        tags: ${{ secrets.DOCKER_USERNAME }}/${{ secrets.DOCKER_IMAGE_NAME }}:latest
