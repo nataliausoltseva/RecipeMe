@@ -315,7 +315,9 @@ fun RecipeModifyScreen(
                             modifier = Modifier
                                 .size(24.dp)
                                 .clickable{
-                                    ingredients.value.toMutableList().remove(ingredient)
+                                    ingredients.value = ingredients.value.toMutableList().apply {
+                                       remove(ingredient)
+                                    }
                                 }
                         )
                     }
@@ -327,11 +329,14 @@ fun RecipeModifyScreen(
                     ingredient = selectedIngredient.value,
                     onConfirmation = {
                         if (selectedIngredient.value != null) {
-                           ingredients.value.toMutableList().add(selectedMethodIndex.intValue, it)
+                            ingredients.value = ingredients.value.toMutableList().apply {
+                                add(selectedMethodIndex.intValue, it)
+                            }
                         } else {
-                            ingredients.value.toMutableList().add(it)
+                            ingredients.value = ingredients.value.toMutableList().apply {
+                                add(it)
+                            }
                         }
-
 
                         selectedIngredient.value = null
                         showIngredientModal = false
@@ -392,7 +397,9 @@ fun RecipeModifyScreen(
                             modifier = Modifier
                                 .size(24.dp)
                                 .clickable{
-                                    methods.value.toMutableList().remove(method)
+                                    methods.value = methods.value.toMutableList().apply {
+                                        remove(method)
+                                    }
                                 }
                         )
                     }
@@ -404,9 +411,13 @@ fun RecipeModifyScreen(
                     method = selectedMethod.value,
                     onConfirmation = {
                         if (selectedIngredient.value != null) {
-                            methods.value.toMutableList().add(selectedMethodIndex.intValue, it)
+                            methods.value = methods.value.toMutableList().apply {
+                                add(selectedMethodIndex.intValue, it)
+                            }
                         } else {
-                            methods.value.toMutableList().add(it)
+                            methods.value = methods.value.toMutableList().apply {
+                                add(it)
+                            }
                         }
                         selectedMethod.value = null
                         showMethodModal = false
