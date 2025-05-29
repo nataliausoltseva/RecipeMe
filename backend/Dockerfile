@@ -44,5 +44,7 @@ VOLUME /root/database
 # Ensure the Go application has execute permissions
 RUN chmod +x /root/backend
 
+EXPOSE 1009
+
 # Point the container to run the script first
 ENTRYPOINT ["/root/entrypoint.sh"]

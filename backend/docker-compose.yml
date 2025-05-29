@@ -2,7 +2,7 @@ services:
   api:
     build: .
     ports:
-      - "8080:8080"
+      - "1009:1009"
     volumes:
       - app_db:/root/database
 

@@ -1080,6 +1080,6 @@ func main() {
 	router.HandleFunc("/image/{recipe_id}", updateImage).Methods("POST")
 	router.HandleFunc("/images", getImages).Methods("GET")
 
-	fmt.Println("Starting server on :8080...")
-	http.ListenAndServe(":8080", router)
+	fmt.Println("Starting server on :1009...")
+	http.ListenAndServe(":1009", router)
 }
