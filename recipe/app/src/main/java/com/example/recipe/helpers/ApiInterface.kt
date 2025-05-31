@@ -20,12 +20,16 @@ data class RecipeRequest(
     var id: Int,
     var name: String,
     var type: String,
+    var url: String,
 )
 
 interface ApiInterface {
     // Recipe endpoints
     @GET("/recipes")
     suspend fun getRecipes(@Query("search") search: String? = null, @Query("ingredientNames") ingredientNames: String = "", @Query("sortKey") sortKey: String, @Query("sortDirection") sortDirection: String): Response<List<Recipe>>
+
+    @GET("/recipe/{id}")
+    suspend fun getRecipe(@Path("id") id: Int): Response<Recipe>
 
     @POST("/recipe")
     suspend fun createRecipe(@Body request: RecipeRequest): Response<Recipe>

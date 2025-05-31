@@ -90,6 +90,7 @@ fun RecipeModifyScreen(
         var imageBytes by remember { mutableStateOf(if (recipe?.image?.url != null) decodedBytes else null) }
         var isExpandedTypeSelector by remember { mutableStateOf(false) }
         var typeSelection by remember { mutableStateOf((if(recipe?.type != "") recipe?.type else "Choose") ?: "Choose") }
+        var recipeExternalUrl by remember { mutableStateOf(recipe?.url ?: "") }
 
         // portion handlers
         var isExpandedPortionSelector by remember { mutableStateOf(false) }
@@ -126,9 +127,10 @@ fun RecipeModifyScreen(
                         if (recipe != null) {
                             recipeViewModel.saveRecipe(
                                 RecipeRequest(
-                                    id = recipe.id ?: 0,
+                                    id = recipe.id,
                                     name = name,
-                                    type = if (typeSelection === "Choose") "" else typeSelection
+                                    type = if (typeSelection === "Choose") "" else typeSelection,
+                                    url = recipeExternalUrl
                                 ),
                                 Portion(
                                     id = recipe.portion?.id ?: 0,
@@ -152,7 +154,8 @@ fun RecipeModifyScreen(
                             RecipeRequest(
                                 id = recipe?.id ?: 0,
                                 name = name,
-                                type = if (typeSelection === "Choose") "" else typeSelection
+                                type = if (typeSelection === "Choose") "" else typeSelection,
+                                url = recipeExternalUrl
                             ),
                             Portion(
                                 id = recipe?.portion?.id ?: 0,
@@ -236,6 +239,19 @@ fun RecipeModifyScreen(
                 }
             }
 
+            TextField(
+                label = { Text("Original recipe URL:") },
+                value = recipeExternalUrl,
+                onValueChange = {
+                    recipeExternalUrl = it
+                },
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = Color.Transparent,
+                    unfocusedContainerColor = Color.Transparent,
+                ),
+                modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp)
+            )
+
             Row(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -314,9 +330,9 @@ fun RecipeModifyScreen(
                             contentDescription = "Delete ingredient button",
                             modifier = Modifier
                                 .size(24.dp)
-                                .clickable{
+                                .clickable {
                                     ingredients.value = ingredients.value.toMutableList().apply {
-                                       remove(ingredient)
+                                        remove(ingredient)
                                     }
                                 }
                         )
@@ -396,7 +412,7 @@ fun RecipeModifyScreen(
                             contentDescription = "Delete method button",
                             modifier = Modifier
                                 .size(24.dp)
-                                .clickable{
+                                .clickable {
                                     methods.value = methods.value.toMutableList().apply {
                                         remove(method)
                                     }

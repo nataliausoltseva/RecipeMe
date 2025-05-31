@@ -11,4 +11,5 @@ data class Recipe (
     val image: Image?,
     val type: String,
     val sortOrder: Int,
+    val url: String,
 )

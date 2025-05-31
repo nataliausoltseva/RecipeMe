@@ -15,6 +15,7 @@ import kotlinx.coroutines.launch
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
+import retrofit2.Response
 
 class RecipeViewModel: ViewModel() {
     private val _uiState = MutableStateFlow(State())
@@ -70,18 +71,25 @@ class RecipeViewModel: ViewModel() {
         viewModelScope.launch {
             try {
                 val endpoints = Endpoints()
-                endpoints.updateOrCreatePortion(portion, recipe.id)
-                endpoints.addOrUpdateIngredients(ingredients, recipe.id)
-                endpoints.addOrUpdateMethods(methods, recipe.id)
+                var recipeResponse: Recipe? = null
+                var recipeIdToUse = recipe.id
+
+                recipeResponse = endpoints.updateOrCreateRecipe(recipe)
+                if (recipeResponse != null) {
+                    recipeIdToUse = recipeResponse.id
+                }
+
+                endpoints.updateOrCreatePortion(portion, recipeIdToUse)
+                endpoints.addOrUpdateIngredients(ingredients, recipeIdToUse)
+                endpoints.addOrUpdateMethods(methods, recipeIdToUse)
                 if (imageBytes != null) {
                     endpoints.addImage(
-                        createMultipartFromBytes(imageBytes, recipe.id),
-                        recipe.id
+                        createMultipartFromBytes(imageBytes, recipeIdToUse),
+                        recipeIdToUse
                     )
                 }
 
-                val recipeResponse = endpoints.updateOrCreateRecipe(recipe)
-
+                recipeResponse = endpoints.getRecipe(recipeIdToUse)
                 getRecipes()
 
                 if (recipeResponse != null) {
