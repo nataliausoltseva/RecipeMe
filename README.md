@@ -1,6 +1,22 @@
 # RecipeMe
 
-## API and database
+## Idea:
+A way to host the storage on your machine and have full control over where the data is saved, how manipulated. No ads, all features available.
+
+## API and database 
+If you already have a docker running and you wish to add another service to your container, you can use the following example config that uses deployed docker image: `natalia914/recipeme:latest`.
+Example:
+``` yml
+api:
+    build: .
+    image: natalia914/recipeme:latest
+    ports:
+      - "1009:1009"
+    volumes:
+      - app_db:/root/database
+```
+<hr />
+
 SQLite is used for this application as the database engine. The API is using [go-sqlite3](https://github.com/mattn/go-sqlite3) for storing/retrieving the data from the endpoints.
 
 All backend logic is located in the `/backend` directory. It also includes the `docker-compose.yml` and `Dockerfile` that setup the container for the API.
@@ -11,20 +27,27 @@ The database is on its one volume so that if you need to rebuild the docker imag
 - `new_column` is the name of the column you would like to add 
 - `column_type` is the type of the column. e.g. `TEXT`, `INTEGER`
 
-By default, the following tables are created:
+### Tables:
 
-1. The **recipe** table:
+<details>
+    <summary>recipes</summary>
+
 ```sqlite
-CREATE TABLE recipes(
+CREATE TABLE recipes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT,
     url TEXT,
-    imageUrl TEXT,
-    createdAt TEXT
+    createdAt TEXT,
+    lastEditedAt TEXT,
+    type TEXT,
+    sortOrder INTEGER
 );
 ```
+</details>
 
-2. The **portion** table:
+<details>
+    <summary>portions</summary>
+
 ```sqlite
 CREATE TABLE portion(
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -34,89 +57,91 @@ CREATE TABLE portion(
     FOREIGN KEY (recipe_id) REFERENCES recipes(id) ON DELETE CASCADE ON UPDATE NO ACTION
 );
 ```
+</details>
 
-3. The **ingredient** table:
+<details>
+    <summary>ingredients</summary>
+
 ```sqlite
-CREATE TABLE ingredient(
+CREATE TABLE ingredients (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT,
     measurement TEXT,
-    value TEXT,
+    value DOUBLE,
     sortOrder INTEGER,
     recipe_id INTEGER,
-    FOREIGN KEY (recipe_id) REFERENCES recipes(id) ON DELETE CASCADE ON UPDATE NO ACTION
+    FOREIGN KEY (recipe_id) REFERENCES recipe(id) ON DELETE CASCADE ON UPDATE NO ACTION
 );
 ```
+</details>
 
-4. The **method** table:
+<details>
+    <summary>methods</summary>
+
 ```sqlite
-CREATE TABLE method(
+CREATE TABLE methods (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     value TEXT,
     sortOrder INTEGER,
     recipe_id INTEGER,
-    FOREIGN KEY (recipe_id) REFERENCES recipes(id) ON DELETE CASCADE ON UPDATE NO ACTION
+    FOREIGN KEY (recipe_id) REFERENCES recipe(id) ON DELETE CASCADE ON UPDATE NO ACTION
 );
 ```
+</details>
 
-The **recipe** table has a relationsip `has_one` **portion** and `has_many` **ingredient**s, **method**s.
+<details>
+    <summary>images</summary>
+
+```sqlite
+CREATE TABLE images (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    url string,
+    filename TEXT,
+    recipe_id INTEGER,
+    FOREIGN KEY (recipe_id) REFERENCES recipe(id) ON DELETE CASCADE ON UPDATE NO ACTION
+);
+```
+</details>
+<br/>
+
+The **recipe** table has a relationsip `has_one` **portion**, **image**, and `has_many` **ingredient**s, **method**s.
 
 ### Endpoints:
-#### Recipe
+<details>
+    <summary>Recipe</summary>
+
 - POST: http://localhost/recipe
 - GET: http://localhost/recipes
 - GET: http://localhost/recipe/{id}
 - PUT: http://localhost/recipe/{id}
 - DELETE: http://localhost/recipe/{id}
+</details>
 
-#### Portion
+<details>
+    <summary>Portion</summary>
+
 - GET: http://localhost/portions
 - POST: http://localhost/portion/{recipe_id}
 - DELETE: http://localhost/portion/{id}
+</details>
 
-#### Ingredient
+<details>
+    <summary>Ingredient</summary>
+
 - GET: http://localhost/ingredients
 - POST: http://localhost/ingredient/{recipe_id}
 - DELETE: http://localhost/ingredient/{id}
+</details>
 
-#### Method
+<details>
+    <summary>Method</summary>
+
 - POST: http://localhost/method/{recipe_id}
 - DELETE: http://localhost/method/{id}
-
-## Idea:
-A way to host the storage on your machine and have full control over where the data is saved, how manipulated. No ads, all features available.
-
-## Wireframe
-### March 2025
-#### Landing page 
-<img src="./wireframe/HomePage.png" style="height:500px;"  alt=""/>
-
-#### Landing page with filter open
-<img src="./wireframe/HomePageWithFilterOpen.png" style="height:500px;"  alt=""/>
-
-#### Recipe view page
-<img src="./wireframe/RecipeViewPage.png" style="height:500px;"  alt=""/>
-
-#### Recipe edit page
-<img src="./wireframe/RecipeEditPage.png" style="height:500px;"  alt=""/>
-
-### Initial
-<img src="./wireframe/Initial design for RecipeMe.png" style="height: '500px';"  alt=""/>
-On the left screen: at the top have a search bar and filter/sort icon. The recipe cards are placed 2 per row. Each recipe card will have support to show:
-
-- image
-- name
-- portion
-- number of ingredients
-- time (currently it is not suported)
-
-The right screen represents the modal for filter/sort dropdown. The ingredients' dropdown will offer multi checkbox and in sort dropdown a user can only select 1 item.
-
-
+</details>
 
 ## Roadmap:
 - Implement and update the design of the application.
-- Implement Docker image build job on Github that would be triggered every time a change is commited/merged to **main** branch.
 - ~~Add functionality of increasing or decreasing the portion which results in the updated list of ingredients.~~
 - Make a companion watch app.
 - Look into Gemini integration so that when asking to look for a recipe, it looks through this app first.
@@ -185,5 +210,6 @@ example of possible data for API
 - Add Type (breakfast, lunch, dinner, dessert, snack) to the recipe creation.
 - Add split view based on the type
 - Implement delete functionality
+- Implement Docker image build job on Github that would be triggered every time a change is commited/merged to **main** branch.
 
 </details>
