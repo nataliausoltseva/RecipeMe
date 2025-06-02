@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    kotlin("plugin.serialization") version "1.9.0"
 }
 
 android {
@@ -10,7 +11,7 @@ android {
 
     defaultConfig {
         applicationId = "com.example.recipe"
-        minSdk = 24
+        minSdk = 31
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
@@ -63,4 +64,7 @@ dependencies {
     implementation(libs.reorderable)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.androidx.core.ktx.v190)
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.generativeai)
+    implementation(libs.dotenv.kotlin)
 }

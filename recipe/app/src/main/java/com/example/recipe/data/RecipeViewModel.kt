@@ -1,10 +1,12 @@
 package com.example.recipe.data
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.recipe.helpers.Endpoints
+import com.example.recipe.helpers.RecipeParser
 import com.example.recipe.helpers.RecipeRequest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -12,14 +14,72 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.serialization.encodeToString
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
-import retrofit2.Response
+import kotlinx.serialization.json.Json
 
 class RecipeViewModel: ViewModel() {
     private val _uiState = MutableStateFlow(State())
     val uiState: StateFlow<State> = _uiState.asStateFlow()
+
+    private val _plainTextInput = MutableStateFlow("")
+    val plainTextInput: StateFlow<String> = _plainTextInput.asStateFlow()
+
+    private val _parsedRecipe = MutableStateFlow<RecipeParserInput?>(null)
+    val parsedRecipe: StateFlow<RecipeParserInput?> = _parsedRecipe.asStateFlow()
+
+    private val _jsonOutput = MutableStateFlow<String?>(null)
+    val jsonOutput: StateFlow<String?> = _jsonOutput.asStateFlow()
+
+    private val _errorMessage = MutableStateFlow<String?>(null)
+    val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
+
+    private val jsonParser = Json {
+        ignoreUnknownKeys = true // Be flexible with extra fields, if any
+        isLenient = true         // Allow some minor JSON format deviations if necessary
+        prettyPrint = true       // For logging/debugging the JSON output
+    }
+
+    fun convertTextToRecipe(plainText: String, context: Context) {
+        viewModelScope.launch {
+            _parsedRecipe.value = null
+            _jsonOutput.value = null
+            _errorMessage.value = null
+
+            val parser = RecipeParser()
+            // Simulate calling the on-device model
+            val result = parser.convertTextToRecipeJson(plainText, context)
+
+            result.fold(
+                onSuccess = { jsonString ->
+                    _jsonOutput.value = jsonString // Store the raw JSON output
+                    println("--- Raw JSON from Gemini Nano (Mock) ---")
+                    println(jsonString)
+                    println("---------------------------------------")
+                    try {
+                        // Attempt to parse the JSON string into our data class
+                        if (jsonString != "") {
+                            val recipe = jsonParser.decodeFromString<RecipeParserInput>(jsonString.trim())
+                            _parsedRecipe.value = recipe
+                        }
+                    } catch (e: Exception) {
+                        // This catch block is crucial for handling cases where Gemini Nano
+                        // might not return perfectly structured JSON, or returns an error structure.
+                        println("Error parsing JSON: ${e.message}")
+                        _errorMessage.value = "Failed to parse recipe from text. The model might have returned an unexpected format. Raw output: $jsonString"
+                        // You might also try to parse a specific error structure from the JSON if your LLM returns errors that way.
+                        // e.g., try { val errorResponse = jsonParser.decodeFromString<ErrorResponse>(jsonString); _errorMessage.value = errorResponse.error; } catch ...
+                    }
+                },
+                onFailure = { exception ->
+                    println("Error calling Gemini Nano (Mock): ${exception.message}")
+                    _errorMessage.value = "Error converting text: ${exception.message}"
+                }
+            )
+        }
+    }
 
     private fun getRecipes(search: String? = null) {
         viewModelScope.launch(Dispatchers.IO) {

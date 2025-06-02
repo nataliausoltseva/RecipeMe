@@ -50,6 +50,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -62,6 +63,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -76,6 +78,9 @@ import com.example.recipe.data.RecipeViewModel
 import com.example.recipe.data.byteArrayToBitmap
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyStaggeredGridState
+import kotlin.collections.component1
+import kotlin.collections.component2
+import kotlin.collections.iterator
 
 @Composable
 fun RecipeListScreen(
@@ -85,6 +90,8 @@ fun RecipeListScreen(
 
     var search by remember { mutableStateOf("") }
     var showFilterDialog = remember { mutableStateOf(false)}
+
+    var showGeminiTextField = remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -165,6 +172,15 @@ fun RecipeListScreen(
             ) {
                 Add()
             }
+
+            FloatingActionButton(
+                onClick = { showGeminiTextField.value = true },
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(16.dp)
+            ) {
+                Text("TEST")
+            }
         }
 
         if (showFilterDialog.value) {
@@ -183,8 +199,48 @@ fun RecipeListScreen(
                 onClose = { showFilterDialog.value = false}
             )
         }
-    }
 
+        var context = LocalContext.current
+        if (showGeminiTextField.value) {
+            GeminiTextInput(
+                onSuccess = {
+                    recipeViewModel.convertTextToRecipe(it, context)
+                    showGeminiTextField.value = false
+                },
+                onClose = { showGeminiTextField.value = false }
+            )
+        }
+    }
+}
+
+@Composable
+fun GeminiTextInput(
+    onSuccess: (String) -> Unit,
+    onClose: () -> Unit,
+) {
+    val text = remember { mutableStateOf("") }
+
+    AlertDialog(
+        text = {
+            Column {
+                TextField(
+                    value = text.value,
+                    onValueChange = { text.value = it },
+                    label = { Text("Enter text") }
+                )
+            }
+        },
+        onDismissRequest = {
+            onClose()
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onSuccess(text.value) }
+            ) {
+                Text("Apply")
+            }
+        },
+    )
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -227,7 +283,9 @@ fun RecipeSplitList(
         orderedGroupedRecipes.forEachIndexed { index, (type, recipesOfType) ->
             stickyHeader {
                 Surface(
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 20.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 20.dp),
                 ) {
                     Text(
                         text = if (type.isNotBlank()) type else "Uncategorized",
@@ -292,7 +350,9 @@ fun RecipeList(
     LazyVerticalStaggeredGrid(
         state = lazyStaggeredGridState,
         columns = StaggeredGridCells.Adaptive(minSize = 300.dp),
-        modifier = Modifier.fillMaxSize().padding(5.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(5.dp),
         verticalItemSpacing = 4.dp,
         horizontalArrangement = Arrangement.spacedBy(5.dp),
         content = {
