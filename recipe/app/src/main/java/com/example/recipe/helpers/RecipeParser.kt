@@ -1,9 +1,9 @@
 package com.example.recipe.helpers
 
 import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Bundle
 import com.google.ai.client.generativeai.GenerativeModel
-import io.github.cdimascio.dotenv.dotenv
-
 
 class RecipeParser {
     private fun buildPrompt(plainTextRecipe: String, targetJsonSchema: String): String {
@@ -58,17 +58,17 @@ class RecipeParser {
         """.trimIndent()
 
         val prompt = buildPrompt(plainTextRecipe, recipeSchema)
-        println("--- Prompt for Gemini Nano ---")
-        println(prompt)
-        println("-----------------------------")
+
+        val ai = context.packageManager.getApplicationInfo(
+            context.packageName,
+            PackageManager.GET_META_DATA
+        )
+        val bundle: Bundle = ai.metaData
+
         try {
-            val model = GenerativeModel(modelName = "gemini-2.0-flash", apiKey = dotenv()["GEMINI_API_KEY"])
+            val model = GenerativeModel(modelName = "gemini-2.0-flash", apiKey = bundle.getString("GEMINI_API_KEY") ?: "")
 
             val response = model.generateContent(prompt)
-            println("--- GEMINI RESPONSE ---")
-            println(response.text)
-            println("-----------------------------")
-
             var responseText = response.text ?: ""
             var cleanedJson = responseText.trim()
             if (cleanedJson.startsWith("```json")) {

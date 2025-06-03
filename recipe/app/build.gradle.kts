@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     kotlin("plugin.serialization") version "1.9.0"
+    id("com.google.android.libraries.mapsplatform.secrets-gradle-plugin")
 }
 
 android {
@@ -66,5 +67,4 @@ dependencies {
     implementation(libs.androidx.core.ktx.v190)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.generativeai)
-    implementation(libs.dotenv.kotlin)
 }

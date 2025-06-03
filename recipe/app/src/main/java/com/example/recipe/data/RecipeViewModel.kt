@@ -3,6 +3,8 @@ package com.example.recipe.data
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.recipe.helpers.Endpoints
@@ -49,28 +51,19 @@ class RecipeViewModel: ViewModel() {
             _errorMessage.value = null
 
             val parser = RecipeParser()
-            // Simulate calling the on-device model
             val result = parser.convertTextToRecipeJson(plainText, context)
 
             result.fold(
                 onSuccess = { jsonString ->
                     _jsonOutput.value = jsonString // Store the raw JSON output
-                    println("--- Raw JSON from Gemini Nano (Mock) ---")
-                    println(jsonString)
-                    println("---------------------------------------")
                     try {
-                        // Attempt to parse the JSON string into our data class
                         if (jsonString != "") {
                             val recipe = jsonParser.decodeFromString<RecipeParserInput>(jsonString.trim())
                             _parsedRecipe.value = recipe
                         }
                     } catch (e: Exception) {
-                        // This catch block is crucial for handling cases where Gemini Nano
-                        // might not return perfectly structured JSON, or returns an error structure.
                         println("Error parsing JSON: ${e.message}")
                         _errorMessage.value = "Failed to parse recipe from text. The model might have returned an unexpected format. Raw output: $jsonString"
-                        // You might also try to parse a specific error structure from the JSON if your LLM returns errors that way.
-                        // e.g., try { val errorResponse = jsonParser.decodeFromString<ErrorResponse>(jsonString); _errorMessage.value = errorResponse.error; } catch ...
                     }
                 },
                 onFailure = { exception ->
@@ -78,6 +71,54 @@ class RecipeViewModel: ViewModel() {
                     _errorMessage.value = "Error converting text: ${exception.message}"
                 }
             )
+            if (parsedRecipe.value != null) {
+                val ingredients = mutableListOf<Ingredient>()
+
+                for (ingredientInput in parsedRecipe.value?.ingredients ?: listOf()) {
+                    val ingredient = Ingredient(
+                        name = ingredientInput.name ?: "",
+                        measurement = ingredientInput.measurement ?: "",
+                        value = ingredientInput.value ?: 1f,
+                        id = 0,
+                        sortOrder = 0,
+                    )
+                    ingredients.add(ingredient)
+                }
+
+                val methods = mutableListOf<Method>()
+
+                for (methodInput in parsedRecipe.value?.methods ?: listOf()) {
+                    val method = Method(
+                        value = methodInput.value ?: "",
+                        id = 0,
+                        sortOrder = 0,
+                    )
+                    methods.add(method)
+                }
+
+                saveRecipe(
+                    RecipeRequest(
+                        id = 0,
+                        name = parsedRecipe.value?.name ?: "",
+                        type = "",
+                        url = parsedRecipe.value?.url ?: ""
+                    ),
+                    Portion(
+                        id = 0,
+                        value = parsedRecipe.value!!.portion?.value ?: 1f,
+                        measurement = "portion"
+                    ),
+                    ingredients,
+                    methods,
+                    null
+                )
+            }
+
+            if (errorMessage.value != "") {
+                println("-------------ERROR MESSAGE-----------")
+                println(errorMessage)
+                println("--------------------------------------")
+            }
         }
     }
 

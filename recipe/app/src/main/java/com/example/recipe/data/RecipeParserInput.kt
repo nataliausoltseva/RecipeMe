@@ -13,18 +13,18 @@ data class RecipeParserInput(
 
 @Serializable
 data class RecipeMethodInput(
-    var value: String
+    var value: String?
 )
 
 @Serializable
 data class RecipeIngredientInput(
-    var name: String,
-    var measurement: String,
-    var value: Float,
+    var name: String?,
+    var measurement: String?,
+    var value: Float?,
 )
 
 @Serializable
 data class RecipePortionInput(
-    val value: Float,
-    val measurement: String,
+    val value: Float?,
+    val measurement: String?,
 )
