@@ -140,8 +140,16 @@ The **recipe** table has a relationsip `has_one` **portion**, **image**, and `ha
 - DELETE: http://localhost/method/{id}
 </details>
 
+## Android application
+
+### Importing recipes
+The functionality uses Gemini, you will require to obtain API key for the calls. See [AI Studio](https://aistudio.google.com).
+
+The key should be stored in `local.properties`. See `local.defaults.properties`. The `local.properties` should be created in the same diretory as the default file. It should also contain the same API key in order for it to work. 
+
 ## Roadmap:
 - Implement and update the design of the application.
+- Left swipe goes back to previous page instead of closing the app.
 - ~~Add functionality of increasing or decreasing the portion which results in the updated list of ingredients.~~
 - Make a companion watch app.
 - Look into Gemini integration so that when asking to look for a recipe, it looks through this app first.

@@ -224,7 +224,7 @@ fun RecipeModifyScreen(
                         expanded = isExpandedPortionSelector,
                         onDismissRequest = { isExpandedPortionSelector = !isExpandedPortionSelector }
                     ) {
-                        for (portion in arrayOf("day", "portion")) {
+                        for (portion in arrayOf("day", "portion", "gram", "kg", "bar", "item", "mL", "L")) {
                             DropdownMenuItem(
                                 modifier = Modifier
                                     .background(if (portion == portionSelection) Color.LightGray else Color.Transparent),

@@ -1,10 +1,12 @@
 package com.example.recipe.data
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.recipe.helpers.Endpoints
+import com.example.recipe.helpers.RecipeParser
 import com.example.recipe.helpers.RecipeRequest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,11 +17,107 @@ import kotlinx.coroutines.launch
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
-import retrofit2.Response
+import kotlinx.serialization.json.Json
 
 class RecipeViewModel: ViewModel() {
     private val _uiState = MutableStateFlow(State())
     val uiState: StateFlow<State> = _uiState.asStateFlow()
+
+    private val _plainTextInput = MutableStateFlow("")
+    val plainTextInput: StateFlow<String> = _plainTextInput.asStateFlow()
+
+    private val _parsedRecipe = MutableStateFlow<RecipeParserInput?>(null)
+    val parsedRecipe: StateFlow<RecipeParserInput?> = _parsedRecipe.asStateFlow()
+
+    private val _jsonOutput = MutableStateFlow<String?>(null)
+    val jsonOutput: StateFlow<String?> = _jsonOutput.asStateFlow()
+
+    private val _errorMessage = MutableStateFlow<String?>(null)
+    val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
+
+    private val jsonParser = Json {
+        ignoreUnknownKeys = true // Be flexible with extra fields, if any
+        isLenient = true         // Allow some minor JSON format deviations if necessary
+        prettyPrint = true       // For logging/debugging the JSON output
+    }
+
+    fun convertTextToRecipe(title: String, plainText: String, context: Context) {
+        viewModelScope.launch {
+            _parsedRecipe.value = null
+            _jsonOutput.value = null
+            _errorMessage.value = null
+
+            val parser = RecipeParser()
+            val result = parser.convertTextToRecipeJson(plainText, context)
+
+            result.fold(
+                onSuccess = { jsonString ->
+                    _jsonOutput.value = jsonString // Store the raw JSON output
+                    try {
+                        if (jsonString != "") {
+                            val recipe = jsonParser.decodeFromString<RecipeParserInput>(jsonString.trim())
+                            _parsedRecipe.value = recipe
+                        }
+                    } catch (e: Exception) {
+                        println("Error parsing JSON: ${e.message}")
+                        _errorMessage.value = "Failed to parse recipe from text. The model might have returned an unexpected format. Raw output: $jsonString"
+                    }
+                },
+                onFailure = { exception ->
+                    println("Error calling Gemini Nano (Mock): ${exception.message}")
+                    _errorMessage.value = "Error converting text: ${exception.message}"
+                }
+            )
+            if (parsedRecipe.value != null) {
+                val ingredients = mutableListOf<Ingredient>()
+
+                for (ingredientInput in parsedRecipe.value?.ingredients ?: listOf()) {
+                    val ingredient = Ingredient(
+                        name = ingredientInput.name ?: "",
+                        measurement = ingredientInput.measurement ?: "",
+                        value = ingredientInput.value ?: 1f,
+                        id = 0,
+                        sortOrder = 0,
+                    )
+                    ingredients.add(ingredient)
+                }
+
+                val methods = mutableListOf<Method>()
+
+                for (methodInput in parsedRecipe.value?.methods ?: listOf()) {
+                    val method = Method(
+                        value = methodInput.value ?: "",
+                        id = 0,
+                        sortOrder = 0,
+                    )
+                    methods.add(method)
+                }
+
+                saveRecipe(
+                    RecipeRequest(
+                        id = 0,
+                        name = title,
+                        type = "",
+                        url = parsedRecipe.value?.url ?: ""
+                    ),
+                    Portion(
+                        id = 0,
+                        value = parsedRecipe.value!!.portion?.value ?: 1f,
+                        measurement = "portion"
+                    ),
+                    ingredients,
+                    methods,
+                    null
+                )
+            }
+
+            if (errorMessage.value != "") {
+                println("-------------ERROR MESSAGE-----------")
+                println(errorMessage.value)
+                println("--------------------------------------")
+            }
+        }
+    }
 
     private fun getRecipes(search: String? = null) {
         viewModelScope.launch(Dispatchers.IO) {
