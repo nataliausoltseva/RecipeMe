@@ -4,11 +4,10 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class RecipeParserInput(
-    val name: String?,
-    val url: String?,
-    val methods: List<RecipeMethodInput>?,
-    val ingredients: List<RecipeIngredientInput>?,
-    val portion: RecipePortionInput?,
+    val url: String? = "",
+    val methods: List<RecipeMethodInput>? = null,
+    val ingredients: List<RecipeIngredientInput>? = null,
+    val portion: RecipePortionInput? = null,
 )
 
 @Serializable

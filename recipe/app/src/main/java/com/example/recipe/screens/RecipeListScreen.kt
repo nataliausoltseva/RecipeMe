@@ -51,6 +51,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -149,7 +150,7 @@ fun RecipeListScreen(
                         onClick = { recipeViewModel.onReset() },
                         modifier = Modifier
                             .align(Alignment.BottomEnd)
-                            .padding(16.dp, 16.dp, 80.dp, 16.dp)
+                            .padding(16.dp, 16.dp, 145.dp, 16.dp)
                     ) {
                         Revert()
                     }
@@ -157,7 +158,7 @@ fun RecipeListScreen(
                         onClick = { recipeViewModel.onSaveReorder(list) },
                         modifier = Modifier
                             .align(Alignment.BottomEnd)
-                            .padding(16.dp, 16.dp, 145.dp, 16.dp)
+                            .padding(16.dp, 16.dp, 210.dp, 16.dp)
                     ) {
                         Save()
                     }
@@ -177,9 +178,9 @@ fun RecipeListScreen(
                 onClick = { showGeminiTextField.value = true },
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(16.dp)
+                    .padding(16.dp, 16.dp, 80.dp, 16.dp)
             ) {
-                Text("TEST")
+                Text("Import")
             }
         }
 
@@ -203,8 +204,8 @@ fun RecipeListScreen(
         var context = LocalContext.current
         if (showGeminiTextField.value) {
             GeminiTextInput(
-                onSuccess = {
-                    recipeViewModel.convertTextToRecipe(it, context)
+                onSuccess = { title, text ->
+                    recipeViewModel.convertTextToRecipe(title, text, context)
                     showGeminiTextField.value = false
                 },
                 onClose = { showGeminiTextField.value = false }
@@ -215,18 +216,36 @@ fun RecipeListScreen(
 
 @Composable
 fun GeminiTextInput(
-    onSuccess: (String) -> Unit,
+    onSuccess: (String, String) -> Unit,
     onClose: () -> Unit,
 ) {
+    val title = remember { mutableStateOf("") }
     val text = remember { mutableStateOf("") }
 
     AlertDialog(
         text = {
-            Column {
+            Column(
+                modifier = Modifier.heightIn(min = 150.dp, max = 250.dp),
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                TextField(
+                    value = title.value,
+                    onValueChange = { title.value = it },
+                    label = { Text("Enter recipe title") },
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                    ),
+                )
                 TextField(
                     value = text.value,
                     onValueChange = { text.value = it },
-                    label = { Text("Enter text") }
+                    label = { Text("Enter recipe") },
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                    ),
+                    maxLines = 10
                 )
             }
         },
@@ -235,7 +254,7 @@ fun GeminiTextInput(
         },
         confirmButton = {
             TextButton(
-                onClick = { onSuccess(text.value) }
+                onClick = { onSuccess(title.value, text.value) }
             ) {
                 Text("Apply")
             }

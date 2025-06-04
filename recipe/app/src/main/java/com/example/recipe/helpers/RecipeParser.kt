@@ -24,8 +24,7 @@ class RecipeParser {
         {
           "type": "object",
           "properties": {
-            "name": { "type": "string", "description": "Name of the recipe.", "nullable": true },
-            "url": { "type": "string", "format": "uri", "nullable": true, "description": "Optional URL of the recipe source.", "nullable": true },
+            "url": { "type": "string", "format": "uri", "nullable": true, "description": "Optional URL of the recipe source." },
             "methods": {
               "type": "array",
               "items": {
@@ -33,7 +32,8 @@ class RecipeParser {
                 "properties": {
                   "value": { "type": "string", "description": "The instruction for this method step." }
                 }
-              }
+              },
+              "nullable": true
             },
             "ingredients": {
               "type": "array",
@@ -44,14 +44,16 @@ class RecipeParser {
                   "value": { "type": "number", "description": "Quantity of the ingredient." },
                   "measurement": { "type": "string", "description": "Unit of measurement for the quantity (e.g., grams, ml, cups)." }
                 }
-              }
+              },
+              "nullable": true
             },
             "portion": {
               "type": "object",
               "properties": {
                 "value": { "type": "number", "description": "Numeric value of the portion (e.g., 4)." },
                 "measurement": { "type": "string", "description": "Unit of measurement for the portion (e.g., servings, people)." }
-              }
+              },
+              "nullable": true
             }
           }
         }

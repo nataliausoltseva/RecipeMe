@@ -3,8 +3,6 @@ package com.example.recipe.data
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.recipe.helpers.Endpoints
@@ -16,7 +14,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.serialization.encodeToString
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -44,7 +41,7 @@ class RecipeViewModel: ViewModel() {
         prettyPrint = true       // For logging/debugging the JSON output
     }
 
-    fun convertTextToRecipe(plainText: String, context: Context) {
+    fun convertTextToRecipe(title: String, plainText: String, context: Context) {
         viewModelScope.launch {
             _parsedRecipe.value = null
             _jsonOutput.value = null
@@ -99,7 +96,7 @@ class RecipeViewModel: ViewModel() {
                 saveRecipe(
                     RecipeRequest(
                         id = 0,
-                        name = parsedRecipe.value?.name ?: "",
+                        name = title,
                         type = "",
                         url = parsedRecipe.value?.url ?: ""
                     ),
@@ -116,7 +113,7 @@ class RecipeViewModel: ViewModel() {
 
             if (errorMessage.value != "") {
                 println("-------------ERROR MESSAGE-----------")
-                println(errorMessage)
+                println(errorMessage.value)
                 println("--------------------------------------")
             }
         }
