@@ -85,7 +85,7 @@ class RecipeParser {
 
             return Result.success(cleanedJson)
         } catch (e: Exception) {
-            println(e.message)
+            println("convertTextToRecipeJson: " + e.message)
             return Result.success("")
         }
         return Result.success("")

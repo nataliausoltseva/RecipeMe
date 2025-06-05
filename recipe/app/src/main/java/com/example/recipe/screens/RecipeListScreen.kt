@@ -42,6 +42,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FloatingActionButton
@@ -58,6 +59,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -82,6 +84,7 @@ import sh.calvin.reorderable.rememberReorderableLazyStaggeredGridState
 import kotlin.collections.component1
 import kotlin.collections.component2
 import kotlin.collections.iterator
+import kotlinx.coroutines.launch
 
 @Composable
 fun RecipeListScreen(
@@ -201,14 +204,24 @@ fun RecipeListScreen(
             )
         }
 
-        var context = LocalContext.current
         if (showGeminiTextField.value) {
+            var context = LocalContext.current
+            var isLoading by remember { mutableStateOf(false) }
+            var errorMessage by remember { mutableStateOf<String?>(null) }
+            val coroutineScope = rememberCoroutineScope()
             GeminiTextInput(
                 onSuccess = { title, text ->
-                    recipeViewModel.convertTextToRecipe(title, text, context)
-                    showGeminiTextField.value = false
+                    coroutineScope.launch {
+                        isLoading = true
+                        val result = runCatching { recipeViewModel.convertTextToRecipe(title, text, context) }
+                        isLoading = false
+                        result.onSuccess { showGeminiTextField.value = false }
+                        result.onFailure { errorMessage = it.message }
+                    }
                 },
-                onClose = { showGeminiTextField.value = false }
+                onClose = { showGeminiTextField.value = false },
+                isLoading = isLoading,
+                errorMessage = errorMessage
             )
         }
     }
@@ -218,6 +231,8 @@ fun RecipeListScreen(
 fun GeminiTextInput(
     onSuccess: (String, String) -> Unit,
     onClose: () -> Unit,
+    isLoading: Boolean,
+    errorMessage: String?
 ) {
     val title = remember { mutableStateOf("") }
     val text = remember { mutableStateOf("") }
@@ -254,9 +269,17 @@ fun GeminiTextInput(
         },
         confirmButton = {
             TextButton(
-                onClick = { onSuccess(title.value, text.value) }
+                onClick = { onSuccess(title.value, text.value) },
+                enabled = !isLoading
             ) {
-                Text("Apply")
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = Color.White
+                    )
+                } else {
+                    Text("Apply")
+                }
             }
         },
     )

@@ -41,7 +41,7 @@ class RecipeViewModel: ViewModel() {
         prettyPrint = true       // For logging/debugging the JSON output
     }
 
-    fun convertTextToRecipe(title: String, plainText: String, context: Context) {
+    fun convertTextToRecipe(title: String, plainText: String, context: Context): String {
         viewModelScope.launch {
             _parsedRecipe.value = null
             _jsonOutput.value = null
@@ -52,6 +52,7 @@ class RecipeViewModel: ViewModel() {
 
             result.fold(
                 onSuccess = { jsonString ->
+                    println(jsonString)
                     _jsonOutput.value = jsonString // Store the raw JSON output
                     try {
                         if (jsonString != "") {
@@ -116,6 +117,12 @@ class RecipeViewModel: ViewModel() {
                 println(errorMessage.value)
                 println("--------------------------------------")
             }
+        }
+
+        if (parsedRecipe.value === null) {
+            return "Success"
+        } else {
+            throw Exception("There was an error with processing this recipe. Try again later.")
         }
     }
 
