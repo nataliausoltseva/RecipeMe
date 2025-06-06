@@ -59,7 +59,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -84,13 +83,14 @@ import sh.calvin.reorderable.rememberReorderableLazyStaggeredGridState
 import kotlin.collections.component1
 import kotlin.collections.component2
 import kotlin.collections.iterator
-import kotlinx.coroutines.launch
 
 @Composable
 fun RecipeListScreen(
     recipeViewModel: RecipeViewModel,
 ) {
     val recipesUIState by recipeViewModel.uiState.collectAsState()
+    val isLoading by recipeViewModel.isLoadingImport.collectAsState()
+    val errorMessage by recipeViewModel.errorMessage.collectAsState()
 
     var search by remember { mutableStateOf("") }
     var showFilterDialog = remember { mutableStateOf(false)}
@@ -204,21 +204,10 @@ fun RecipeListScreen(
             )
         }
 
-        if (showGeminiTextField.value) {
+        if (showGeminiTextField.value || isLoading) {
             var context = LocalContext.current
-            var isLoading by remember { mutableStateOf(false) }
-            var errorMessage by remember { mutableStateOf<String?>(null) }
-            val coroutineScope = rememberCoroutineScope()
             GeminiTextInput(
-                onSuccess = { title, text ->
-                    coroutineScope.launch {
-                        isLoading = true
-                        val result = runCatching { recipeViewModel.convertTextToRecipe(title, text, context) }
-                        isLoading = false
-                        result.onSuccess { showGeminiTextField.value = false }
-                        result.onFailure { errorMessage = it.message }
-                    }
-                },
+                onSuccess = { title, text -> recipeViewModel.convertTextToRecipe(title, text, context)},
                 onClose = { showGeminiTextField.value = false },
                 isLoading = isLoading,
                 errorMessage = errorMessage
@@ -243,6 +232,16 @@ fun GeminiTextInput(
                 modifier = Modifier.heightIn(min = 150.dp, max = 250.dp),
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
+                if (errorMessage != null) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .border(1.dp, Color.Red)
+                            .padding(16.dp)
+                    ) {
+                        Text(errorMessage)
+                    }
+                }
                 TextField(
                     value = title.value,
                     onValueChange = { title.value = it },
@@ -251,6 +250,7 @@ fun GeminiTextInput(
                         focusedContainerColor = Color.Transparent,
                         unfocusedContainerColor = Color.Transparent,
                     ),
+                    enabled = !isLoading,
                 )
                 TextField(
                     value = text.value,
@@ -260,7 +260,8 @@ fun GeminiTextInput(
                         focusedContainerColor = Color.Transparent,
                         unfocusedContainerColor = Color.Transparent,
                     ),
-                    maxLines = 10
+                    maxLines = 10,
+                    enabled = !isLoading
                 )
             }
         },

@@ -35,94 +35,93 @@ class RecipeViewModel: ViewModel() {
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
+    private val _isLoadingImport = MutableStateFlow(false)
+    val isLoadingImport: StateFlow<Boolean> = _isLoadingImport.asStateFlow()
+
     private val jsonParser = Json {
         ignoreUnknownKeys = true // Be flexible with extra fields, if any
         isLenient = true         // Allow some minor JSON format deviations if necessary
         prettyPrint = true       // For logging/debugging the JSON output
     }
 
-    fun convertTextToRecipe(title: String, plainText: String, context: Context): String {
+    fun convertTextToRecipe(title: String, plainText: String, context: Context) {
         viewModelScope.launch {
-            _parsedRecipe.value = null
-            _jsonOutput.value = null
-            _errorMessage.value = null
+            // 1. Set loading to true at the very beginning
+            _isLoadingImport.value = true
+            try {
+                _parsedRecipe.value = null
+                _jsonOutput.value = null
+                _errorMessage.value = null
 
-            val parser = RecipeParser()
-            val result = parser.convertTextToRecipeJson(plainText, context)
+                val parser = RecipeParser()
+                val result = parser.convertTextToRecipeJson(plainText, context)
 
-            result.fold(
-                onSuccess = { jsonString ->
-                    println(jsonString)
-                    _jsonOutput.value = jsonString // Store the raw JSON output
-                    try {
-                        if (jsonString != "") {
-                            val recipe = jsonParser.decodeFromString<RecipeParserInput>(jsonString.trim())
-                            _parsedRecipe.value = recipe
+                result.fold(
+                    onSuccess = { jsonString ->
+                        _jsonOutput.value = jsonString // Store the raw JSON output
+                        try {
+                            if (jsonString != "") {
+                                val recipe = jsonParser.decodeFromString<RecipeParserInput>(jsonString.trim())
+                                _parsedRecipe.value = recipe
+                            }
+                        } catch (e: Exception) {
+                            _errorMessage.value = "Failed to parse recipe from text. The model might have returned an unexpected format. Raw output: $jsonString"
                         }
-                    } catch (e: Exception) {
-                        println("Error parsing JSON: ${e.message}")
-                        _errorMessage.value = "Failed to parse recipe from text. The model might have returned an unexpected format. Raw output: $jsonString"
+                    },
+                    onFailure = { exception ->
+                        _errorMessage.value = "Error converting text: ${exception.message}"
                     }
-                },
-                onFailure = { exception ->
-                    println("Error calling Gemini Nano (Mock): ${exception.message}")
-                    _errorMessage.value = "Error converting text: ${exception.message}"
-                }
-            )
-            if (parsedRecipe.value != null) {
-                val ingredients = mutableListOf<Ingredient>()
-
-                for (ingredientInput in parsedRecipe.value?.ingredients ?: listOf()) {
-                    val ingredient = Ingredient(
-                        name = ingredientInput.name ?: "",
-                        measurement = ingredientInput.measurement ?: "",
-                        value = ingredientInput.value ?: 1f,
-                        id = 0,
-                        sortOrder = 0,
-                    )
-                    ingredients.add(ingredient)
-                }
-
-                val methods = mutableListOf<Method>()
-
-                for (methodInput in parsedRecipe.value?.methods ?: listOf()) {
-                    val method = Method(
-                        value = methodInput.value ?: "",
-                        id = 0,
-                        sortOrder = 0,
-                    )
-                    methods.add(method)
-                }
-
-                saveRecipe(
-                    RecipeRequest(
-                        id = 0,
-                        name = title,
-                        type = "",
-                        url = parsedRecipe.value?.url ?: ""
-                    ),
-                    Portion(
-                        id = 0,
-                        value = parsedRecipe.value!!.portion?.value ?: 1f,
-                        measurement = "portion"
-                    ),
-                    ingredients,
-                    methods,
-                    null
                 )
-            }
+                if (parsedRecipe.value != null) {
+                    val ingredients = mutableListOf<Ingredient>()
 
-            if (errorMessage.value != "") {
+                    for (ingredientInput in parsedRecipe.value?.ingredients ?: listOf()) {
+                        val ingredient = Ingredient(
+                            name = ingredientInput.name ?: "",
+                            measurement = ingredientInput.measurement ?: "",
+                            value = ingredientInput.value ?: 1f,
+                            id = 0,
+                            sortOrder = 0,
+                        )
+                        ingredients.add(ingredient)
+                    }
+
+                    val methods = mutableListOf<Method>()
+
+                    for (methodInput in parsedRecipe.value?.methods ?: listOf()) {
+                        val method = Method(
+                            value = methodInput.value ?: "",
+                            id = 0,
+                            sortOrder = 0,
+                        )
+                        methods.add(method)
+                    }
+
+                    saveRecipe(
+                        RecipeRequest(
+                            id = 0,
+                            name = title,
+                            type = "",
+                            url = parsedRecipe.value?.url ?: ""
+                        ),
+                        Portion(
+                            id = 0,
+                            value = parsedRecipe.value!!.portion?.value ?: 1f,
+                            measurement = "portion"
+                        ),
+                        ingredients,
+                        methods,
+                        null
+                    )
+                }
+            } catch (e: Exception) {
                 println("-------------ERROR MESSAGE-----------")
-                println(errorMessage.value)
+                println(e.message)
                 println("--------------------------------------")
+                _errorMessage.value = "There was an error with processing this recipe. Try again later."
+            } finally {
+                _isLoadingImport.value = false
             }
-        }
-
-        if (parsedRecipe.value === null) {
-            return "Success"
-        } else {
-            throw Exception("There was an error with processing this recipe. Try again later.")
         }
     }
 
