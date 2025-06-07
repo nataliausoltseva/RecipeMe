@@ -42,6 +42,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FloatingActionButton
@@ -88,6 +89,8 @@ fun RecipeListScreen(
     recipeViewModel: RecipeViewModel,
 ) {
     val recipesUIState by recipeViewModel.uiState.collectAsState()
+    val isLoading by recipeViewModel.isLoadingImport.collectAsState()
+    val errorMessage by recipeViewModel.errorMessage.collectAsState()
 
     var search by remember { mutableStateOf("") }
     var showFilterDialog = remember { mutableStateOf(false)}
@@ -201,14 +204,13 @@ fun RecipeListScreen(
             )
         }
 
-        var context = LocalContext.current
-        if (showGeminiTextField.value) {
+        if (showGeminiTextField.value || isLoading) {
+            var context = LocalContext.current
             GeminiTextInput(
-                onSuccess = { title, text ->
-                    recipeViewModel.convertTextToRecipe(title, text, context)
-                    showGeminiTextField.value = false
-                },
-                onClose = { showGeminiTextField.value = false }
+                onSuccess = { title, text -> recipeViewModel.convertTextToRecipe(title, text, context)},
+                onClose = { showGeminiTextField.value = false },
+                isLoading = isLoading,
+                errorMessage = errorMessage
             )
         }
     }
@@ -218,6 +220,8 @@ fun RecipeListScreen(
 fun GeminiTextInput(
     onSuccess: (String, String) -> Unit,
     onClose: () -> Unit,
+    isLoading: Boolean,
+    errorMessage: String?
 ) {
     val title = remember { mutableStateOf("") }
     val text = remember { mutableStateOf("") }
@@ -228,6 +232,16 @@ fun GeminiTextInput(
                 modifier = Modifier.heightIn(min = 150.dp, max = 250.dp),
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
+                if (errorMessage != null) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .border(1.dp, Color.Red)
+                            .padding(16.dp)
+                    ) {
+                        Text(errorMessage)
+                    }
+                }
                 TextField(
                     value = title.value,
                     onValueChange = { title.value = it },
@@ -236,6 +250,7 @@ fun GeminiTextInput(
                         focusedContainerColor = Color.Transparent,
                         unfocusedContainerColor = Color.Transparent,
                     ),
+                    enabled = !isLoading,
                 )
                 TextField(
                     value = text.value,
@@ -245,7 +260,8 @@ fun GeminiTextInput(
                         focusedContainerColor = Color.Transparent,
                         unfocusedContainerColor = Color.Transparent,
                     ),
-                    maxLines = 10
+                    maxLines = 10,
+                    enabled = !isLoading
                 )
             }
         },
@@ -254,9 +270,17 @@ fun GeminiTextInput(
         },
         confirmButton = {
             TextButton(
-                onClick = { onSuccess(title.value, text.value) }
+                onClick = { onSuccess(title.value, text.value) },
+                enabled = !isLoading
             ) {
-                Text("Apply")
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = Color.White
+                    )
+                } else {
+                    Text("Apply")
+                }
             }
         },
     )
