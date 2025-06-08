@@ -449,143 +449,139 @@ fun RecipeCard(
             .padding(bottom = 10.dp)
             .clickable { onView(recipe) }
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(10.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            if (recipe.image?.url != null) {
-                val decodedBytes = Base64.decode(recipe.image.url, Base64.DEFAULT)
-                if (decodedBytes != null) {
-                    val bitmap = byteArrayToBitmap(decodedBytes)
-                    val imageBitmap = bitmap.asImageBitmap()
-                    Image(
-                        bitmap = imageBitmap,
-                        contentDescription = recipe.name + " image",
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(max = 100.dp)
-                            .clip(RoundedCornerShape(8.dp))
+        if (recipe.image?.url != null) {
+            val decodedBytes = Base64.decode(recipe.image.url, Base64.DEFAULT)
+            if (decodedBytes != null) {
+                val bitmap = byteArrayToBitmap(decodedBytes)
+                val imageBitmap = bitmap.asImageBitmap()
+                Image(
+                    bitmap = imageBitmap,
+                    contentDescription = recipe.name + " image",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 100.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .padding(start = 10.dp, end = 10.dp, bottom = 10.dp)
 
-                    )
-                }
+                )
+            }
+        }
+
+        Row(
+            modifier = modifier.padding(start = 10.dp, end = 10.dp, bottom = 10.dp, top = if (recipe.image?.url == null) 10.dp else 0.dp),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            val currentHorizontalArrangement = if (recipe.type == "") {
+                Arrangement.SpaceBetween
+            } else {
+                Arrangement.Start
             }
 
-            Row(
+            val modifier = if (recipe.type == "") {
+                Modifier.fillMaxWidth()
+            } else {
+                Modifier
+            }
+
+            Row (
                 modifier = modifier,
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = currentHorizontalArrangement,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                val currentHorizontalArrangement = if (recipe.type == "") {
-                    Arrangement.SpaceBetween
-                } else {
-                    Arrangement.Start
-                }
+                val maxWidth = if (recipe.type != "") 170.dp else 230.dp
+                Text(
+                    text = recipe.name,
+                    textAlign = TextAlign.Center,
+                    fontWeight = FontWeight.Bold,
+                    overflow = TextOverflow.Visible,
+                    modifier = Modifier.widthIn(max = maxWidth)
+                )
 
-                val modifier = if (recipe.type == "") {
-                    Modifier.fillMaxWidth()
-                } else {
-                    Modifier
-                }
-
-                Row (
-                    modifier = modifier,
-                    horizontalArrangement = currentHorizontalArrangement,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    val maxWidth = if (recipe.type != "") 170.dp else 230.dp
+                if (recipe.portion != null) {
                     Text(
-                        text = recipe.name,
-                        textAlign = TextAlign.Center,
-                        fontWeight = FontWeight.Bold,
-                        overflow = TextOverflow.Visible,
-                        modifier = Modifier.widthIn(max = maxWidth)
-                    )
-
-                    if (recipe.portion != null) {
-                        Text(
-                            text = "(" + recipe.portion.value.toString() + " " + recipe.portion.measurement + ")",
-                            modifier = Modifier.padding(start = 5.dp),
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                }
-
-                if (recipe.type != "") {
-                    Text(
-                        text = recipe.type,
-                        fontStyle = FontStyle.Italic,
+                        text = "(" + recipe.portion.value.toString() + " " + recipe.portion.measurement + ")",
+                        modifier = Modifier.padding(start = 5.dp),
                         overflow = TextOverflow.Ellipsis
                     )
                 }
             }
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
+            if (recipe.type != "") {
                 Text(
-                    text = "Ingredients:",
-                    overflow = TextOverflow.Ellipsis,
-                )
-
-                var itemLabel = "item"
-
-                if (recipe.ingredients == null || recipe.ingredients.size > 1) {
-                    itemLabel = "items"
-                }
-
-                Text(
-                    text = (if (recipe.ingredients == null) "0" else recipe.ingredients.size.toString()) + " " + itemLabel,
+                    text = recipe.type,
                     fontStyle = FontStyle.Italic,
                     overflow = TextOverflow.Ellipsis
                 )
             }
+        }
 
-            if (recipe.ingredients != null) {
-                var allIngredients = recipe.ingredients.joinToString("\n") { "${it.name} ${it.value} ${it.measurement}" }
-                Text(
-                    text = allIngredients,
-                    overflow = TextOverflow.Ellipsis,maxLines = 5
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(start = 10.dp, end = 10.dp, bottom = 10.dp),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = "Ingredients:",
+                overflow = TextOverflow.Ellipsis,
+            )
 
-                )
+            var itemLabel = "item"
+
+            if (recipe.ingredients == null || recipe.ingredients.size > 1) {
+                itemLabel = "items"
             }
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = "Methods:",
-                    overflow = TextOverflow.Ellipsis,
-                )
+            Text(
+                text = (if (recipe.ingredients == null) "0" else recipe.ingredients.size.toString()) + " " + itemLabel,
+                fontStyle = FontStyle.Italic,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
 
-                var itemLabel = "step"
+        if (recipe.ingredients != null) {
+            var allIngredients = recipe.ingredients.joinToString("\n") { "${it.name} ${it.value} ${it.measurement}" }
+            Text(
+                text = allIngredients,
+                overflow = TextOverflow.Ellipsis,
+                maxLines = 5,
+                modifier = Modifier.padding(start = 10.dp, end = 10.dp, bottom = 10.dp)
+            )
+        }
 
-                if (recipe.methods == null || recipe.methods.size > 1) {
-                    itemLabel = "steps"
-                }
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(start = 10.dp, end = 10.dp, bottom = 10.dp),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = "Methods:",
+                overflow = TextOverflow.Ellipsis,
+            )
 
-                Text(
-                    text = (if (recipe.methods == null) "0" else recipe.methods.size.toString()) + " " + itemLabel,
-                    fontStyle = FontStyle.Italic,
-                    overflow = TextOverflow.Ellipsis,
-                    maxLines = 3
-                )
+            var itemLabel = "step"
+
+            if (recipe.methods == null || recipe.methods.size > 1) {
+                itemLabel = "steps"
             }
 
-            if (recipe.methods != null) {
-                var allMethods = recipe.methods.joinToString("\n") { method ->
-                    val indicator =
-                        method.sortOrder ?: (recipe.methods.indexOf(method) + 1)
-                    "$indicator. ${method.value}"
-                }
+            Text(
+                text = (if (recipe.methods == null) "0" else recipe.methods.size.toString()) + " " + itemLabel,
+                fontStyle = FontStyle.Italic,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
 
-                Text(
-                    text = allMethods,
-                    overflow = TextOverflow.Ellipsis
-                )
+        if (recipe.methods != null) {
+            var allMethods = recipe.methods.joinToString("\n") { method ->
+                val indicator =
+                    method.sortOrder ?: (recipe.methods.indexOf(method) + 1)
+                "$indicator. ${method.value}"
             }
+
+            Text(
+                text = allMethods,
+                overflow = TextOverflow.Ellipsis,
+                maxLines = 5,
+                modifier = Modifier.padding(start = 10.dp, end = 10.dp, bottom = 10.dp)
+            )
         }
     }
 }
