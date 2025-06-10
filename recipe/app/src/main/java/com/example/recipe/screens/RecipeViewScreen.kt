@@ -146,13 +146,18 @@ fun Recipe(
             if (decodedBytes != null) {
                 val bitmap = byteArrayToBitmap(decodedBytes)
                 val imageBitmap = bitmap.asImageBitmap()
-                Image(
-                    bitmap = imageBitmap,
-                    contentDescription = recipe.name + " image",
-                    modifier = Modifier
-                        .size(200.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Image(
+                        bitmap = imageBitmap,
+                        contentDescription = recipe.name + " image",
+                        modifier = Modifier
+                            .size(200.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                    )
+                }
             }
         }
 

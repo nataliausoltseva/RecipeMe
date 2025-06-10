@@ -32,8 +32,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
@@ -74,7 +72,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import sh.calvin.reorderable.ReorderableColumn
 import java.io.ByteArrayOutputStream
-import kotlin.collections.orEmpty
 
 @Composable
 fun RecipeModifyScreen(
@@ -530,15 +527,15 @@ fun ImageUploader(
             Button(
                 onClick = {
                     val clipData = clipboardManager.getClip()
-                    if (clipData != null && clipData.clipData.itemCount > 0) {
-                        val clipDataItem = clipData.clipData.getItemAt(0)
-                        val uri = clipDataItem.uri
-                        if (uri != null) {
-                            try {
-                                val inputStream = context.contentResolver.openInputStream(uri)
+                    clipData?.let {
+                        if (it.clipData.itemCount > 0) {
+                            val uri = it.clipData.getItemAt(0).uri
+                            uri?.let { imageUri ->
+                                val inputStream = context.contentResolver.openInputStream(imageUri)
                                 bitmapState = BitmapFactory.decodeStream(inputStream)
-                            } catch (e: Exception) {
-                                e.printStackTrace()
+                                val outputStream = ByteArrayOutputStream()
+                                bitmapState?.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
+                                onImageUpload(outputStream.toByteArray())
                             }
                         }
                     }
