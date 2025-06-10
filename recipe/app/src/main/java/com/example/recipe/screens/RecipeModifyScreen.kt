@@ -1,6 +1,7 @@
 package com.example.recipe.screens
 
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.util.Base64
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -31,8 +32,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
@@ -56,6 +55,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -72,7 +72,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import sh.calvin.reorderable.ReorderableColumn
 import java.io.ByteArrayOutputStream
-import kotlin.collections.orEmpty
 
 @Composable
 fun RecipeModifyScreen(
@@ -456,6 +455,8 @@ fun ImageUploader(
     var bitmapState by remember { mutableStateOf<Bitmap?>(null) }
     val scope = rememberCoroutineScope()
 
+    val clipboardManager = LocalClipboardManager.current
+
     val pickImageLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent(),
         onResult = { uri: Uri? ->
@@ -477,43 +478,71 @@ fun ImageUploader(
     )
 
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        if (image?.url != null) {
-            val decodedBytes = Base64.decode(image.url, Base64.DEFAULT)
-            if (decodedBytes != null) {
-                val bitmap = byteArrayToBitmap(decodedBytes)
-                val imageBitmap = bitmap.asImageBitmap()
-                Image(
-                    bitmap = imageBitmap,
-                    contentDescription = "Existing image",
-                    modifier = Modifier
-                        .size(200.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                )
+        // Display area for the image
+        Box(
+            modifier = Modifier
+                .size(200.dp)
+                .clip(RoundedCornerShape(8.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            when {
+                bitmapState != null -> {
+                    Image(
+                        bitmap = bitmapState!!.asImageBitmap(),
+                        contentDescription = "Selected image",
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+                image?.url != null -> {
+                    val decodedBytes = Base64.decode(image.url, Base64.DEFAULT)
+                    val bitmap = byteArrayToBitmap(decodedBytes)
+                    Image(
+                        bitmap = bitmap.asImageBitmap(),
+                        contentDescription = "Existing image",
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+                else -> {
+                    Text("No image selected")
+                }
             }
-        }
-
-        bitmapState?.let {
-            Image(
-                bitmap = it.asImageBitmap(),
-                contentDescription = "Selected image",
-                modifier = Modifier.size(200.dp)
-            )
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Button(
-            onClick = {
-                pickImageLauncher.launch("image/*")
-            }
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Text("Upload new image")
+            Button(
+                onClick = {
+                    pickImageLauncher.launch("image/*")
+                }
+            ) {
+                Text("Upload Image")
+            }
+
+            Button(
+                onClick = {
+                    val clipData = clipboardManager.getClip()
+                    clipData?.let {
+                        if (it.clipData.itemCount > 0) {
+                            val uri = it.clipData.getItemAt(0).uri
+                            uri?.let { imageUri ->
+                                val inputStream = context.contentResolver.openInputStream(imageUri)
+                                bitmapState = BitmapFactory.decodeStream(inputStream)
+                                val outputStream = ByteArrayOutputStream()
+                                bitmapState?.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
+                                onImageUpload(outputStream.toByteArray())
+                            }
+                        }
+                    }
+                }
+            ) {
+                Text("Paste Image")
+            }
         }
     }
 }
