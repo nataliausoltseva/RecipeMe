@@ -4,7 +4,9 @@ import android.util.Base64
 import android.util.Patterns
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
@@ -26,13 +28,18 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -51,13 +58,16 @@ fun RecipeViewScreen(
     val recipesUIState by recipeViewModel.uiState.collectAsState()
     val showDeleteModal = remember { mutableStateOf(false) }
 
+    val showFullImage = remember { mutableStateOf(false) }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .windowInsetsPadding(WindowInsets.systemBars)
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -65,38 +75,52 @@ fun RecipeViewScreen(
                 imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
                 contentDescription = "Go back",
                 modifier = Modifier
-                    .clickable { recipeViewModel.backToListView() }
+                    .clickable {
+                        if (showFullImage.value) {
+                            showFullImage.value = false
+                        } else {
+                            recipeViewModel.backToListView()
+                        }
+                    }
                     .size(50.dp, 50.dp)
             )
-            Text(
-                text = recipesUIState.selectedRecipe?.name ?: "",
-                fontWeight = FontWeight.Bold,
-                overflow = TextOverflow.Ellipsis,
-                fontSize = 22.sp
-            )
-            Row {
-                Icon(
-                    imageVector = Icons.Filled.Edit,
-                    contentDescription = "Edit button",
-                    modifier = Modifier
-                        .clickable { recipeViewModel.onEditRecipe() }
-                        .padding(end = 10.dp)
-                        .size(30.dp, 30.dp)
+
+            if (!showFullImage.value) {
+                Text(
+                    text = recipesUIState.selectedRecipe?.name ?: "",
+                    fontWeight = FontWeight.Bold,
+                    overflow = TextOverflow.Ellipsis,
+                    fontSize = 22.sp
                 )
-                Icon(
-                    imageVector = Icons.Filled.Delete,
-                    contentDescription = "Delete button",
-                    modifier = Modifier
-                        .clickable { showDeleteModal.value = true }
-                        .padding(end = 10.dp)
-                        .size(30.dp, 30.dp)
-                )
+                Row {
+                    Icon(
+                        imageVector = Icons.Filled.Edit,
+                        contentDescription = "Edit button",
+                        modifier = Modifier
+                            .clickable { recipeViewModel.onEditRecipe() }
+                            .padding(end = 10.dp)
+                            .size(30.dp, 30.dp)
+                    )
+                    Icon(
+                        imageVector = Icons.Filled.Delete,
+                        contentDescription = "Delete button",
+                        modifier = Modifier
+                            .clickable { showDeleteModal.value = true }
+                            .padding(end = 10.dp)
+                            .size(30.dp, 30.dp)
+                    )
+                }
             }
         }
 
-        Recipe(
-            recipesUIState.selectedRecipe!!
-        )
+        if (showFullImage.value && recipesUIState.selectedRecipe!!.image != null) {
+            FullImage(recipesUIState.selectedRecipe!!.image!!.url)
+        } else {
+            Recipe(
+                recipesUIState.selectedRecipe!!,
+                onImageClick = { showFullImage.value = true }
+            )
+        }
 
         if (showDeleteModal.value) {
             AlertDialog(
@@ -134,7 +158,8 @@ fun RecipeViewScreen(
 
 @Composable
 fun Recipe(
-    recipe: Recipe
+    recipe: Recipe,
+    onImageClick: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -147,7 +172,7 @@ fun Recipe(
                 val bitmap = byteArrayToBitmap(decodedBytes)
                 val imageBitmap = bitmap.asImageBitmap()
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().clickable { onImageClick() },
                     horizontalArrangement = Arrangement.Center
                 ) {
                     Image(
@@ -260,6 +285,61 @@ fun Recipe(
                 )
             }
         }
+    }
+}
 
+@Composable
+fun FullImage(
+    imageUrl: String,
+) {
+    var scale by remember { mutableFloatStateOf(1f) }
+    var offset by remember { mutableStateOf(Offset.Zero) }
+
+    val decodedBytes = Base64.decode(imageUrl, Base64.DEFAULT)
+    val bitmap = byteArrayToBitmap(decodedBytes)
+    val imageBitmap = bitmap.asImageBitmap()
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .pointerInput(Unit) {
+                detectTransformGestures { _, pan, zoom, _ ->
+                    // Calculate the new scale value, clamping it between 1f and a max value (e.g., 3f)
+                    val newScale = (scale * zoom).coerceIn(1f, 3f)
+
+                    // Calculate the maximum allowed offset to prevent panning outside the image bounds
+                    val maxOffsetX = (newScale - 1f) * size.width / 2f
+                    val maxOffsetY = (newScale - 1f) * size.height / 2f
+
+                    // Calculate the new offset, clamping it to the allowed bounds
+                    val newOffset = offset + pan
+                    val coercedOffset = Offset(
+                        x = newOffset.x.coerceIn(-maxOffsetX, maxOffsetX),
+                        y = newOffset.y.coerceIn(-maxOffsetY, maxOffsetY)
+                    )
+
+                    // If scale is 1f, reset the offset. Otherwise, apply the corrected offset.
+                    offset = if (newScale == 1f) {
+                        Offset.Zero
+                    } else {
+                        coercedOffset
+                    }
+
+                    scale = newScale
+                }
+            }
+    ) {
+        Image(
+            bitmap = imageBitmap,
+            contentDescription = "Full-size image",
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer(
+                    scaleX = scale,
+                    scaleY = scale,
+                    translationX = offset.x,
+                    translationY = offset.y
+                )
+        )
     }
 }
