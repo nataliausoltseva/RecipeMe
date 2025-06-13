@@ -75,7 +75,9 @@ import java.io.ByteArrayOutputStream
 
 @Composable
 fun RecipeModifyScreen(
+    recipeId: String?,
     recipeViewModel: RecipeViewModel,
+    onNavigateBack: () -> Unit,
 ) {
     val recipesUIState by recipeViewModel.uiState.collectAsState()
 
@@ -83,7 +85,8 @@ fun RecipeModifyScreen(
         modifier = Modifier
             .windowInsetsPadding(WindowInsets.systemBars)
     ) {
-        var recipe = recipesUIState.selectedRecipe
+        val recipe = recipesUIState.recipes.find { it.id.toString() == recipeId }
+
         var name by remember { mutableStateOf(recipe?.name ?: "") }
         val decodedBytes = Base64.decode(recipe?.image?.url ?: "", Base64.DEFAULT)
         var imageBytes by remember { mutableStateOf(if (recipe?.image?.url != null) decodedBytes else null) }
@@ -140,9 +143,8 @@ fun RecipeModifyScreen(
                                 methods.value,
                                 imageBytes,
                             )
-                        } else {
-                            recipeViewModel.backToListView()
                         }
+                        onNavigateBack()
                     }
                     .size(50.dp, 50.dp)
             )

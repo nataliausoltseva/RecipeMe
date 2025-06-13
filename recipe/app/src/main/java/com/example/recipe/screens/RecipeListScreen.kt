@@ -87,6 +87,8 @@ import kotlin.collections.iterator
 @Composable
 fun RecipeListScreen(
     recipeViewModel: RecipeViewModel,
+    onNavigateRecipeView: (id: String) -> Unit,
+    onNavigateRecipeEdit: (id: String) -> Unit,
 ) {
     val recipesUIState by recipeViewModel.uiState.collectAsState()
     val isLoading by recipeViewModel.isLoadingImport.collectAsState()
@@ -131,14 +133,18 @@ fun RecipeListScreen(
             if (recipesUIState.isTypeSplitView) {
                 RecipeSplitList(
                     recipes = recipesUIState.recipes,
-                    onView = { recipeViewModel.viewRecipe(it) },
+                    onView = {
+                        onNavigateRecipeView(it.id.toString())
+                    },
                 )
             } else {
                 var list by remember { mutableStateOf(recipesUIState.recipes) }
 
                 RecipeList(
                     recipes = recipesUIState.recipes,
-                    onView = { recipeViewModel.viewRecipe(it) },
+                    onView = {
+                        onNavigateRecipeView(it.id.toString())
+                    },
                     onReorder = {
                         recipeViewModel.onReorder()
                         list = it
@@ -169,7 +175,7 @@ fun RecipeListScreen(
             }
 
             FloatingActionButton(
-                onClick = { recipeViewModel.createRecipe() },
+                onClick = { onNavigateRecipeEdit("0") },
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(16.dp)

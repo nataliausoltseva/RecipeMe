@@ -147,24 +147,6 @@ class RecipeViewModel: ViewModel() {
         }
     }
 
-    fun viewRecipe(recipe: Recipe) {
-        _uiState.update {
-            it.copy(
-                isFullScreen = true,
-                selectedRecipe = recipe,
-                isEditingRecipe = false
-            )
-        }
-    }
-
-    fun createRecipe() {
-        _uiState.update {
-            it.copy(
-                isFullScreen = true,
-            )
-        }
-    }
-
     fun saveRecipe(
         recipe: RecipeRequest,
         portion: Portion,
@@ -195,41 +177,9 @@ class RecipeViewModel: ViewModel() {
 
                 recipeResponse = endpoints.getRecipe(recipeIdToUse)
                 getRecipes()
-
-                if (recipeResponse != null) {
-                    onSaveRecipe(recipeResponse)
-                } else {
-                    backToListView()
-                }
             } catch (e: Exception) {
                 println("Error: ${e.message}")
             }
-        }
-    }
-
-    fun backToListView() {
-        _uiState.update {
-            it.copy(
-                isFullScreen = false,
-                selectedRecipe = null
-            )
-        }
-    }
-
-    fun onEditRecipe() {
-        _uiState.update {
-            it.copy(
-                isEditingRecipe = true
-            )
-        }
-    }
-
-    fun onSaveRecipe(recipe: Recipe) {
-        _uiState.update {
-            it.copy(
-                isEditingRecipe = false,
-                selectedRecipe = recipe
-            )
         }
     }
 
@@ -350,9 +300,7 @@ class RecipeViewModel: ViewModel() {
                 }
                 _uiState.update {
                     it.copy(
-                        recipes,
-                        isFullScreen = false,
-                        selectedRecipe = null
+                        recipes
                     )
                 }
             } catch (e: Exception) {
