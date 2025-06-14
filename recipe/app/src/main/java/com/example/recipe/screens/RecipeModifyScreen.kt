@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.util.Base64
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -75,44 +76,70 @@ import java.io.ByteArrayOutputStream
 
 @Composable
 fun RecipeModifyScreen(
+    recipeId: String?,
     recipeViewModel: RecipeViewModel,
+    onNavigateBack: () -> Unit,
 ) {
     val recipesUIState by recipeViewModel.uiState.collectAsState()
 
+    val recipe = recipesUIState.recipes.find { it.id.toString() == recipeId }
+
+    var name by remember { mutableStateOf(recipe?.name ?: "") }
+    val decodedBytes = Base64.decode(recipe?.image?.url ?: "", Base64.DEFAULT)
+    var imageBytes by remember { mutableStateOf(if (recipe?.image?.url != null) decodedBytes else null) }
+    var isExpandedTypeSelector by remember { mutableStateOf(false) }
+    var typeSelection by remember { mutableStateOf((if(recipe?.type != "") recipe?.type else "Choose") ?: "Choose") }
+    var recipeExternalUrl by remember { mutableStateOf(recipe?.url ?: "") }
+
+    // portion handlers
+    var isExpandedPortionSelector by remember { mutableStateOf(false) }
+    var portionSelection by remember { mutableStateOf(recipe?.portion?.measurement ?: "day") }
+    var portionValue by remember { mutableStateOf(recipe?.portion?.value ?: 1) }
+    var placeholderPortionValue by remember {
+        mutableStateOf(
+            recipe?.portion?.value?.toString() ?: "1"
+        )
+    }
+
+    // ingredients handlers
+    var ingredients = remember { mutableStateOf<List<Ingredient>>(recipe?.ingredients ?: listOf()) }
+    var showIngredientModal by remember { mutableStateOf(false) }
+    val selectedIngredient = remember { mutableStateOf<Ingredient?>(null) }
+    val selectedIngredientIndex = remember { mutableIntStateOf(0) }
+
+    // methods handlers
+    var methods = remember { mutableStateOf<List<Method>>(recipe?.methods ?: listOf()) }
+    var showMethodModal by remember { mutableStateOf(false) }
+    val selectedMethod = remember { mutableStateOf<Method?>(null) }
+    val selectedMethodIndex = remember { mutableIntStateOf(0) }
+
+    fun navigationBack() {
+        if (recipe != null) {
+            recipeViewModel.saveRecipe(
+                RecipeRequest(
+                    id = recipe.id,
+                    name = name,
+                    type = if (typeSelection === "Choose") "" else typeSelection,
+                    url = recipeExternalUrl
+                ),
+                Portion(
+                    id = recipe.portion?.id ?: 0,
+                    value = portionValue.toFloat(),
+                    measurement = if (portionSelection === "Choose") "days" else portionSelection
+                ),
+                ingredients.value,
+                methods.value,
+                imageBytes,
+            )
+        }
+        onNavigateBack()
+    }
+
+    BackHandler(enabled = true, onBack = { navigationBack() })
     Column(
         modifier = Modifier
             .windowInsetsPadding(WindowInsets.systemBars)
     ) {
-        var recipe = recipesUIState.selectedRecipe
-        var name by remember { mutableStateOf(recipe?.name ?: "") }
-        val decodedBytes = Base64.decode(recipe?.image?.url ?: "", Base64.DEFAULT)
-        var imageBytes by remember { mutableStateOf(if (recipe?.image?.url != null) decodedBytes else null) }
-        var isExpandedTypeSelector by remember { mutableStateOf(false) }
-        var typeSelection by remember { mutableStateOf((if(recipe?.type != "") recipe?.type else "Choose") ?: "Choose") }
-        var recipeExternalUrl by remember { mutableStateOf(recipe?.url ?: "") }
-
-        // portion handlers
-        var isExpandedPortionSelector by remember { mutableStateOf(false) }
-        var portionSelection by remember { mutableStateOf(recipe?.portion?.measurement ?: "day") }
-        var portionValue by remember { mutableStateOf(recipe?.portion?.value ?: 1) }
-        var placeholderPortionValue by remember {
-            mutableStateOf(
-                recipe?.portion?.value?.toString() ?: "1"
-            )
-        }
-
-        // ingredients handlers
-        var ingredients = remember { mutableStateOf<List<Ingredient>>(recipe?.ingredients ?: listOf()) }
-        var showIngredientModal by remember { mutableStateOf(false) }
-        val selectedIngredient = remember { mutableStateOf<Ingredient?>(null) }
-        val selectedIngredientIndex = remember { mutableIntStateOf(0) }
-
-        // methods handlers
-        var methods = remember { mutableStateOf<List<Method>>(recipe?.methods ?: listOf()) }
-        var showMethodModal by remember { mutableStateOf(false) }
-        val selectedMethod = remember { mutableStateOf<Method?>(null) }
-        val selectedMethodIndex = remember { mutableIntStateOf(0) }
-
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -122,28 +149,7 @@ fun RecipeModifyScreen(
                 imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
                 contentDescription = "Go back",
                 modifier = Modifier
-                    .clickable {
-                        if (recipe != null) {
-                            recipeViewModel.saveRecipe(
-                                RecipeRequest(
-                                    id = recipe.id,
-                                    name = name,
-                                    type = if (typeSelection === "Choose") "" else typeSelection,
-                                    url = recipeExternalUrl
-                                ),
-                                Portion(
-                                    id = recipe.portion?.id ?: 0,
-                                    value = portionValue.toFloat(),
-                                    measurement = if (portionSelection === "Choose") "days" else portionSelection
-                                ),
-                                ingredients.value,
-                                methods.value,
-                                imageBytes,
-                            )
-                        } else {
-                            recipeViewModel.backToListView()
-                        }
-                    }
+                    .clickable { navigationBack() }
                     .size(50.dp, 50.dp)
             )
             if (recipe == null) {

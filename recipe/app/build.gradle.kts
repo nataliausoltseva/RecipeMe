@@ -42,7 +42,6 @@ android {
 }
 
 dependencies {
-
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
@@ -67,4 +66,6 @@ dependencies {
     implementation(libs.androidx.core.ktx.v190)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.generativeai)
+    implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.activity)
 }

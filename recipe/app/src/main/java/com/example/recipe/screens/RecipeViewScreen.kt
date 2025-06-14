@@ -53,12 +53,21 @@ import com.example.recipe.data.RecipeViewModel
 
 @Composable
 fun RecipeViewScreen(
+    itemId: String?,
     recipeViewModel: RecipeViewModel,
+    onNavigateBack: () -> Unit,
+    onNavigateRecipeEdit: (id: String) -> Unit,
 ) {
     val recipesUIState by recipeViewModel.uiState.collectAsState()
     val showDeleteModal = remember { mutableStateOf(false) }
 
     val showFullImage = remember { mutableStateOf(false) }
+
+    val recipe = recipesUIState.recipes.find { it.id.toString() == itemId }
+
+    if (recipe === null) {
+        onNavigateBack()
+    }
 
     Column(
         modifier = Modifier
@@ -79,7 +88,7 @@ fun RecipeViewScreen(
                         if (showFullImage.value) {
                             showFullImage.value = false
                         } else {
-                            recipeViewModel.backToListView()
+                            onNavigateBack()
                         }
                     }
                     .size(50.dp, 50.dp)
@@ -87,7 +96,7 @@ fun RecipeViewScreen(
 
             if (!showFullImage.value) {
                 Text(
-                    text = recipesUIState.selectedRecipe?.name ?: "",
+                    text = recipe?.name ?: "",
                     fontWeight = FontWeight.Bold,
                     overflow = TextOverflow.Ellipsis,
                     fontSize = 22.sp
@@ -97,7 +106,7 @@ fun RecipeViewScreen(
                         imageVector = Icons.Filled.Edit,
                         contentDescription = "Edit button",
                         modifier = Modifier
-                            .clickable { recipeViewModel.onEditRecipe() }
+                            .clickable { onNavigateRecipeEdit(recipe!!.id.toString()) }
                             .padding(end = 10.dp)
                             .size(30.dp, 30.dp)
                     )
@@ -113,11 +122,11 @@ fun RecipeViewScreen(
             }
         }
 
-        if (showFullImage.value && recipesUIState.selectedRecipe!!.image != null) {
-            FullImage(recipesUIState.selectedRecipe!!.image!!.url)
+        if (showFullImage.value && recipe!!.image != null) {
+            FullImage(recipe.image.url)
         } else {
             Recipe(
-                recipesUIState.selectedRecipe!!,
+                recipe!!,
                 onImageClick = { showFullImage.value = true }
             )
         }
@@ -137,7 +146,7 @@ fun RecipeViewScreen(
                 confirmButton = {
                     TextButton(
                         onClick = {
-                            recipeViewModel.onDeleteRecipe(recipesUIState.selectedRecipe!!)
+                            recipeViewModel.onDeleteRecipe(recipe)
                         }
                     ) {
                         Text("Delete", color = Color.Red)
