@@ -2,6 +2,7 @@ package com.example.recipe
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -41,6 +42,7 @@ fun Main(recipeViewModel: RecipeViewModel) {
         }
         composable("view/{recipeId}") { backStackEntry ->
             val recipeId = backStackEntry.arguments?.getString("recipeId")
+            BackHandler(enabled = true, onBack = { navController.popBackStack() })
             RecipeViewScreen(
                 recipeId,
                 recipeViewModel,

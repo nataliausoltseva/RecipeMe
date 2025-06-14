@@ -67,4 +67,5 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.generativeai)
     implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.activity)
 }
