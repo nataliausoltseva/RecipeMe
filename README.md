@@ -1,7 +1,7 @@
 # RecipeMe
 
 ## Idea:
-A way to host the storage on your machine and have full control over where the data is saved, how manipulated. No ads, all features available.
+A way to host the DB/services on your machine and have full control over where the data is saved, how manipulated. The app has no ads, full control over how to access and view the recipes.
 
 ## API and database 
 If you already have a docker running and you wish to add another service to your container, you can use the following example config that uses deployed docker image: `natalia914/recipeme:latest`.
@@ -142,14 +142,20 @@ The **recipe** table has a relationsip `has_one` **portion**, **image**, and `ha
 
 ## Android application
 
+### Navigation
+Uses [navigation](https://developer.android.com/jetpack/androidx/releases/navigation) for moving between list, view and edit screens. The application also supports using left swipe for back navigation for view and edit screens such as `edit` to `view` and `view` to `list` screens.
+
 ### Importing recipes
 The functionality uses Gemini, you will require to obtain API key for the calls. See [AI Studio](https://aistudio.google.com).
 
 The key should be stored in `local.properties`. See `local.defaults.properties`. The `local.properties` should be created in the same diretory as the default file. It should also contain the same API key in order for it to work. 
 
+### Split view
+The list of recipes can be viewed in 2 different modes: `all` and `categorized`. The `categorized` view offers users to see recipes based on types: `lunch`, `dinner`, `breakfast`, `dessert`, `snack`.
+
 ## Roadmap:
 - Implement and update the design of the application.
-- Left swipe goes back to previous page instead of closing the app.
+- Reordering ingredients and methods should only be available when activated.
 - ~~Add functionality of increasing or decreasing the portion which results in the updated list of ingredients.~~
 - Make a companion watch app.
 - Look into Gemini integration so that when asking to look for a recipe, it looks through this app first.
@@ -219,5 +225,6 @@ example of possible data for API
 - Add split view based on the type
 - Implement delete functionality
 - Implement Docker image build job on Github that would be triggered every time a change is commited/merged to **main** branch.
+- Left swipe goes back to previous page instead of closing the app.
 
 </details>
