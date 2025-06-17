@@ -155,7 +155,7 @@ The list of recipes can be viewed in 2 different modes: `all` and `categorized`.
 
 ## Roadmap:
 - Implement and update the design of the application.
-- Reordering ingredients and methods should only be available when activated.
+- Add reodering activation icon on recipe list screen.
 - ~~Add functionality of increasing or decreasing the portion which results in the updated list of ingredients.~~
 - Make a companion watch app.
 - Look into Gemini integration so that when asking to look for a recipe, it looks through this app first.
@@ -226,5 +226,6 @@ example of possible data for API
 - Implement delete functionality
 - Implement Docker image build job on Github that would be triggered every time a change is commited/merged to **main** branch.
 - Left swipe goes back to previous page instead of closing the app.
+- Reordering ingredients and methods should only be available through an icon.
 
 </details>

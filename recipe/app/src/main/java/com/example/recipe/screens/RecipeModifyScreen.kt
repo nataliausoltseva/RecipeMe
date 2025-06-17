@@ -33,6 +33,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
@@ -314,8 +315,7 @@ fun RecipeModifyScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(8.dp)
-                            .draggableHandle(),
+                            .padding(8.dp),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Row(
@@ -330,17 +330,26 @@ fun RecipeModifyScreen(
                             Text(ingredient.value.toString())
                             Text(ingredient.measurement)
                         }
-                        Icon(
-                            imageVector = Icons.Default.Delete,
-                            contentDescription = "Delete ingredient button",
-                            modifier = Modifier
-                                .size(24.dp)
-                                .clickable {
-                                    ingredients.value = ingredients.value.toMutableList().apply {
-                                        remove(ingredient)
+                        Row {
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = "Delete ingredient button",
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .clickable {
+                                        ingredients.value = ingredients.value.toMutableList().apply {
+                                            remove(ingredient)
+                                        }
                                     }
-                                }
-                        )
+                            )
+                            Icon(
+                                imageVector = Icons.Default.Menu,
+                                contentDescription = "Reorder ingredient button",
+                                modifier = Modifier
+                                    .padding(start = 15.dp)
+                                    .draggableHandle(),
+                            )
+                        }
                     }
                 }
             }
@@ -398,31 +407,40 @@ fun RecipeModifyScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(8.dp)
-                            .draggableHandle(),
+                            .padding(8.dp),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         val methodDivider = index.inc().toString() + ". "
-                        Row(
-                            modifier = Modifier.clickable {
-                                showMethodModal = true
-                                selectedMethod.value = method
-                                selectedMethodIndex.intValue = index
-                            }
-                        ) {
-                            Text(methodDivider + method.value)
-                        }
-                        Icon(
-                            imageVector = Icons.Default.Delete,
-                            contentDescription = "Delete method button",
+                        Text(
+                            methodDivider + method.value,
                             modifier = Modifier
-                                .size(24.dp)
                                 .clickable {
-                                    methods.value = methods.value.toMutableList().apply {
-                                        remove(method)
-                                    }
+                                    showMethodModal = true
+                                    selectedMethod.value = method
+                                    selectedMethodIndex.intValue = index
                                 }
+                                .fillMaxWidth(0.70f)
                         )
+                       Row {
+                           Icon(
+                               imageVector = Icons.Default.Delete,
+                               contentDescription = "Delete method button",
+                               modifier = Modifier
+                                   .size(24.dp)
+                                   .clickable {
+                                       methods.value = methods.value.toMutableList().apply {
+                                           remove(method)
+                                       }
+                                   }
+                           )
+                           Icon(
+                               imageVector = Icons.Default.Menu,
+                               contentDescription = "Reorder method button",
+                               modifier = Modifier
+                                   .padding(start = 15.dp)
+                                   .draggableHandle(),
+                           )
+                       }
                     }
                 }
             }
