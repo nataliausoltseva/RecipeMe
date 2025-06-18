@@ -160,7 +160,10 @@ fun RecipeListScreen(
 
                 if (recipesUIState.isReordered) {
                     FloatingActionButton(
-                        onClick = { recipeViewModel.onReset() },
+                        onClick = {
+                            recipeViewModel.onReset()
+                            isReorderingActivated.value = false
+                        },
                         modifier = Modifier
                             .align(Alignment.BottomEnd)
                             .padding(16.dp, 16.dp, 210.dp, 16.dp)
@@ -176,18 +179,20 @@ fun RecipeListScreen(
                         Save()
                     }
                 } else {
-                    FloatingActionButton(
-                        onClick = { isReorderingActivated.value = true },
-                        modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .padding(16.dp, 16.dp, 210.dp, 16.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Menu,
-                            contentDescription = "Reorder Icon",
+                    if (!isReorderingActivated.value) {
+                        FloatingActionButton(
+                            onClick = { isReorderingActivated.value = true },
                             modifier = Modifier
-                                .size(45.dp)
-                        )
+                                .align(Alignment.BottomEnd)
+                                .padding(16.dp, 16.dp, 145.dp, 16.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Menu,
+                                contentDescription = "Reorder Icon",
+                                modifier = Modifier
+                                    .size(45.dp)
+                            )
+                        }
                     }
                 }
 
