@@ -35,6 +35,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
@@ -99,6 +100,8 @@ fun RecipeListScreen(
 
     var showGeminiTextField = remember { mutableStateOf(false) }
 
+    var isReorderingActivated = remember { mutableStateOf(false) }
+
     Column(
         modifier = Modifier
             .windowInsetsPadding(WindowInsets.systemBars)
@@ -151,7 +154,8 @@ fun RecipeListScreen(
                     },
                     shouldReset = recipesUIState.shouldReset,
                     onSaveReset = { recipeViewModel.onSaveReset() },
-                    isSortedByOrder = recipesUIState.selectedSortKey == "sortOrder"
+                    isSortedByOrder = recipesUIState.selectedSortKey == "sortOrder",
+                    isReorderingActivated = isReorderingActivated.value
                 )
 
                 if (recipesUIState.isReordered) {
@@ -159,7 +163,7 @@ fun RecipeListScreen(
                         onClick = { recipeViewModel.onReset() },
                         modifier = Modifier
                             .align(Alignment.BottomEnd)
-                            .padding(16.dp, 16.dp, 145.dp, 16.dp)
+                            .padding(16.dp, 16.dp, 210.dp, 16.dp)
                     ) {
                         Revert()
                     }
@@ -167,9 +171,39 @@ fun RecipeListScreen(
                         onClick = { recipeViewModel.onSaveReorder(list) },
                         modifier = Modifier
                             .align(Alignment.BottomEnd)
-                            .padding(16.dp, 16.dp, 210.dp, 16.dp)
+                            .padding(16.dp, 16.dp, 145.dp, 16.dp)
                     ) {
                         Save()
+                    }
+                } else {
+                    FloatingActionButton(
+                        onClick = { isReorderingActivated.value = true },
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(16.dp, 16.dp, 210.dp, 16.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Menu,
+                            contentDescription = "Reorder Icon",
+                            modifier = Modifier
+                                .size(45.dp)
+                        )
+                    }
+                }
+
+                if (isReorderingActivated.value && !recipesUIState.isReordered) {
+                    FloatingActionButton(
+                        onClick = { isReorderingActivated.value = false },
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(16.dp, 16.dp, 145.dp, 16.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Clear,
+                            contentDescription = "Cancel Reorder Icon",
+                            modifier = Modifier
+                                .size(45.dp)
+                        )
                     }
                 }
             }
@@ -371,6 +405,7 @@ fun RecipeList(
     shouldReset: Boolean,
     onSaveReset: () -> Unit,
     isSortedByOrder: Boolean,
+    isReorderingActivated: Boolean,
 ) {
     val view = LocalView.current
 
@@ -388,7 +423,7 @@ fun RecipeList(
 
     val lazyStaggeredGridState = rememberLazyStaggeredGridState()
     val reorderableLazyStaggeredGridState = rememberReorderableLazyStaggeredGridState(lazyStaggeredGridState) { from, to ->
-        if (isSortedByOrder) {
+        if (isSortedByOrder && isReorderingActivated) {
             list = list.toMutableList().apply {
                 add(to.index, removeAt(from.index))
             }
@@ -407,11 +442,10 @@ fun RecipeList(
         content = {
             items(list, key = { it.id.toString() }) { recipe ->
                 ReorderableItem(reorderableLazyStaggeredGridState, key = recipe.id.toString()) { isDragging ->
-                    val elevation by animateDpAsState(if (isDragging && isSortedByOrder) 4.dp else 0.dp)
+                    val elevation by animateDpAsState(if (isDragging && isSortedByOrder && isReorderingActivated) 4.dp else 0.dp)
                     Surface (shadowElevation = elevation) {
                         var modifier = Modifier.fillMaxWidth()
-
-                        if (isSortedByOrder) {
+                        if (isSortedByOrder && isReorderingActivated) {
                             modifier = modifier.draggableHandle(
                                 onDragStarted = {
                                     if (isSortedByOrder) {
