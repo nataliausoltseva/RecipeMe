@@ -2,6 +2,7 @@ package com.example.recipe.screens
 
 import android.util.Base64
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -29,9 +30,12 @@ import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.items
 import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
@@ -64,6 +68,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
@@ -561,7 +566,9 @@ fun RecipeCard(
         }
 
         Row(
-            modifier = Modifier.fillMaxWidth().padding(start = 10.dp, end = 10.dp, bottom = 10.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 10.dp, end = 10.dp, bottom = 10.dp),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(
@@ -593,7 +600,9 @@ fun RecipeCard(
         }
 
         Row(
-            modifier = Modifier.fillMaxWidth().padding(start = 10.dp, end = 10.dp, bottom = 10.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 10.dp, end = 10.dp, bottom = 10.dp),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(
@@ -681,41 +690,76 @@ fun FilterAndSortDialog(
     var isSelectedSortKeyExpanded by remember { mutableStateOf(false) }
     var isSelectedSortDirectionExpanded by remember { mutableStateOf(false) }
 
+    var isIngredientsExpanded by remember { mutableStateOf(false) }
+    val arrowRotation by animateFloatAsState(
+        targetValue = if (isIngredientsExpanded) 90f else -90f,
+    )
+
     AlertDialog(
         text = {
-            Column {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+            ) {
                 Column(
-                    modifier = Modifier.padding(bottom = 10.dp)
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(bottom = 10.dp)
                 ) {
-                    Text("Filter by ingredients:")
-                    Column {
-                        val rows = (availableIngredientNames.size + 2 - 1) / 2
-                        for (rowIndex in 0 until rows) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                for (colIndex in 0 until 2) {
-                                    val itemIndex = rowIndex * 2 + colIndex
-                                    if (itemIndex < availableIngredientNames.size) {
-                                        val name = availableIngredientNames[itemIndex]
-                                        val isChecked = name in newSelectedIngredientNames.value
-                                        Checkbox(
-                                            checked = isChecked,
-                                            onCheckedChange = { isChecked ->
-                                                if (isChecked) {
-                                                    newSelectedIngredientNames.value = newSelectedIngredientNames.value.toMutableList().apply { add(name) }
-                                                } else {
-                                                    val selectedIngredientNameIndex = newSelectedIngredientNames.value.indexOfFirst { it == name }
-                                                    newSelectedIngredientNames.value = newSelectedIngredientNames.value.toMutableList().apply { removeAt(selectedIngredientNameIndex) }
-                                                }
-                                            }
-                                        )
-                                        var marginRight = if (colIndex == 0) 8 else 0
+                    Row(
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Filter by ingredients:")
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                            contentDescription = "Go back",
+                            modifier = Modifier
+                                .clickable { isIngredientsExpanded = !isIngredientsExpanded }
+                                .size(25.dp, 25.dp)
+                                .rotate(arrowRotation)
+                        )
+                    }
+                    if (isIngredientsExpanded) {
+                        Column (
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            val rows = (availableIngredientNames.size + 2 - 1) / 2
+                            for (rowIndex in 0 until rows) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    for (colIndex in 0 until 2) {
+                                        val itemIndex = rowIndex * 2 + colIndex
+                                        if (itemIndex < availableIngredientNames.size) {
+                                            val name = availableIngredientNames[itemIndex]
+                                            val isChecked = name in newSelectedIngredientNames.value
+                                            var marginRight = if (colIndex == 0) 8 else 0
 
-                                        Text(
-                                            text = name,
-                                            modifier = Modifier.padding(end = marginRight.dp)
-                                        )
+                                            Row(
+                                                modifier = Modifier
+                                                    .weight(1f)
+                                                    .padding(end = marginRight.dp)
+                                            ) {
+                                                Checkbox(
+                                                    checked = isChecked,
+                                                    onCheckedChange = { isChecked ->
+                                                        if (isChecked) {
+                                                            newSelectedIngredientNames.value = newSelectedIngredientNames.value.toMutableList().apply { add(name) }
+                                                        } else {
+                                                            val selectedIngredientNameIndex = newSelectedIngredientNames.value.indexOfFirst { it == name }
+                                                            newSelectedIngredientNames.value = newSelectedIngredientNames.value.toMutableList().apply { removeAt(selectedIngredientNameIndex) }
+                                                        }
+                                                    }
+                                                )
+
+                                                Text(
+                                                    text = name,
+                                                )
+                                            }
+                                        }
                                     }
                                 }
                             }
