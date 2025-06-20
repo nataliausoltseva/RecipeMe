@@ -699,12 +699,10 @@ fun FilterAndSortDialog(
         text = {
             Column(
                 modifier = Modifier
-                    .fillMaxSize()
                     .verticalScroll(rememberScrollState())
             ) {
                 Column(
                     modifier = Modifier
-                        .fillMaxSize()
                         .padding(bottom = 10.dp)
                 ) {
                     Row(
