@@ -1,7 +1,9 @@
 package com.example.recipe.screens
 
+import android.app.Activity
 import android.util.Base64
 import android.util.Patterns
+import android.view.WindowManager
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTransformGestures
@@ -21,11 +23,19 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TooltipBox
+import androidx.compose.material3.TooltipDefaults
+import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -40,6 +50,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -51,6 +62,7 @@ import com.example.recipe.data.byteArrayToBitmap
 import com.example.recipe.data.Recipe
 import com.example.recipe.data.RecipeViewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RecipeViewScreen(
     itemId: String?,
@@ -64,6 +76,19 @@ fun RecipeViewScreen(
     val showFullImage = remember { mutableStateOf(false) }
 
     val recipe = recipesUIState.recipes.find { it.id.toString() == itemId }
+
+    val context = LocalContext.current
+    val activity = context as? Activity
+
+    LaunchedEffect(recipesUIState.isCookingModeOn) {
+        activity?.window?.let { window ->
+            if (recipesUIState.isCookingModeOn) {
+                window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            } else {
+                window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            }
+        }
+    }
 
     if (recipe === null) {
         onNavigateBack()
@@ -102,6 +127,25 @@ fun RecipeViewScreen(
                     fontSize = 22.sp
                 )
                 Row {
+                    val tooltipState = rememberTooltipState()
+                    TooltipBox(
+                        positionProvider = TooltipDefaults.rememberPlainTooltipPositionProvider(),
+                        tooltip = {
+                            PlainTooltip {
+                                Text("Cooking mode is " + if (recipesUIState.isCookingModeOn) "on" else "off")
+                            }
+                        },
+                        state = tooltipState
+                    ) {
+                        Icon(
+                            imageVector = if (recipesUIState.isCookingModeOn) Icons.Filled.Lightbulb else Icons.Outlined.Lightbulb,
+                            contentDescription = if (recipesUIState.isCookingModeOn) "Disable Cooking Mode" else "Enable Cooking Mode",
+                            modifier = Modifier
+                                .padding(end = 10.dp)
+                                .size(30.dp, 30.dp)
+                                .clickable { recipeViewModel.onCookingModeToggle() }
+                        )
+                    }
                     Icon(
                         imageVector = Icons.Filled.Edit,
                         contentDescription = "Edit button",

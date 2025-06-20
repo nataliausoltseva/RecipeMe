@@ -33,7 +33,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
@@ -114,29 +114,7 @@ fun RecipeModifyScreen(
     val selectedMethod = remember { mutableStateOf<Method?>(null) }
     val selectedMethodIndex = remember { mutableIntStateOf(0) }
 
-    fun navigationBack() {
-        if (recipe != null) {
-            recipeViewModel.saveRecipe(
-                RecipeRequest(
-                    id = recipe.id,
-                    name = name,
-                    type = if (typeSelection === "Choose") "" else typeSelection,
-                    url = recipeExternalUrl
-                ),
-                Portion(
-                    id = recipe.portion?.id ?: 0,
-                    value = portionValue.toFloat(),
-                    measurement = if (portionSelection === "Choose") "days" else portionSelection
-                ),
-                ingredients.value,
-                methods.value,
-                imageBytes,
-            )
-        }
-        onNavigateBack()
-    }
-
-    BackHandler(enabled = true, onBack = { navigationBack() })
+    BackHandler(enabled = true, onBack = {  onNavigateBack() })
     Column(
         modifier = Modifier
             .windowInsetsPadding(WindowInsets.systemBars)
@@ -150,32 +128,30 @@ fun RecipeModifyScreen(
                 imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
                 contentDescription = "Go back",
                 modifier = Modifier
-                    .clickable { navigationBack() }
+                    .clickable { onNavigateBack() }
                     .size(50.dp, 50.dp)
             )
-            if (recipe == null) {
-                Button(
-                    onClick = {
-                        recipeViewModel.saveRecipe(
-                            RecipeRequest(
-                                id = recipe?.id ?: 0,
-                                name = name,
-                                type = if (typeSelection === "Choose") "" else typeSelection,
-                                url = recipeExternalUrl
-                            ),
-                            Portion(
-                                id = recipe?.portion?.id ?: 0,
-                                value = portionValue.toFloat(),
-                                measurement = if (portionSelection === "Choose") "days" else portionSelection
-                            ),
-                            ingredients.value,
-                            methods.value,
-                            imageBytes,
-                        )
-                    }
-                ) {
-                    Text("Save")
+            Button(
+                onClick = {
+                    recipeViewModel.saveRecipe(
+                        RecipeRequest(
+                            id = recipe?.id ?: 0,
+                            name = name,
+                            type = if (typeSelection === "Choose") "" else typeSelection,
+                            url = recipeExternalUrl
+                        ),
+                        Portion(
+                            id = recipe?.portion?.id ?: 0,
+                            value = portionValue.toFloat(),
+                            measurement = if (portionSelection === "Choose") "days" else portionSelection
+                        ),
+                        ingredients.value,
+                        methods.value,
+                        imageBytes,
+                    )
                 }
+            ) {
+                Text("Save")
             }
         }
 
@@ -343,7 +319,7 @@ fun RecipeModifyScreen(
                                     }
                             )
                             Icon(
-                                imageVector = Icons.Default.Menu,
+                                imageVector = Icons.Default.DragHandle,
                                 contentDescription = "Reorder ingredient button",
                                 modifier = Modifier
                                     .padding(start = 15.dp)
@@ -434,7 +410,7 @@ fun RecipeModifyScreen(
                                    }
                            )
                            Icon(
-                               imageVector = Icons.Default.Menu,
+                               imageVector = Icons.Default.DragHandle,
                                contentDescription = "Reorder method button",
                                modifier = Modifier
                                    .padding(start = 15.dp)

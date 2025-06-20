@@ -10,4 +10,5 @@ data class State(
     val isReordered: Boolean = false,
     val shouldReset: Boolean = false,
     val isTypeSplitView: Boolean = false,
+    val isCookingModeOn: Boolean = false,
 )

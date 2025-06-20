@@ -40,6 +40,7 @@ import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
@@ -50,14 +51,19 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.TooltipBox
+import androidx.compose.material3.TooltipDefaults
+import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -90,6 +96,7 @@ import kotlin.collections.component1
 import kotlin.collections.component2
 import kotlin.collections.iterator
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RecipeListScreen(
     recipeViewModel: RecipeViewModel,
@@ -173,7 +180,18 @@ fun RecipeListScreen(
                             .align(Alignment.BottomEnd)
                             .padding(16.dp, 16.dp, 210.dp, 16.dp)
                     ) {
-                        Revert()
+                        val tooltipState = rememberTooltipState()
+                        TooltipBox(
+                            positionProvider = TooltipDefaults.rememberPlainTooltipPositionProvider(),
+                            tooltip = {
+                                PlainTooltip {
+                                    Text("Revert list of recipes to previous state.")
+                                }
+                            },
+                            state = tooltipState
+                        ) {
+                            Revert()
+                        }
                     }
                     FloatingActionButton(
                         onClick = { recipeViewModel.onSaveReorder(list) },
@@ -181,7 +199,18 @@ fun RecipeListScreen(
                             .align(Alignment.BottomEnd)
                             .padding(16.dp, 16.dp, 145.dp, 16.dp)
                     ) {
-                        Save()
+                        val tooltipState = rememberTooltipState()
+                        TooltipBox(
+                            positionProvider = TooltipDefaults.rememberPlainTooltipPositionProvider(),
+                            tooltip = {
+                                PlainTooltip {
+                                    Text("Save the order of the recipes.")
+                                }
+                            },
+                            state = tooltipState
+                        ) {
+                            Save()
+                        }
                     }
                 } else {
                     if (!isReorderingActivated.value) {
@@ -191,12 +220,23 @@ fun RecipeListScreen(
                                 .align(Alignment.BottomEnd)
                                 .padding(16.dp, 16.dp, 145.dp, 16.dp)
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Menu,
-                                contentDescription = "Reorder Icon",
-                                modifier = Modifier
-                                    .size(45.dp)
-                            )
+                            val tooltipState = rememberTooltipState()
+                            TooltipBox(
+                                positionProvider = TooltipDefaults.rememberPlainTooltipPositionProvider(),
+                                tooltip = {
+                                    PlainTooltip {
+                                        Text("Reordering mode is off")
+                                    }
+                                },
+                                state = tooltipState
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.DragHandle,
+                                    contentDescription = "Reorder Icon",
+                                    modifier = Modifier
+                                        .size(45.dp)
+                                )
+                            }
                         }
                     }
                 }

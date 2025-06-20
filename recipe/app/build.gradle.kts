@@ -68,4 +68,5 @@ dependencies {
     implementation(libs.generativeai)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.activity)
+    implementation(libs.androidx.material.icons.extended)
 }

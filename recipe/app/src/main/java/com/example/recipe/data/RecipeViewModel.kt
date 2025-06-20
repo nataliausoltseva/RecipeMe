@@ -309,6 +309,12 @@ class RecipeViewModel: ViewModel() {
         }
     }
 
+    fun onCookingModeToggle() {
+        _uiState.update { currentState ->
+            currentState.copy(isCookingModeOn = !currentState.isCookingModeOn)
+        }
+    }
+
     init {
         getRecipes()
     }
