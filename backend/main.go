@@ -86,7 +86,7 @@ func getRecipes(w http.ResponseWriter, r *http.Request) {
 
 	if searchString != "" {
 		searchPattern := "%" + searchString + "%"
-		query += fmt.Sprintf(" WHERE recipes.name LIKE %s", searchPattern)
+		query += fmt.Sprintf(" WHERE recipes.name LIKE '%s'", searchPattern)
 	}
 
 	if sortKey != "" && sortKey != "portion" {
@@ -566,7 +566,7 @@ func getRecipeIngredients(recipeId int, searchString string) []Ingredient {
 		searchPattern := "%" + searchString + "%"
 		rows, err = db.Query(`
 		SELECT * FROM ingredients
-		WHERE recipe_id = ? AND name LIKE ?
+		WHERE recipe_id = ? AND name LIKE '?'
 		ORDER BY SortOrder ASC
 		`, recipeId, searchPattern)
 	}
