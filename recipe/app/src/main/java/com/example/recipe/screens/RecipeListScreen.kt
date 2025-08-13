@@ -962,7 +962,8 @@ fun SearchInput(
         placeholder = { Text(text = "Search") },
         shape = RoundedCornerShape(50),
         modifier = Modifier
-            .fillMaxWidth(0.75F)
+            .fillMaxWidth(0.75F),
+        singleLine = true
     )
 }
 
