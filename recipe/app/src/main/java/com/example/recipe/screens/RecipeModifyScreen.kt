@@ -149,6 +149,7 @@ fun RecipeModifyScreen(
                         methods.value,
                         imageBytes,
                     )
+                    onNavigateBack()
                 }
             ) {
                 Text("Save")

@@ -191,6 +191,7 @@ fun RecipeViewScreen(
                     TextButton(
                         onClick = {
                             recipeViewModel.onDeleteRecipe(recipe)
+                            onNavigateBack()
                         }
                     ) {
                         Text("Delete", color = Color.Red)
