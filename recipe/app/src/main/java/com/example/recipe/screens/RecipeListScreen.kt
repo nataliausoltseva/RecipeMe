@@ -54,6 +54,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Surface
@@ -963,7 +964,17 @@ fun SearchInput(
         shape = RoundedCornerShape(50),
         modifier = Modifier
             .fillMaxWidth(0.75F),
-        singleLine = true
+        singleLine = true,
+        trailingIcon = {
+            if (search.isNotEmpty()) {
+                IconButton(onClick = { onValueChange("") }) {
+                    Icon(
+                        imageVector = Icons.Default.Clear,
+                        contentDescription = "Clear Search"
+                    )
+                }
+            }
+        },
     )
 }
 
