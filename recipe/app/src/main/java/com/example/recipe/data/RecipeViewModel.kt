@@ -128,6 +128,11 @@ class RecipeViewModel: ViewModel() {
     private fun getRecipes(search: String? = null) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
+                _uiState.update {
+                    it.copy(
+                        isLoading = true
+                    )
+                }
                 val endpoints = Endpoints()
                 var recipes: List<Recipe>? = endpoints.getRecipes(search)
                 if (recipes == null) {

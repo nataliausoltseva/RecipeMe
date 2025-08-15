@@ -155,21 +155,31 @@ fun RecipeListScreen(
                 )
             } else {
                 var list by remember { mutableStateOf(recipesUIState.recipes) }
+                if (recipesUIState.isLoading) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
 
-                RecipeList(
-                    recipes = recipesUIState.recipes,
-                    onView = {
-                        onNavigateRecipeView(it.id.toString())
-                    },
-                    onReorder = {
-                        recipeViewModel.onReorder()
-                        list = it
-                    },
-                    shouldReset = recipesUIState.shouldReset,
-                    onSaveReset = { recipeViewModel.onSaveReset() },
-                    isSortedByOrder = recipesUIState.selectedSortKey == "sortOrder",
-                    isReorderingActivated = isReorderingActivated.value
-                )
+                } else {
+                    RecipeList(
+                        recipes = recipesUIState.recipes,
+                        onView = {
+                            onNavigateRecipeView(it.id.toString())
+                        },
+                        onReorder = {
+                            recipeViewModel.onReorder()
+                            list = it
+                        },
+                        shouldReset = recipesUIState.shouldReset,
+                        onSaveReset = { recipeViewModel.onSaveReset() },
+                        isSortedByOrder = recipesUIState.selectedSortKey == "sortOrder",
+                        isReorderingActivated = isReorderingActivated.value
+                    )
+                }
 
                 if (recipesUIState.isReordered) {
                     FloatingActionButton(
