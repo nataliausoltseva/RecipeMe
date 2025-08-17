@@ -18,7 +18,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.Delete
@@ -215,9 +217,11 @@ fun Recipe(
     recipe: Recipe,
     onImageClick: () -> Unit
 ) {
+    val scrollState = rememberScrollState()
     Column(
         modifier = Modifier
-            .padding(10.dp),
+            .padding(10.dp)
+            .verticalScroll(scrollState),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         if (recipe.image?.url != null) {
@@ -285,23 +289,35 @@ fun Recipe(
                 fontWeight = FontWeight.Bold
             )
 
-            val chunkedItems = recipe.ingredients.toList().chunked((recipe.ingredients.size + 1) / 2) // Splits into two roughly equal lists
+            val chunkedItems = recipe.ingredients.toList().chunked((recipe.ingredients.size + 1) / 2)
 
             Row(modifier = Modifier.fillMaxWidth()) {
                 chunkedItems.forEach { columnItems ->
                     Column(
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(end = 8.dp) // spacing between columns
                     ) {
                         columnItems.forEach { item ->
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(bottom = 5.dp, end = 10.dp),
-                                horizontalArrangement = Arrangement.spacedBy(20.dp)
+                                    .padding(bottom = 5.dp),
+                                verticalAlignment = Alignment.Top
                             ) {
-                                Text(text = item.name)
                                 Text(
-                                    text = item.value.toString() + " " + item.measurement,
+                                    text = item.name,
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .padding(end = 8.dp),
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis,
+                                    softWrap = true
+                                )
+                                Text(
+                                    text = "${item.value} ${item.measurement}",
+                                    modifier = Modifier.align(Alignment.CenterVertically),
+                                    textAlign = TextAlign.End
                                 )
                             }
                         }
