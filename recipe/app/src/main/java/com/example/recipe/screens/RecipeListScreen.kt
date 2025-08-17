@@ -224,7 +224,7 @@ fun RecipeListScreen(
                         }
                     }
                 } else {
-                    if (!isReorderingActivated.value) {
+                    if (!isReorderingActivated.value && !recipesUIState.recipes.isEmpty()) {
                         FloatingActionButton(
                             onClick = { isReorderingActivated.value = true },
                             modifier = Modifier
