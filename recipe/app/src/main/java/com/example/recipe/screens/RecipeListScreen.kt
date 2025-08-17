@@ -107,6 +107,7 @@ fun RecipeListScreen(
     val recipesUIState by recipeViewModel.uiState.collectAsState()
     val isLoading by recipeViewModel.isLoadingImport.collectAsState()
     val errorMessage by recipeViewModel.errorMessage.collectAsState()
+    val parsedRecipe by recipeViewModel.parsedRecipe.collectAsState()
 
     var search by remember { mutableStateOf("") }
     var showFilterDialog = remember { mutableStateOf(false)}
@@ -303,6 +304,10 @@ fun RecipeListScreen(
                 },
                 onClose = { showFilterDialog.value = false}
             )
+        }
+
+        if (showGeminiTextField.value && parsedRecipe != null) {
+            showGeminiTextField.value = false
         }
 
         if (showGeminiTextField.value || isLoading) {
