@@ -305,6 +305,7 @@ fun RecipeModifyScreen(
                             Text(ingredient.name)
                             Text(" - ")
                             Text(ingredient.value.toString())
+                            Text(" ")
                             Text(ingredient.measurement)
                         }
                         Row {
@@ -632,7 +633,8 @@ fun AddOrEditIngredient(
                             "L",
                             "tbsp",
                             "tsp",
-                            "cup"
+                            "cup",
+                            "to taste"
                         )) {
                             DropdownMenuItem(
                                 text = { Text(portion) },

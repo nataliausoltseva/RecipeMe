@@ -320,6 +320,12 @@ class RecipeViewModel: ViewModel() {
         }
     }
 
+    fun onResetGeminiParsedRecipe() {
+        _parsedRecipe.value = null
+        _jsonOutput.value = null
+        _errorMessage.value = null
+    }
+
     init {
         getRecipes()
     }

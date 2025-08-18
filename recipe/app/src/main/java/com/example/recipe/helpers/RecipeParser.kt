@@ -42,7 +42,7 @@ class RecipeParser {
                 "properties": {
                   "name": { "type": "string", "description": "Name of the ingredient." },
                   "value": { "type": "number", "description": "Quantity of the ingredient." },
-                  "measurement": { "type": "string", "description": "Unit of measurement for the quantity (e.g., grams, ml, cups)." }
+                  "measurement": { "type": "string", "description": "Unit of measurement for the quantity (e.g., grams, ml, cups). Only the following options are allowed, so you will need to convert to shorter names if necessary. Allowed measurements: bottle, can, item, g, kg, mL, L, tbsp, tsp, cup, to taste." }
                 }
               },
               "nullable": true
@@ -50,7 +50,7 @@ class RecipeParser {
             "portion": {
               "type": "object",
               "properties": {
-                "value": { "type": "number", "description": "Numeric value of the portion (e.g., 4)." },
+                "value": { "type": "number", "description": "Numeric value of the portion (e.g., 4). This should be rounded to 2 decimals." },
                 "measurement": { "type": "string", "description": "Unit of measurement for the portion (e.g., servings, people)." }
               },
               "nullable": true

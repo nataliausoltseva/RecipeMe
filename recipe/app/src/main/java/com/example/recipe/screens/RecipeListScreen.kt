@@ -307,6 +307,7 @@ fun RecipeListScreen(
         }
 
         if (showGeminiTextField.value && parsedRecipe != null) {
+            recipeViewModel.onResetGeminiParsedRecipe()
             showGeminiTextField.value = false
         }
 
