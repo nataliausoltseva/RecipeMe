@@ -9,6 +9,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.recipe.data.GeminiPromptModel
 import com.example.recipe.data.RecipeViewModel
 import com.example.recipe.screens.RecipeListScreen
 import com.example.recipe.screens.RecipeModifyScreen
@@ -19,19 +20,21 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             val recipeViewModel: RecipeViewModel = viewModel()
-            Main(recipeViewModel)
+            val geminiPromptModel: GeminiPromptModel = viewModel()
+            Main(recipeViewModel, geminiPromptModel)
         }
     }
 }
 
 @Composable
-fun Main(recipeViewModel: RecipeViewModel) {
+fun Main(recipeViewModel: RecipeViewModel, geminiPromptModel: GeminiPromptModel) {
     val navController = rememberNavController()
 
     NavHost(navController = navController, startDestination = "home") {
         composable("home") {
             RecipeListScreen(
                 recipeViewModel,
+                geminiPromptModel,
                 onNavigateRecipeView = {
                     navController.navigate("view/$it")
                 },

@@ -88,6 +88,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.view.HapticFeedbackConstantsCompat
 import androidx.core.view.ViewCompat
+import com.example.recipe.data.GeminiPromptModel
 import com.example.recipe.data.Recipe
 import com.example.recipe.data.RecipeViewModel
 import com.example.recipe.data.byteArrayToBitmap
@@ -101,13 +102,14 @@ import kotlin.collections.iterator
 @Composable
 fun RecipeListScreen(
     recipeViewModel: RecipeViewModel,
+    geminiPromptModel: GeminiPromptModel,
     onNavigateRecipeView: (id: String) -> Unit,
     onNavigateRecipeEdit: (id: String) -> Unit,
 ) {
     val recipesUIState by recipeViewModel.uiState.collectAsState()
-    val isLoading by recipeViewModel.isLoadingImport.collectAsState()
-    val errorMessage by recipeViewModel.errorMessage.collectAsState()
-    val parsedRecipe by recipeViewModel.parsedRecipe.collectAsState()
+    val isLoading by geminiPromptModel.isLoadingImport.collectAsState()
+    val errorMessage by geminiPromptModel.errorMessage.collectAsState()
+    val parsedRecipe by geminiPromptModel.parsedRecipe.collectAsState()
 
     var search by remember { mutableStateOf("") }
     var showFilterDialog = remember { mutableStateOf(false)}
@@ -307,14 +309,19 @@ fun RecipeListScreen(
         }
 
         if (showGeminiTextField.value && parsedRecipe != null) {
-            recipeViewModel.onResetGeminiParsedRecipe()
+            geminiPromptModel.onResetGeminiParsedRecipe()
             showGeminiTextField.value = false
+            LaunchedEffect(Unit) {
+                geminiPromptModel.promptCompleted.collect {
+                    recipeViewModel.getRecipes()
+                }
+            }
         }
 
         if (showGeminiTextField.value || isLoading) {
             var context = LocalContext.current
             GeminiTextInput(
-                onSuccess = { title, text -> recipeViewModel.convertTextToRecipe(title, text, context)},
+                onSuccess = { title, text -> geminiPromptModel.convertTextToRecipe(title, text, context)},
                 onClose = { showGeminiTextField.value = false },
                 isLoading = isLoading,
                 errorMessage = errorMessage
