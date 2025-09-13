@@ -4,7 +4,6 @@ import android.util.Base64
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -77,7 +76,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontStyle
@@ -88,11 +87,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.view.HapticFeedbackConstantsCompat
 import androidx.core.view.ViewCompat
+import coil.compose.AsyncImage
 import com.example.recipe.data.Recipe
 import com.example.recipe.data.RecipeViewModel
-import com.example.recipe.data.byteArrayToBitmap
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyStaggeredGridState
+import java.lang.IllegalArgumentException
 import kotlin.collections.component1
 import kotlin.collections.component2
 import kotlin.collections.iterator
@@ -551,31 +551,36 @@ fun RecipeCard(
     modifier: Modifier
 ) {
     Card(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(bottom = 10.dp)
             .clickable { onView(recipe) }
     ) {
-        if (recipe.image?.url != null) {
-            val decodedBytes = Base64.decode(recipe.image.url, Base64.DEFAULT)
-            if (decodedBytes != null) {
-                val bitmap = byteArrayToBitmap(decodedBytes)
-                val imageBitmap = bitmap.asImageBitmap()
-                Image(
-                    bitmap = imageBitmap,
-                    contentDescription = recipe.name + " image",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 100.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .padding(start = 10.dp, end = 10.dp, bottom = 10.dp)
-
-                )
+        val decodedImageBytes = recipe.image?.url?.let { url ->
+            remember(url) {
+                try {
+                    Base64.decode(url, Base64.DEFAULT)
+                } catch (e: IllegalArgumentException) {
+                    null // Handle invalid Base64 string
+                }
             }
         }
 
+        if (decodedImageBytes != null) {
+            AsyncImage(
+                model = decodedImageBytes,
+                contentDescription = recipe.name + " image",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 200.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .padding(start = 10.dp, end = 10.dp, bottom = 10.dp),
+                contentScale = ContentScale.FillWidth,
+            )
+        }
+
         Row(
-            modifier = modifier.padding(start = 10.dp, end = 10.dp, bottom = 10.dp, top = if (recipe.image?.url == null) 10.dp else 0.dp),
+            modifier = Modifier.padding(start = 10.dp, end = 10.dp, bottom = 10.dp, top = if (decodedImageBytes == null) 10.dp else 0.dp),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             val currentHorizontalArrangement = if (recipe.type == "") {
@@ -584,14 +589,14 @@ fun RecipeCard(
                 Arrangement.Start
             }
 
-            val modifier = if (recipe.type == "") {
+            val rowModifier = if (recipe.type == "") { // Renamed to avoid conflict with parameter
                 Modifier.fillMaxWidth()
             } else {
                 Modifier
             }
 
             Row (
-                modifier = modifier,
+                modifier = rowModifier,
                 horizontalArrangement = currentHorizontalArrangement,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -606,7 +611,7 @@ fun RecipeCard(
 
                 if (recipe.portion != null) {
                     Text(
-                        text = "(" + recipe.portion.value.toString() + " " + recipe.portion.measurement + ")",
+                        text = "(${recipe.portion.value} ${recipe.portion.measurement})", // Simplified string concat
                         modifier = Modifier.padding(start = 5.dp),
                         overflow = TextOverflow.Ellipsis
                     )
@@ -640,14 +645,17 @@ fun RecipeCard(
             }
 
             Text(
-                text = (if (recipe.ingredients == null) "0" else recipe.ingredients.size.toString()) + " " + itemLabel,
+                text = "${recipe.ingredients?.size ?: 0} $itemLabel", // Simplified string concat
                 fontStyle = FontStyle.Italic,
                 overflow = TextOverflow.Ellipsis
             )
         }
 
-        if (recipe.ingredients != null) {
-            var allIngredients = recipe.ingredients.joinToString("\n") { "${it.name} ${it.value} ${it.measurement}" }
+        val allIngredients = remember(recipe.ingredients) { // Cache based on ingredients list
+            recipe.ingredients?.joinToString("") { "${it.name} ${it.value} ${it.measurement}" }
+        }
+
+        if (allIngredients != null) {
             Text(
                 text = allIngredients,
                 overflow = TextOverflow.Ellipsis,
@@ -674,19 +682,20 @@ fun RecipeCard(
             }
 
             Text(
-                text = (if (recipe.methods == null) "0" else recipe.methods.size.toString()) + " " + itemLabel,
+                text = "${recipe.methods?.size ?: 0} $itemLabel",
                 fontStyle = FontStyle.Italic,
                 overflow = TextOverflow.Ellipsis,
             )
         }
 
-        if (recipe.methods != null) {
-            var allMethods = recipe.methods.joinToString("\n") { method ->
-                val indicator =
-                    method.sortOrder ?: (recipe.methods.indexOf(method) + 1)
+        val allMethods = remember(recipe.methods) { // Cache based on methods list
+            recipe.methods?.joinToString("") { method ->
+                val indicator = method.sortOrder ?: (recipe.methods.indexOf(method) + 1)
                 "$indicator. ${method.value}"
             }
+        }
 
+        if (allMethods != null) {
             Text(
                 text = allMethods,
                 overflow = TextOverflow.Ellipsis,
