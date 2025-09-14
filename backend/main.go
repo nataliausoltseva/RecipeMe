@@ -36,10 +36,11 @@ type Ingredient struct {
 }
 
 type Method struct {
-	ID        int    `json:"id"`
-	Value     string `json:"value"`
-	SortOrder int    `json:"sortOrder"`
-	RecipeID  int    `json:"recipe_id"`
+	ID          int          `json:"id"`
+	Value       string       `json:"value"`
+	SortOrder   int          `json:"sortOrder"`
+	RecipeID    int          `json:"recipe_id"`
+	Ingredients []Ingredient `json:"ingredients,omitempty"`
 }
 
 type Image struct {
@@ -770,6 +771,33 @@ func getRecipeMethods(recipeId int) []Method {
 			&method.RecipeID,
 		)
 
+		// Get ingredients for this method
+		ingredientRows, err := db.Query(`
+			SELECT i.* FROM ingredients i
+			JOIN method_ingredients mi ON mi.ingredient_id = i.id
+			WHERE mi.method_id = ?
+			ORDER BY i.SortOrder ASC
+		`, method.ID)
+
+		if err == nil {
+			defer ingredientRows.Close()
+			var ingredients []Ingredient
+
+			for ingredientRows.Next() {
+				var ingredient Ingredient
+				ingredientRows.Scan(
+					&ingredient.ID,
+					&ingredient.Name,
+					&ingredient.Measurement,
+					&ingredient.Value,
+					&ingredient.SortOrder,
+					&ingredient.RecipeID,
+				)
+				ingredients = append(ingredients, ingredient)
+			}
+			method.Ingredients = ingredients
+		}
+
 		methods = append(methods, method)
 	}
 
@@ -799,6 +827,7 @@ func addMethods(w http.ResponseWriter, r *http.Request) {
 
 	for passedMethodIndex, passedMethod := range passedMethods {
 		found := false
+		var methodId int
 
 		for _, existingMethod := range existingMethods {
 			sortOrder := passedMethodIndex + 1
@@ -816,10 +845,30 @@ func addMethods(w http.ResponseWriter, r *http.Request) {
 
 		if !found {
 			sortOrder := passedMethodIndex + 1 + len(existingMethods)
-			_, err := db.Exec("INSERT INTO methods(value, sortOrder, recipe_id) VALUES(?,?,?)", passedMethod.Value, sortOrder, recipeId)
+			result, err := db.Exec("INSERT INTO methods(value, sortOrder, recipe_id) VALUES(?,?,?)", passedMethod.Value, sortOrder, recipeId)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
+			}
+			lastId, _ := result.LastInsertId()
+			methodId = int(lastId)
+		}
+
+		// Delete existing method-ingredient relationships
+		_, err = db.Exec("DELETE FROM method_ingredients WHERE method_id = ?", methodId)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		// Add new method-ingredient relationships
+		if len(passedMethod.Ingredients) > 0 {
+			for _, ingredient := range passedMethod.Ingredients {
+				_, err = db.Exec("INSERT INTO method_ingredients(method_id, ingredient_id) VALUES(?,?)", methodId, ingredient.ID)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
 			}
 		}
 	}
@@ -874,6 +923,7 @@ func addMethod(w http.ResponseWriter, r *http.Request) {
 	json.NewDecoder(r.Body).Decode(&passedMethod)
 
 	found := false
+	var methodId int
 
 	for existingMethodIndex, existingMethod := range existingMethods {
 		sortOrder := existingMethodIndex + 1
@@ -884,6 +934,7 @@ func addMethod(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
+			methodId = passedMethod.ID
 			found = true
 			break
 		}
@@ -891,10 +942,30 @@ func addMethod(w http.ResponseWriter, r *http.Request) {
 
 	if !found {
 		sortOrder := 1 + len(existingMethods)
-		_, err := db.Exec("INSERT INTO methods(value, sortOrder, recipe_id) VALUES(?,?,?)", passedMethod.Value, sortOrder, recipeId)
+		result, err := db.Exec("INSERT INTO methods(value, sortOrder, recipe_id) VALUES(?,?,?)", passedMethod.Value, sortOrder, recipeId)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
+		}
+		lastId, _ := result.LastInsertId()
+		methodId = int(lastId)
+	}
+
+	// Delete existing method-ingredient relationships
+	_, err = db.Exec("DELETE FROM method_ingredients WHERE method_id = ?", methodId)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Add new method-ingredient relationships
+	if len(passedMethod.Ingredients) > 0 {
+		for _, ingredient := range passedMethod.Ingredients {
+			_, err = db.Exec("INSERT INTO method_ingredients(method_id, ingredient_id) VALUES(?,?)", methodId, ingredient.ID)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
 		}
 	}
 

@@ -49,6 +49,14 @@ if [ ! -f /root/database/database.db ]; then
         recipe_id INTEGER,
         FOREIGN KEY (recipe_id) REFERENCES recipe(id) ON DELETE CASCADE ON UPDATE NO ACTION
     );
+
+    CREATE TABLE method_ingredients (
+        method_id INTEGER NOT NULL,
+        ingredient_id INTEGER NOT NULL,
+        FOREIGN KEY (method_id) REFERENCES methods(id) ON DELETE CASCADE,
+        FOREIGN KEY (ingredient_id) REFERENCES ingredients(id) ON DELETE CASCADE,
+        PRIMARY KEY (method_id, ingredient_id)
+    );
 EOF
 fi
 
