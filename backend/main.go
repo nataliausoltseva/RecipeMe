@@ -827,7 +827,7 @@ func addMethods(w http.ResponseWriter, r *http.Request) {
 
 	for passedMethodIndex, passedMethod := range passedMethods {
 		found := false
-		var methodId int
+		var methodId = passedMethod.ID
 
 		for _, existingMethod := range existingMethods {
 			sortOrder := passedMethodIndex + 1
