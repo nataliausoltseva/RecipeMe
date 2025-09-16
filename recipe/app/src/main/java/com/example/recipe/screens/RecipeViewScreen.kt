@@ -23,7 +23,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.filled.Check // Added
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Lightbulb
@@ -31,6 +31,7 @@ import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme // Added for consistent styling
 import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -45,7 +46,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.mutableStateSetOf // Added
+import androidx.compose.runtime.mutableStateSetOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -59,11 +60,11 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextDecoration // Added
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.recipe.data.Recipe
+import com.example.recipe.data.Recipe // Assuming Ingredient is part of this or a separate import
 import com.example.recipe.data.RecipeViewModel
 import com.example.recipe.data.byteArrayToBitmap
 
@@ -97,10 +98,8 @@ fun RecipeViewScreen(
     }
 
     if (recipe === null) {
-        //Consider navigating back or showing an error/loading state
-        // For now, let's assume onNavigateBack handles this appropriately
         onNavigateBack()
-        return // Early return if recipe is null
+        return
     }
 
     Column(
@@ -130,11 +129,11 @@ fun RecipeViewScreen(
 
             if (!showFullImage.value) {
                 Text(
-                    text = recipe.name, // recipe is now guaranteed non-null here
+                    text = recipe.name,
                     fontWeight = FontWeight.Bold,
                     overflow = TextOverflow.Ellipsis,
                     fontSize = 22.sp,
-                    modifier = Modifier.weight(1f).padding(horizontal = 8.dp) // Added weight and padding
+                    modifier = Modifier.weight(1f).padding(horizontal = 8.dp)
                 )
                 Row {
                     val tooltipState = rememberTooltipState()
@@ -160,7 +159,7 @@ fun RecipeViewScreen(
                         imageVector = Icons.Filled.Edit,
                         contentDescription = "Edit button",
                         modifier = Modifier
-                            .clickable { onNavigateRecipeEdit(recipe.id.toString()) } // recipe is non-null
+                            .clickable { onNavigateRecipeEdit(recipe.id.toString()) }
                             .padding(end = 10.dp)
                             .size(30.dp, 30.dp)
                     )
@@ -179,7 +178,7 @@ fun RecipeViewScreen(
         if (showFullImage.value && recipe.image != null) {
             FullImage(recipe.image.url)
         } else {
-            Recipe( // recipe is non-null
+            Recipe(
                 recipe = recipe,
                 onImageClick = { showFullImage.value = true }
             )
@@ -193,14 +192,14 @@ fun RecipeViewScreen(
                         textAlign = TextAlign.Center,
                         fontSize = 16.sp
                     )
-                },
+               },
                 onDismissRequest = {
                     showDeleteModal.value = false
                 },
                 confirmButton = {
                     TextButton(
                         onClick = {
-                            recipeViewModel.onDeleteRecipe(recipe) // recipe is non-null
+                            recipeViewModel.onDeleteRecipe(recipe)
                             onNavigateBack()
                         }
                     ) {
@@ -216,6 +215,7 @@ fun RecipeViewScreen(
                 },
             )
         }
+
     }
 }
 
@@ -240,9 +240,7 @@ fun Recipe(
                 val bitmap = byteArrayToBitmap(decodedBytes)
                 val imageBitmap = bitmap.asImageBitmap()
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onImageClick() },
+                    modifier = Modifier.fillMaxWidth().clickable { onImageClick() },
                     horizontalArrangement = Arrangement.Center
                 ) {
                     Image(
@@ -294,7 +292,7 @@ fun Recipe(
                 modifier = Modifier.padding(top = 20.dp)
             )
         }
-        if (recipe.ingredients != null) {
+        if (!recipe.ingredients.isNullOrEmpty()) { // Changed to isNullOrEmpty for safety
             Text(
                 text = "Ingredients:",
                 modifier = Modifier.padding(top = 20.dp),
@@ -308,7 +306,7 @@ fun Recipe(
                     Column(
                         modifier = Modifier
                             .weight(1f)
-                            .padding(end = 8.dp) // spacing between columns
+                            .padding(end = 8.dp)
                     ) {
                         columnItems.forEach { item ->
                             val isChecked = item.name in checkedIngredients
@@ -349,45 +347,91 @@ fun Recipe(
             }
         }
 
-        if (recipe.methods != null) {
+        if (!recipe.methods.isNullOrEmpty()) { // Changed to isNullOrEmpty for safety
             Text(
                 text = "Methods:",
                 modifier = Modifier.padding(top = 20.dp)
             )
 
             recipe.methods.forEachIndexed { index, method ->
-                val isChecked = index in checkedMethods
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            if (isChecked) {
-                                checkedMethods.remove(index)
-                            } else {
-                                checkedMethods.add(index)
+                Column(modifier = Modifier.fillMaxWidth()) { // Wrap method and its ingredients in a Column
+                    val isMethodChecked = index in checkedMethods
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                if (isMethodChecked) {
+                                    checkedMethods.remove(index)
+                                } else {
+                                    checkedMethods.add(index)
+                                    method.ingredients?.map { it.name }?.let { names ->
+                                        checkedIngredients.addAll(names.filterNot { it in checkedIngredients })
+                                    }
+                                }
                             }
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        if (isMethodChecked) {
+                            Icon(
+                                imageVector = Icons.Filled.Check,
+                                contentDescription = "Checked",
+                                tint = Color.Green,
+                                modifier = Modifier.size(24.dp).padding(end = 8.dp)
+                            )
+                        } else {
+                            val indicator = method.sortOrder ?: (index + 1)
+                            Text(
+                                text = "$indicator. ",
+                                modifier = Modifier.padding(end = 4.dp)
+                            )
                         }
-                        .padding(vertical = 4.dp), // Added padding for better touch target
-                    verticalAlignment = Alignment.Top // Changed to Top for better alignment with multi-line text
-                ) {
-                    if (isChecked) {
-                        Icon(
-                            imageVector = Icons.Filled.Check,
-                            contentDescription = "Checked",
-                            tint = Color.Green,
-                            modifier = Modifier.size(24.dp).padding(end = 8.dp) // Added padding
-                        )
-                    } else {
-                        val indicator = method.sortOrder ?: (index + 1)
                         Text(
-                            text = "$indicator. ",
-                            modifier = Modifier.padding(end = 4.dp) // Ensure space after number
+                            text = method.value,
+                            textDecoration = if (isMethodChecked) TextDecoration.LineThrough else null,
+                            modifier = Modifier.weight(1f) // Allow method text to take available space
                         )
                     }
-                    Text(
-                        text = method.value,
-                        textDecoration = if (isChecked) TextDecoration.LineThrough else null // Also strikethrough method text
-                    )
+
+                    // Display linked ingredients if they exist
+                    if (!method.ingredients.isNullOrEmpty()) {
+                        Column(modifier = Modifier.padding(start = 28.dp, top = 4.dp, bottom = 4.dp)) { // Indent ingredients
+                            method.ingredients?.forEach { ingredient ->
+                                // Find the full ingredient object from the recipe's main ingredient list
+                                val linkedIngredient = recipe.ingredients?.find { it.name == ingredient.name }
+                                if (linkedIngredient != null) {
+                                    val isIngredientChecked =  linkedIngredient.name in checkedIngredients
+                                    val ingredientTextDecoration = if (isIngredientChecked) TextDecoration.LineThrough else null
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 2.dp)
+                                            .clickable {
+                                                if (isIngredientChecked) {
+                                                    checkedIngredients.remove(linkedIngredient.name)
+                                                    checkedMethods.remove(index)
+                                                } else {
+                                                    checkedIngredients.add(linkedIngredient.name)
+                                                }
+                                            },
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = "• ${linkedIngredient.name}", // Bullet point for visual cue
+                                            modifier = Modifier.weight(1f),
+                                            textDecoration = ingredientTextDecoration,
+                                            style = MaterialTheme.typography.bodyMedium // Consistent styling
+                                        )
+                                        Text(
+                                            text = "${linkedIngredient.value} ${linkedIngredient.measurement}",
+                                            textDecoration = ingredientTextDecoration,
+                                            style = MaterialTheme.typography.bodyMedium // Consistent styling
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -396,7 +440,7 @@ fun Recipe(
             val uriHandler = LocalUriHandler.current
             val isValidUrl = Patterns.WEB_URL.matcher(recipe.url).matches()
 
-            Column {
+            Column(modifier = Modifier.padding(top = 20.dp)) { // Added padding
                 Text("Original recipe URL:")
                 Text(
                     text = if (isValidUrl) recipe.url else recipe.url + " (invalid URL)",
@@ -417,7 +461,7 @@ fun FullImage(
 
     val decodedBytes = Base64.decode(imageUrl, Base64.DEFAULT)
     // Consider using Coil here as well for consistency and performance
-    val bitmap = byteArrayToBitmap(decodedBytes) 
+    val bitmap = byteArrayToBitmap(decodedBytes)
     val imageBitmap = bitmap.asImageBitmap()
 
     Box(
