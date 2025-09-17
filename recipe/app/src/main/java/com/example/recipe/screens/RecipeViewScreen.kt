@@ -31,7 +31,7 @@ import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme // Added for consistent styling
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -64,7 +64,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.recipe.data.Recipe // Assuming Ingredient is part of this or a separate import
+import com.example.recipe.data.Recipe
 import com.example.recipe.data.RecipeViewModel
 import com.example.recipe.data.byteArrayToBitmap
 
@@ -292,7 +292,7 @@ fun Recipe(
                 modifier = Modifier.padding(top = 20.dp)
             )
         }
-        if (!recipe.ingredients.isNullOrEmpty()) { // Changed to isNullOrEmpty for safety
+        if (!recipe.ingredients.isNullOrEmpty()) {
             Text(
                 text = "Ingredients:",
                 modifier = Modifier.padding(top = 20.dp),
@@ -347,14 +347,14 @@ fun Recipe(
             }
         }
 
-        if (!recipe.methods.isNullOrEmpty()) { // Changed to isNullOrEmpty for safety
+        if (!recipe.methods.isNullOrEmpty()) {
             Text(
                 text = "Methods:",
                 modifier = Modifier.padding(top = 20.dp)
             )
 
             recipe.methods.forEachIndexed { index, method ->
-                Column(modifier = Modifier.fillMaxWidth()) { // Wrap method and its ingredients in a Column
+                Column(modifier = Modifier.fillMaxWidth()) {
                     val isMethodChecked = index in checkedMethods
                     Row(
                         modifier = Modifier
@@ -389,15 +389,12 @@ fun Recipe(
                         Text(
                             text = method.value,
                             textDecoration = if (isMethodChecked) TextDecoration.LineThrough else null,
-                            modifier = Modifier.weight(1f) // Allow method text to take available space
+                            modifier = Modifier.weight(1f)
                         )
                     }
-
-                    // Display linked ingredients if they exist
                     if (!method.ingredients.isNullOrEmpty()) {
-                        Column(modifier = Modifier.padding(start = 28.dp, top = 4.dp, bottom = 4.dp)) { // Indent ingredients
+                        Column(modifier = Modifier.padding(start = 28.dp, top = 4.dp, bottom = 4.dp)) {
                             method.ingredients?.forEach { ingredient ->
-                                // Find the full ingredient object from the recipe's main ingredient list
                                 val linkedIngredient = recipe.ingredients?.find { it.name == ingredient.name }
                                 if (linkedIngredient != null) {
                                     val isIngredientChecked =  linkedIngredient.name in checkedIngredients
@@ -417,15 +414,15 @@ fun Recipe(
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Text(
-                                            text = "• ${linkedIngredient.name}", // Bullet point for visual cue
+                                            text = "• ${linkedIngredient.name}",
                                             modifier = Modifier.weight(1f),
                                             textDecoration = ingredientTextDecoration,
-                                            style = MaterialTheme.typography.bodyMedium // Consistent styling
+                                            style = MaterialTheme.typography.bodyMedium
                                         )
                                         Text(
                                             text = "${linkedIngredient.value} ${linkedIngredient.measurement}",
                                             textDecoration = ingredientTextDecoration,
-                                            style = MaterialTheme.typography.bodyMedium // Consistent styling
+                                            style = MaterialTheme.typography.bodyMedium
                                         )
                                     }
                                 }
@@ -440,7 +437,7 @@ fun Recipe(
             val uriHandler = LocalUriHandler.current
             val isValidUrl = Patterns.WEB_URL.matcher(recipe.url).matches()
 
-            Column(modifier = Modifier.padding(top = 20.dp)) { // Added padding
+            Column(modifier = Modifier.padding(top = 20.dp)) {
                 Text("Original recipe URL:")
                 Text(
                     text = if (isValidUrl) recipe.url else recipe.url + " (invalid URL)",
@@ -460,7 +457,6 @@ fun FullImage(
     var offset by remember { mutableStateOf(Offset.Zero) }
 
     val decodedBytes = Base64.decode(imageUrl, Base64.DEFAULT)
-    // Consider using Coil here as well for consistency and performance
     val bitmap = byteArrayToBitmap(decodedBytes)
     val imageBitmap = bitmap.asImageBitmap()
 

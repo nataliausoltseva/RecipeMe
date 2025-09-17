@@ -35,7 +35,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.Link
-import androidx.compose.material.icons.filled.LinkOff // Added LinkOff import
+import androidx.compose.material.icons.filled.LinkOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
@@ -98,7 +98,6 @@ fun RecipeModifyScreen(
     // portion handlers
     var isExpandedPortionSelector by remember { mutableStateOf(false) }
     var portionSelection by remember { mutableStateOf(recipe?.portion?.measurement ?: "day") }
-    // var portionValue by remember { mutableStateOf(recipe?.portion?.value ?: 1) }
     var placeholderPortionValue by remember {
         mutableStateOf(
             recipe?.portion?.value?.toString() ?: "1"
@@ -152,11 +151,11 @@ fun RecipeModifyScreen(
                         ),
                         Portion(
                             id = recipe?.portion?.id ?: 0,
-                            value = placeholderPortionValue.toFloatOrNull() ?: 1f, // Use placeholder for direct Float
+                            value = placeholderPortionValue.toFloatOrNull() ?: 1f,
                             measurement = if (portionSelection == "Choose") "days" else portionSelection
                         ),
-                        ingredients.value, // The master list of ingredients
-                        methods.value,     // Methods, now potentially with linked Ingredient objects
+                        ingredients.value,
+                        methods.value,
                         imageBytes,
                     )
                     onNavigateBack()
@@ -193,11 +192,9 @@ fun RecipeModifyScreen(
                     TextField(
                         value = placeholderPortionValue,
                         onValueChange = {
-                            // Allow only digits and a single decimal point for float
                             val filtered = it.filter { char -> char.isDigit() || char == '.' }
                             if (filtered.count { char -> char == '.' } <= 1) {
                                 placeholderPortionValue = filtered
-                                // portionValue will be derived from placeholderPortionValue.toFloatOrNull() at save
                             }
                         },
                         keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
@@ -283,7 +280,6 @@ fun RecipeModifyScreen(
                         }
                 )
             }
-            // This ReorderableColumn manages the master list of ingredients for the recipe
             ReorderableColumn(
                 list = ingredients.value,
                 onSettle = { fromIndex, toIndex ->
@@ -292,7 +288,7 @@ fun RecipeModifyScreen(
                     }
                 }
             ) { index, ingredient, isDragging ->
-                key(ingredient.name + index) { // Using name + index as a more unique key for unsaved ingredients
+                key(ingredient.name + index) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
@@ -325,7 +321,6 @@ fun RecipeModifyScreen(
                                             .apply {
                                                 remove(ingredient)
                                             }
-                                        // Also remove this ingredient from any methods that might be linking it
                                         methods.value = methods.value.map { method ->
                                             val updatedLinkedIngredients = method.ingredients?.filter { it.name != ingredient.name }
                                             method.copy(ingredients = updatedLinkedIngredients)
@@ -349,11 +344,10 @@ fun RecipeModifyScreen(
                     ingredient = selectedIngredient.value,
                     onConfirmation = { confirmedIngredient ->
                         val oldIngredientName = selectedIngredient.value?.name
-                        if (selectedIngredient.value != null) { // Editing existing ingredient
+                        if (selectedIngredient.value != null) {
                             ingredients.value = ingredients.value.toMutableList().apply {
                                 this[selectedIngredientIndex.intValue] = confirmedIngredient
                             }
-                            // If ingredient name changed, update it in methods
                             if (oldIngredientName != null && oldIngredientName != confirmedIngredient.name) {
                                 methods.value = methods.value.map { method ->
                                     val updatedLinkedIngredients = method.ingredients?.map {
@@ -362,7 +356,7 @@ fun RecipeModifyScreen(
                                     method.copy(ingredients = updatedLinkedIngredients)
                                 }
                             }
-                        } else { // Adding new ingredient
+                        } else {
                             ingredients.value = ingredients.value.toMutableList().apply {
                                 add(confirmedIngredient)
                             }
@@ -405,9 +399,9 @@ fun RecipeModifyScreen(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 4.dp) // Added padding for the whole item
+                            .padding(vertical = 4.dp)
                     ) {
-                        Row( // Existing Row for method text and main action icons
+                        Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -461,14 +455,12 @@ fun RecipeModifyScreen(
                                 )
                             }
                         }
-
-                        // New: Display linked ingredients for this method
                         if (method.ingredients?.isNotEmpty() == true) {
                             Spacer(modifier = Modifier.height(4.dp))
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(start = 24.dp, end = 8.dp, bottom = 4.dp) // Indent linked ingredients
+                                    .padding(start = 24.dp, end = 8.dp, bottom = 4.dp)
                             ) {
                                 method.ingredients?.forEach { linkedIngredient ->
                                     Row(
@@ -508,16 +500,15 @@ fun RecipeModifyScreen(
                 AddOrEditMethodStep(
                     method = selectedMethod.value,
                     onConfirmation = { confirmedMethod ->
-                        if (selectedMethod.value != null) { // Editing existing method
+                        if (selectedMethod.value != null) {
                             methods.value = methods.value.toMutableList().apply {
-                                // Preserve existing linked ingredients if not modified by AddOrEditMethodStep itself
                                 val originalMethod = this[selectedMethodIndex.intValue]
                                 this[selectedMethodIndex.intValue] = confirmedMethod.copy(ingredients = originalMethod.ingredients)
                             }
-                        } else { // Adding new method
+                        } else {
                             val newMethodWithOrder = confirmedMethod.copy(
                                 sortOrder = methods.value.size + 1,
-                                ingredients = emptyList() // Ensure new methods start with no linked ingredients
+                                ingredients = emptyList()
                             )
                             methods.value = methods.value.toMutableList().apply {
                                 add(newMethodWithOrder)
@@ -533,8 +524,7 @@ fun RecipeModifyScreen(
 
             if (showLinkIngredientsDialog && methodToLinkIngredients != null) {
                 LinkIngredientsDialog(
-                    allIngredients = ingredients.value, // Pass the master list of ingredients
-                    // Extract names from the Method's 'ingredients' list
+                    allIngredients = ingredients.value,
                     currentlyLinkedIngredientNames = methodToLinkIngredients?.ingredients?.map { it.name } ?: emptyList(),
                     onDismissRequest = {
                         showLinkIngredientsDialog = false
@@ -543,7 +533,6 @@ fun RecipeModifyScreen(
                                      },
                     onConfirm = { updatedLinkedIngredientNames ->
                         if (methodToLinkIngredientsIndex != -1) {
-                            // Find the full Ingredient objects from the master list based on the returned names
                             val updatedLinkedIngredients = ingredients.value.filter { ingredient ->
                                 ingredient.name in updatedLinkedIngredientNames
                             }
@@ -700,7 +689,7 @@ fun AddOrEditIngredient(
                             value = amount,
                             onValueChange = { currentAmount ->
                                 val filtered = currentAmount.filter { it.isDigit() || it == '.' }
-                                if (filtered.count { it == '.' } <= 1) { // Allow only one decimal point
+                                if (filtered.count { it == '.' } <= 1) {
                                     amount = filtered
                                 }
                             },
@@ -747,7 +736,7 @@ fun AddOrEditIngredient(
                         measurement = measurement,
                         sortOrder = ingredient?.sortOrder ?: 0
                     )
-                    if (confirmedIngredient.name.isNotBlank()) { // Ensure name is not blank
+                    if (confirmedIngredient.name.isNotBlank()) {
                         onConfirmation(confirmedIngredient)
                     }
                 }
@@ -793,15 +782,14 @@ fun AddOrEditMethodStep(
             TextButton(
                 onClick = {
                     val updatedMethod = method?.copy(
-                        value = value.trim() // Trim whitespace from value
-                        // 'ingredients' list is preserved from the original 'method' object
+                        value = value.trim()
                     ) ?: Method(
                         id = 0,
                         value = value.trim(),
                         sortOrder = 0,
-                        ingredients = emptyList() // New methods start with no linked ingredients
+                        ingredients = emptyList()
                     )
-                    if (updatedMethod.value.isNotBlank()) { // Ensure description is not blank
+                    if (updatedMethod.value.isNotBlank()) {
                         onConfirmation(updatedMethod)
                     }
                 }
@@ -836,18 +824,18 @@ fun LinkIngredientsDialog(
                 Column(
                     modifier = Modifier
                         .verticalScroll(rememberScrollState())
-                        .fillMaxHeight(0.7f) // Keep dialog height constrained
+                        .fillMaxHeight(0.7f)
                 ) {
                     allIngredients.chunked(2).forEach { rowIngredients ->
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp) // Spacing between columns
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             rowIngredients.forEach { ingredient ->
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
                                     modifier = Modifier
-                                        .weight(1f) // Each item takes half the row width
+                                        .weight(1f)
                                         .clickable {
                                             val currentSet = tempSelectedIngredientNames.value.toMutableSet()
                                             if (ingredient.name in currentSet) {
