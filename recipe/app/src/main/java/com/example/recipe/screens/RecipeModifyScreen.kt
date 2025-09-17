@@ -34,8 +34,11 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DragHandle
+import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.LinkOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -95,7 +98,6 @@ fun RecipeModifyScreen(
     // portion handlers
     var isExpandedPortionSelector by remember { mutableStateOf(false) }
     var portionSelection by remember { mutableStateOf(recipe?.portion?.measurement ?: "day") }
-    var portionValue by remember { mutableStateOf(recipe?.portion?.value ?: 1) }
     var placeholderPortionValue by remember {
         mutableStateOf(
             recipe?.portion?.value?.toString() ?: "1"
@@ -103,6 +105,7 @@ fun RecipeModifyScreen(
     }
 
     // ingredients handlers
+    // This is the master list of ingredients for the whole recipe
     var ingredients = remember { mutableStateOf<List<Ingredient>>(recipe?.ingredients ?: listOf()) }
     var showIngredientModal by remember { mutableStateOf(false) }
     val selectedIngredient = remember { mutableStateOf<Ingredient?>(null) }
@@ -113,6 +116,12 @@ fun RecipeModifyScreen(
     var showMethodModal by remember { mutableStateOf(false) }
     val selectedMethod = remember { mutableStateOf<Method?>(null) }
     val selectedMethodIndex = remember { mutableIntStateOf(0) }
+
+    // State for LinkIngredientsDialog
+    var showLinkIngredientsDialog by remember { mutableStateOf(false) }
+    var methodToLinkIngredients by remember { mutableStateOf<Method?>(null) }
+    var methodToLinkIngredientsIndex by remember { mutableIntStateOf(-1) }
+
 
     BackHandler(enabled = true, onBack = {  onNavigateBack() })
     Column(
@@ -137,13 +146,13 @@ fun RecipeModifyScreen(
                         RecipeRequest(
                             id = recipe?.id ?: 0,
                             name = name,
-                            type = if (typeSelection === "Choose") "" else typeSelection,
+                            type = if (typeSelection == "Choose") "" else typeSelection,
                             url = recipeExternalUrl
                         ),
                         Portion(
                             id = recipe?.portion?.id ?: 0,
-                            value = portionValue.toFloat(),
-                            measurement = if (portionSelection === "Choose") "days" else portionSelection
+                            value = placeholderPortionValue.toFloatOrNull() ?: 1f,
+                            measurement = if (portionSelection == "Choose") "days" else portionSelection
                         ),
                         ingredients.value,
                         methods.value,
@@ -169,9 +178,7 @@ fun RecipeModifyScreen(
             Row {
                 TextField(
                     value = name,
-                    onValueChange = {
-                        name = it
-                    },
+                    onValueChange = { name = it },
                     label = { Text("Name") },
                     colors = TextFieldDefaults.colors(
                         focusedContainerColor = Color.Transparent,
@@ -185,10 +192,10 @@ fun RecipeModifyScreen(
                     TextField(
                         value = placeholderPortionValue,
                         onValueChange = {
-                            if (it.toFloatOrNull() != null) {
-                                portionValue = it.toFloat()
+                            val filtered = it.filter { char -> char.isDigit() || char == '.' }
+                            if (filtered.count { char -> char == '.' } <= 1) {
+                                placeholderPortionValue = filtered
                             }
-                            placeholderPortionValue = it
                         },
                         keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
                         colors = TextFieldDefaults.colors(
@@ -199,9 +206,7 @@ fun RecipeModifyScreen(
 
                     DropdownMenuItem(
                         text = { Text(portionSelection) },
-                        onClick = {
-                            isExpandedPortionSelector = !isExpandedPortionSelector
-                        }
+                        onClick = { isExpandedPortionSelector = !isExpandedPortionSelector }
                     )
                     DropdownMenu(
                         expanded = isExpandedPortionSelector,
@@ -225,9 +230,7 @@ fun RecipeModifyScreen(
             TextField(
                 label = { Text("Original recipe URL:") },
                 value = recipeExternalUrl,
-                onValueChange = {
-                    recipeExternalUrl = it
-                },
+                onValueChange = { recipeExternalUrl = it },
                 colors = TextFieldDefaults.colors(
                     focusedContainerColor = Color.Transparent,
                     unfocusedContainerColor = Color.Transparent,
@@ -241,9 +244,7 @@ fun RecipeModifyScreen(
                 Text("Type: ")
                 DropdownMenuItem(
                     text = { Text(typeSelection) },
-                    onClick = {
-                        isExpandedTypeSelector = !isExpandedTypeSelector
-                    }
+                    onClick = { isExpandedTypeSelector = !isExpandedTypeSelector }
                 )
                 DropdownMenu(
                     expanded = isExpandedTypeSelector,
@@ -287,7 +288,7 @@ fun RecipeModifyScreen(
                     }
                 }
             ) { index, ingredient, isDragging ->
-                key(index) {
+                key(ingredient.name + index) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
@@ -315,8 +316,14 @@ fun RecipeModifyScreen(
                                 modifier = Modifier
                                     .size(24.dp)
                                     .clickable {
-                                        ingredients.value = ingredients.value.toMutableList().apply {
-                                            remove(ingredient)
+                                        ingredients.value = ingredients.value
+                                            .toMutableList()
+                                            .apply {
+                                                remove(ingredient)
+                                            }
+                                        methods.value = methods.value.map { method ->
+                                            val updatedLinkedIngredients = method.ingredients?.filter { it.name != ingredient.name }
+                                            method.copy(ingredients = updatedLinkedIngredients)
                                         }
                                     }
                             )
@@ -335,17 +342,25 @@ fun RecipeModifyScreen(
             if (showIngredientModal) {
                 AddOrEditIngredient(
                     ingredient = selectedIngredient.value,
-                    onConfirmation = {
+                    onConfirmation = { confirmedIngredient ->
+                        val oldIngredientName = selectedIngredient.value?.name
                         if (selectedIngredient.value != null) {
                             ingredients.value = ingredients.value.toMutableList().apply {
-                                add(selectedMethodIndex.intValue, it)
+                                this[selectedIngredientIndex.intValue] = confirmedIngredient
+                            }
+                            if (oldIngredientName != null && oldIngredientName != confirmedIngredient.name) {
+                                methods.value = methods.value.map { method ->
+                                    val updatedLinkedIngredients = method.ingredients?.map {
+                                        if (it.name == oldIngredientName) confirmedIngredient else it
+                                    }
+                                    method.copy(ingredients = updatedLinkedIngredients)
+                                }
                             }
                         } else {
                             ingredients.value = ingredients.value.toMutableList().apply {
-                                add(it)
+                                add(confirmedIngredient)
                             }
                         }
-
                         selectedIngredient.value = null
                         showIngredientModal = false
                     },
@@ -380,45 +395,103 @@ fun RecipeModifyScreen(
                     }
                 }
             ) { index, method, isDragging ->
-                key(method.id) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
+                key(method.id.toString() + index) {
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                            .padding(vertical = 4.dp)
                     ) {
-                        val methodDivider = index.inc().toString() + ". "
-                        Text(
-                            methodDivider + method.value,
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
-                                .clickable {
-                                    showMethodModal = true
-                                    selectedMethod.value = method
-                                    selectedMethodIndex.intValue = index
+                                .fillMaxWidth()
+                                .padding(horizontal = 8.dp, vertical = 4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            val methodDisplayNumber = (method.sortOrder ?: (index + 1)).toString()
+                            Text(
+                                "$methodDisplayNumber. ${method.value}",
+                                modifier = Modifier
+                                    .clickable {
+                                        showMethodModal = true
+                                        selectedMethod.value = method
+                                        selectedMethodIndex.intValue = index
+                                    }
+                                    .weight(1f)
+                                    .padding(end = 8.dp)
+                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Filled.Link,
+                                    contentDescription = "Link Ingredients",
+                                    modifier = Modifier
+                                        .size(24.dp)
+                                        .clickable {
+                                            methodToLinkIngredients = method
+                                            methodToLinkIngredientsIndex = index
+                                            showLinkIngredientsDialog = true
+                                        }
+                                        .padding(end = 10.dp)
+                                )
+                                Icon(
+                                    imageVector = Icons.Default.Delete,
+                                    contentDescription = "Delete method button",
+                                    modifier = Modifier
+                                        .size(24.dp)
+                                        .clickable {
+                                            methods.value = methods.value
+                                                .toMutableList()
+                                                .apply {
+                                                    remove(method)
+                                                }
+                                        }
+                                )
+                                Icon(
+                                    imageVector = Icons.Default.DragHandle,
+                                    contentDescription = "Reorder method button",
+                                    modifier = Modifier
+                                        .padding(start = 10.dp)
+                                        .draggableHandle(),
+                                )
+                            }
+                        }
+                        if (method.ingredients?.isNotEmpty() == true) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(start = 24.dp, end = 8.dp, bottom = 4.dp)
+                            ) {
+                                method.ingredients?.forEach { linkedIngredient ->
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 2.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text(
+                                            text = "• ${linkedIngredient.name}" + (if (linkedIngredient.value.toFloat() >  0) " (${linkedIngredient.value} ${linkedIngredient.measurement})" else ""),
+                                            modifier = Modifier.weight(1f).padding(end = 4.dp)
+                                        )
+                                        Icon(
+                                            imageVector = Icons.Filled.LinkOff,
+                                            contentDescription = "Unlink ${linkedIngredient.name}",
+                                            modifier = Modifier
+                                                .size(20.dp)
+                                                .clickable {
+                                                    val currentMethods = methods.value.toMutableList()
+                                                    val methodToUpdate = currentMethods[index]
+                                                    val updatedIngredientsForMethod = methodToUpdate.ingredients?.filterNot { it.name == linkedIngredient.name }
+
+                                                    currentMethods[index] = methodToUpdate.copy(ingredients = updatedIngredientsForMethod)
+                                                    methods.value = currentMethods
+                                                }
+                                        )
+                                    }
                                 }
-                                .fillMaxWidth(0.70f)
-                        )
-                       Row {
-                           Icon(
-                               imageVector = Icons.Default.Delete,
-                               contentDescription = "Delete method button",
-                               modifier = Modifier
-                                   .size(24.dp)
-                                   .clickable {
-                                       methods.value = methods.value.toMutableList().apply {
-                                           remove(method)
-                                       }
-                                   }
-                           )
-                           Icon(
-                               imageVector = Icons.Default.DragHandle,
-                               contentDescription = "Reorder method button",
-                               modifier = Modifier
-                                   .padding(start = 15.dp)
-                                   .draggableHandle(),
-                           )
-                       }
+                            }
+                        }
                     }
                 }
             }
@@ -426,14 +499,19 @@ fun RecipeModifyScreen(
             if (showMethodModal) {
                 AddOrEditMethodStep(
                     method = selectedMethod.value,
-                    onConfirmation = {
-                        if (selectedIngredient.value != null) {
+                    onConfirmation = { confirmedMethod ->
+                        if (selectedMethod.value != null) {
                             methods.value = methods.value.toMutableList().apply {
-                                add(selectedMethodIndex.intValue, it)
+                                val originalMethod = this[selectedMethodIndex.intValue]
+                                this[selectedMethodIndex.intValue] = confirmedMethod.copy(ingredients = originalMethod.ingredients)
                             }
                         } else {
+                            val newMethodWithOrder = confirmedMethod.copy(
+                                sortOrder = methods.value.size + 1,
+                                ingredients = emptyList()
+                            )
                             methods.value = methods.value.toMutableList().apply {
-                                add(it)
+                                add(newMethodWithOrder)
                             }
                         }
                         selectedMethod.value = null
@@ -441,6 +519,32 @@ fun RecipeModifyScreen(
                     },
                     onDismissRequest = { showMethodModal = false },
                     dialogTitle = if (selectedMethod.value != null) "Edit method step" else "New method step"
+                )
+            }
+
+            if (showLinkIngredientsDialog && methodToLinkIngredients != null) {
+                LinkIngredientsDialog(
+                    allIngredients = ingredients.value,
+                    currentlyLinkedIngredientNames = methodToLinkIngredients?.ingredients?.map { it.name } ?: emptyList(),
+                    onDismissRequest = {
+                        showLinkIngredientsDialog = false
+                        methodToLinkIngredients = null
+                        methodToLinkIngredientsIndex = -1
+                                     },
+                    onConfirm = { updatedLinkedIngredientNames ->
+                        if (methodToLinkIngredientsIndex != -1) {
+                            val updatedLinkedIngredients = ingredients.value.filter { ingredient ->
+                                ingredient.name in updatedLinkedIngredientNames
+                            }
+                            methods.value = methods.value.toMutableList().apply {
+                                val currentMethod = this[methodToLinkIngredientsIndex]
+                                this[methodToLinkIngredientsIndex] = currentMethod.copy(ingredients = updatedLinkedIngredients)
+                            }
+                        }
+                        showLinkIngredientsDialog = false
+                        methodToLinkIngredients = null
+                        methodToLinkIngredientsIndex = -1
+                    }
                 )
             }
         }
@@ -483,7 +587,6 @@ fun ImageUploader(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Display area for the image
         Box(
             modifier = Modifier
                 .size(200.dp)
@@ -557,33 +660,19 @@ fun AddOrEditIngredient(
     onConfirmation: (ingredient: Ingredient) -> Unit,
     dialogTitle: String,
 ) {
-    var name by remember { mutableStateOf(ingredient?.name ?: "") }
-    var amount by remember { mutableStateOf(ingredient?.value?.toString() ?: "1") }
+    var name by remember(ingredient) { mutableStateOf(ingredient?.name ?: "") }
+    var amount by remember(ingredient) { mutableStateOf(ingredient?.value?.toString() ?: "1") }
+    var measurement by remember(ingredient) { mutableStateOf(ingredient?.measurement ?: "item") }
     var isExpandedIngredientPortionSelector by remember { mutableStateOf(false) }
-    val newIngredient by remember {
-        mutableStateOf(
-            Ingredient(
-                id = ingredient?.id ?: 0,
-                name = ingredient?.name ?: "",
-                measurement = ingredient?.measurement ?: "",
-                value = ingredient?.value ?: 1,
-                sortOrder = ingredient?.sortOrder ?: 1
-            )
-        )
-    }
 
     AlertDialog(
-        title = {
-            Text(text = dialogTitle)
-        },
+        title = { Text(text = dialogTitle) },
         text = {
             Column {
                 TextField(
                     value = name,
-                    onValueChange = {
-                        newIngredient.name = it
-                        name = it
-                    },
+                    onValueChange = { name = it },
+                    label = { Text("Ingredient Name") },
                     colors = TextFieldDefaults.colors(
                         focusedContainerColor = Color.Transparent,
                         unfocusedContainerColor = Color.Transparent,
@@ -598,9 +687,13 @@ fun AddOrEditIngredient(
                     ) {
                         TextField(
                             value = amount,
-                            onValueChange = {
-                                amount = it
+                            onValueChange = { currentAmount ->
+                                val filtered = currentAmount.filter { it.isDigit() || it == '.' }
+                                if (filtered.count { it == '.' } <= 1) {
+                                    amount = filtered
+                                }
                             },
+                            label = { Text("Amount") },
                             keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
                             colors = TextFieldDefaults.colors(
                                 focusedContainerColor = Color.Transparent,
@@ -608,38 +701,21 @@ fun AddOrEditIngredient(
                             ),
                         )
                     }
-
                     DropdownMenuItem(
-                        text = { Text(if (newIngredient.measurement !== "") newIngredient.measurement else "Choose") },
-                        onClick = {
-                            isExpandedIngredientPortionSelector =
-                                !isExpandedIngredientPortionSelector
-                        }
+                        text = { Text(measurement) },
+                        onClick = { isExpandedIngredientPortionSelector = !isExpandedIngredientPortionSelector }
                     )
                     DropdownMenu(
                         expanded = isExpandedIngredientPortionSelector,
-                        onDismissRequest = {
-                            isExpandedIngredientPortionSelector =
-                                !isExpandedIngredientPortionSelector
-                        }
+                        onDismissRequest = { isExpandedIngredientPortionSelector = false }
                     ) {
-                        for (portion in arrayOf(
-                            "bottle",
-                            "can",
-                            "item",
-                            "g",
-                            "kg",
-                            "mL",
-                            "L",
-                            "tbsp",
-                            "tsp",
-                            "cup",
-                            "to taste"
+                        for (portionOption in arrayOf(
+                            "bottle", "can", "item", "g", "kg", "mL", "L", "tbsp", "tsp", "cup", "to taste"
                         )) {
                             DropdownMenuItem(
-                                text = { Text(portion) },
+                                text = { Text(portionOption) },
                                 onClick = {
-                                    newIngredient.measurement = portion
+                                    measurement = portionOption
                                     isExpandedIngredientPortionSelector = false
                                 }
                             )
@@ -648,25 +724,28 @@ fun AddOrEditIngredient(
                 }
             }
         },
-        onDismissRequest = {
-            onDismissRequest()
-        },
+        onDismissRequest = onDismissRequest,
         confirmButton = {
             TextButton(
                 onClick = {
-                    newIngredient.value = amount.toFloat()
-                    onConfirmation(newIngredient)
+                    val finalAmount = amount.toFloatOrNull() ?: 1f
+                    val confirmedIngredient = Ingredient(
+                        id = ingredient?.id ?: 0,
+                        name = name.trim(), // Trim whitespace from name
+                        value = finalAmount,
+                        measurement = measurement,
+                        sortOrder = ingredient?.sortOrder ?: 0
+                    )
+                    if (confirmedIngredient.name.isNotBlank()) {
+                        onConfirmation(confirmedIngredient)
+                    }
                 }
             ) {
                 Text("Save")
             }
         },
         dismissButton = {
-            TextButton(
-                onClick = {
-                    onDismissRequest()
-                }
-            ) {
+            TextButton(onClick = onDismissRequest) {
                 Text("Cancel")
             }
         }
@@ -680,53 +759,130 @@ fun AddOrEditMethodStep(
     onConfirmation: (method: Method) -> Unit,
     dialogTitle: String,
 ) {
-    var value by remember { mutableStateOf(method?.value ?: "") }
-    val newMethod by remember {
-        mutableStateOf(
-            Method(
-                value = method?.value ?: "",
-                id = 0,
-                sortOrder = 0,
-            )
-        )
-    }
+    var value by remember(method) { mutableStateOf(method?.value ?: "") }
+
     AlertDialog(
-        title = {
-            Text(text = dialogTitle)
-        },
+        title = { Text(text = dialogTitle) },
         text = {
             Column {
                 TextField(
                     value = value,
-                    onValueChange = {
-                        newMethod.value = it
-                        value = it
-                    },
+                    onValueChange = { value = it },
+                    label = { Text("Method Description") },
                     colors = TextFieldDefaults.colors(
                         focusedContainerColor = Color.Transparent,
                         unfocusedContainerColor = Color.Transparent,
                     ),
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
         },
-        onDismissRequest = {
-            onDismissRequest()
-        },
+        onDismissRequest = onDismissRequest,
         confirmButton = {
             TextButton(
                 onClick = {
-                    onConfirmation(newMethod)
+                    val updatedMethod = method?.copy(
+                        value = value.trim()
+                    ) ?: Method(
+                        id = 0,
+                        value = value.trim(),
+                        sortOrder = 0,
+                        ingredients = emptyList()
+                    )
+                    if (updatedMethod.value.isNotBlank()) {
+                        onConfirmation(updatedMethod)
+                    }
                 }
             ) {
                 Text("Save")
             }
         },
         dismissButton = {
-            TextButton(
-                onClick = {
-                    onDismissRequest()
+            TextButton(onClick = onDismissRequest) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+@Composable
+fun LinkIngredientsDialog(
+    allIngredients: List<Ingredient>,
+    currentlyLinkedIngredientNames: List<String>,
+    onDismissRequest: () -> Unit,
+    onConfirm: (updatedLinkedIngredientNames: List<String>) -> Unit
+) {
+    val tempSelectedIngredientNames = remember { mutableStateOf(currentlyLinkedIngredientNames.toMutableSet()) }
+
+    AlertDialog(
+        onDismissRequest = onDismissRequest,
+        title = { Text("Link Ingredients to Method") },
+        text = {
+            if (allIngredients.isEmpty()) {
+                Text("No ingredients available in the recipe to link.")
+            } else {
+                Column(
+                    modifier = Modifier
+                        .verticalScroll(rememberScrollState())
+                        .fillMaxHeight(0.7f)
+                ) {
+                    allIngredients.chunked(2).forEach { rowIngredients ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            rowIngredients.forEach { ingredient ->
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clickable {
+                                            val currentSet = tempSelectedIngredientNames.value.toMutableSet()
+                                            if (ingredient.name in currentSet) {
+                                                currentSet.remove(ingredient.name)
+                                            } else {
+                                                currentSet.add(ingredient.name)
+                                            }
+                                            tempSelectedIngredientNames.value = currentSet
+                                        }
+                                        .padding(vertical = 4.dp, horizontal = 4.dp)
+                                ) {
+                                    Checkbox(
+                                        checked = ingredient.name in tempSelectedIngredientNames.value,
+                                        onCheckedChange = { isChecked ->
+                                            val currentSet = tempSelectedIngredientNames.value.toMutableSet()
+                                            if (isChecked) {
+                                                currentSet.add(ingredient.name)
+                                            } else {
+                                                currentSet.remove(ingredient.name)
+                                            }
+                                            tempSelectedIngredientNames.value = currentSet
+                                        }
+                                    )
+                                    Text(
+                                        text = ingredient.name,
+                                        modifier = Modifier.padding(start = 8.dp)
+                                    )
+                                }
+                            }
+                            // If there's an odd number of ingredients, the last row will have one item.
+                            // Add a Spacer to fill the second column's space if needed for alignment,
+                            // or rely on weight(1f) to handle it.
+                            if (rowIngredients.size == 1) {
+                                Spacer(modifier = Modifier.weight(1f))
+                            }
+                        }
+                    }
                 }
-            ) {
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(tempSelectedIngredientNames.value.toList()) }) {
+                Text("Apply")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismissRequest) {
                 Text("Cancel")
             }
         }
