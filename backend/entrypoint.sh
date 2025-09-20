@@ -63,16 +63,22 @@ if [ ! -f /root/database/database.db ]; then
         title TEXT,
         recipe_id INTEGER NOT NULL,
         sortOrder INTEGER,
-        FOREIGN KEY (recipe_id) REFERENCES reicpes(id) ON DELETE CASCADE,
+        FOREIGN KEY (recipe_id) REFERENCES reicpes(id) ON DELETE CASCADE
     );
 
     CREATE TABLE divider_ingredients (
         ingredient_id INTEGER NOT NULL,
-        FOREIGN KEY (ingredient_id) REFERENCES ingredients(id) ON DELETE CASCADE ON UPDATE NO ACTION
+        divider_id INTEGER NOT NULL,
+        FOREIGN KEY (divider_id) REFERENCES dividers(id) ON DELETE CASCADE ON UPDATE NO ACTION,
+        FOREIGN KEY (ingredient_id) REFERENCES ingredients(id) ON DELETE CASCADE ON UPDATE NO ACTION,
+        PRIMARY KEY (ingredient_id, divider_id)
     );
 
     CREATE TABLE divider_methods (
         method_id INTEGER NOT NULL,
+        divider_id INTEGER NOT NULL,
+        PRIMARY KEY (method_id, divider_id),
+        FOREIGN KEY (divider_id) REFERENCES dividers(id) ON DELETE CASCADE ON UPDATE NO ACTION,
         FOREIGN KEY (method_id) REFERENCES methods(id) ON DELETE CASCADE ON UPDATE NO ACTION
     );
 EOF

@@ -33,7 +33,6 @@ type Ingredient struct {
 	Value       float32 `json:"value"`
 	RecipeID    int     `json:"recipe_id"`
 	SortOrder   int     `json:"sortOrder"`
-	DividerID   int     `json:"divider_id,omitempty"`
 }
 
 type Method struct {
@@ -42,7 +41,6 @@ type Method struct {
 	SortOrder   int          `json:"sortOrder"`
 	RecipeID    int          `json:"recipe_id"`
 	Ingredients []Ingredient `json:"ingredients,omitempty"`
-	DividerID   int          `json:"divider_id,omitempty"`
 }
 
 type Image struct {
@@ -561,7 +559,6 @@ func getIngredients(w http.ResponseWriter, r *http.Request) {
 			&ingredient.Value,
 			&ingredient.SortOrder,
 			&ingredient.RecipeID,
-			&ingredient.DividerID,
 		)
 
 		ingredients = append(ingredients, ingredient)
@@ -605,7 +602,6 @@ func getRecipeIngredients(recipeId int, searchString string) []Ingredient {
 			&ingredient.Value,
 			&ingredient.SortOrder,
 			&ingredient.RecipeID,
-			&ingredient.DividerID,
 		)
 
 		ingredients = append(ingredients, ingredient)
@@ -794,7 +790,6 @@ func getRecipeMethods(recipeId int) []Method {
 			&method.Value,
 			&method.SortOrder,
 			&method.RecipeID,
-			&method.DividerID,
 		)
 
 		// Get ingredients for this method
@@ -818,7 +813,6 @@ func getRecipeMethods(recipeId int) []Method {
 					&ingredient.Value,
 					&ingredient.SortOrder,
 					&ingredient.RecipeID,
-					&ingredient.DividerID,
 				)
 				ingredients = append(ingredients, ingredient)
 			}
@@ -1158,8 +1152,44 @@ func getRecipeDividers(recipeId int) []Divider {
 	var dividers []Divider
 	for rows.Next() {
 		var divider Divider
-		if err := rows.Scan(&divider.ID, &divider.RecipeID); err != nil {
+		if err := rows.Scan(&divider.ID, &divider.Title, &divider.RecipeID, &divider.SortOrder); err != nil {
 			return []Divider{}
+		}
+		// Populate ingredients for this divider
+		ingredientRows, err := db.Query("SELECT i.id, i.name, i.measurement, i.value, i.sortOrder, i.recipe_id FROM ingredients i JOIN divider_ingredients di ON i.id = di.ingredient_id WHERE di.divider_id = ?", divider.ID)
+		if err == nil {
+			var ingredients []Ingredient
+			for ingredientRows.Next() {
+				var ingredient Ingredient
+				ingredientRows.Scan(
+					&ingredient.ID,
+					&ingredient.Name,
+					&ingredient.Measurement,
+					&ingredient.Value,
+					&ingredient.SortOrder,
+					&ingredient.RecipeID,
+				)
+				ingredients = append(ingredients, ingredient)
+			}
+			divider.Ingredients = ingredients
+			ingredientRows.Close()
+		}
+		// Populate methods for this divider
+		methodRows, err := db.Query("SELECT m.id, m.value, m.sortOrder, m.recipe_id FROM methods m JOIN divider_methods dm ON m.id = dm.method_id WHERE dm.divider_id = ?", divider.ID)
+		if err == nil {
+			var methods []Method
+			for methodRows.Next() {
+				var method Method
+				methodRows.Scan(
+					&method.ID,
+					&method.Value,
+					&method.SortOrder,
+					&method.RecipeID,
+				)
+				methods = append(methods, method)
+			}
+			divider.Methods = methods
+			methodRows.Close()
 		}
 		dividers = append(dividers, divider)
 	}
