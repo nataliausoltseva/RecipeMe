@@ -21,7 +21,7 @@ if [ ! -f /root/database/database.db ]; then
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         value DOUBLE, measurement TEXT,
         recipe_id INTEGER,
-        FOREIGN KEY (recipe_id) REFERENCES recipe(id) ON DELETE CASCADE ON UPDATE NO ACTION
+        FOREIGN KEY (recipe_id) REFERENCES recipes(id) ON DELETE CASCADE ON UPDATE NO ACTION
     );
 
     CREATE TABLE ingredients (
@@ -31,7 +31,7 @@ if [ ! -f /root/database/database.db ]; then
         value DOUBLE,
         sortOrder INTEGER,
         recipe_id INTEGER,
-        FOREIGN KEY (recipe_id) REFERENCES recipe(id) ON DELETE CASCADE ON UPDATE NO ACTION
+        FOREIGN KEY (recipe_id) REFERENCES recipes(id) ON DELETE CASCADE ON UPDATE NO ACTION
     );
 
     CREATE TABLE methods (
@@ -39,7 +39,7 @@ if [ ! -f /root/database/database.db ]; then
         value TEXT,
         sortOrder INTEGER,
         recipe_id INTEGER,
-        FOREIGN KEY (recipe_id) REFERENCES recipe(id) ON DELETE CASCADE ON UPDATE NO ACTION
+        FOREIGN KEY (recipe_id) REFERENCES recipes(id) ON DELETE CASCADE ON UPDATE NO ACTION
     );
 
     CREATE TABLE images (
@@ -47,7 +47,7 @@ if [ ! -f /root/database/database.db ]; then
         url string,
         filename TEXT,
         recipe_id INTEGER,
-        FOREIGN KEY (recipe_id) REFERENCES recipe(id) ON DELETE CASCADE ON UPDATE NO ACTION
+        FOREIGN KEY (recipe_id) REFERENCES recipes(id) ON DELETE CASCADE ON UPDATE NO ACTION
     );
 
     CREATE TABLE method_ingredients (
@@ -56,6 +56,24 @@ if [ ! -f /root/database/database.db ]; then
         FOREIGN KEY (method_id) REFERENCES methods(id) ON DELETE CASCADE,
         FOREIGN KEY (ingredient_id) REFERENCES ingredients(id) ON DELETE CASCADE,
         PRIMARY KEY (method_id, ingredient_id)
+    );
+
+    CREATE TABLE dividers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT,
+        recipe_id INTEGER NOT NULL,
+        sortOrder INTEGER,
+        FOREIGN KEY (recipe_id) REFERENCES reicpes(id) ON DELETE CASCADE,
+    );
+
+    CREATE TABLE divider_ingredients (
+        ingredient_id INTEGER NOT NULL,
+        FOREIGN KEY (ingredient_id) REFERENCES ingredients(id) ON DELETE CASCADE ON UPDATE NO ACTION
+    );
+
+    CREATE TABLE divider_methods (
+        method_id INTEGER NOT NULL,
+        FOREIGN KEY (method_id) REFERENCES methods(id) ON DELETE CASCADE ON UPDATE NO ACTION
     );
 EOF
 fi
