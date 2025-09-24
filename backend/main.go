@@ -1209,39 +1209,43 @@ func getDividers(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(dividers)
 }
 
-func addIngredientToDivider(w http.ResponseWriter, r *http.Request) {
+func addIngredientsToDivider(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		IngredientID int `json:"ingredient_id"`
-		DividerID    int `json:"divider_id"`
+		IngredientIDs []int `json:"ingredient_ids"`
+		DividerID     int   `json:"divider_id"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	_, err := db.Exec("INSERT INTO divider_ingredients (ingredient_id) VALUES (?) WHERE divider_id = ?", req.IngredientID, req.DividerID)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	for _, ingredientID := range req.IngredientIDs {
+		_, err := db.Exec("INSERT INTO divider_ingredients (ingredient_id, divider_id) VALUES (?, ?)", ingredientID, req.DividerID)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func addMethodToDivider(w http.ResponseWriter, r *http.Request) {
+func addMethodsToDivider(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		MethodID  int `json:"method_id"`
-		DividerID int `json:"divider_id"`
+		MethodIDs []int `json:"method_ids"`
+		DividerID int   `json:"divider_id"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	_, err := db.Exec("INSERT INTO divider_methods (method_id) VALUES (?) WHERE divider_id = ?", req.MethodID, req.DividerID)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	for _, methodID := range req.MethodIDs {
+		_, err := db.Exec("INSERT INTO divider_methods (method_id, divider_id) VALUES (?, ?)", methodID, req.DividerID)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 
 	w.WriteHeader(http.StatusNoContent)
@@ -1338,8 +1342,8 @@ func main() {
 	// Divider routes
 	router.HandleFunc("/dividers/{recipe_id}", getDividers).Methods("GET")
 	router.HandleFunc("/divider/{recipe_id}", addDividerToRecipe).Methods("POST")
-	router.HandleFunc("/dividers/ingredients", addIngredientToDivider).Methods("POST")
-	router.HandleFunc("/dividers/methods", addMethodToDivider).Methods("POST")
+	router.HandleFunc("/dividers/ingredients", addIngredientsToDivider).Methods("POST")
+	router.HandleFunc("/dividers/methods", addMethodsToDivider).Methods("POST")
 
 	fmt.Println("Starting server on :1009...")
 	http.ListenAndServe(":1009", router)
