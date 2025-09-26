@@ -62,6 +62,16 @@ type Recipe struct {
 	LastEditedAt string       `json:"lastEditedAt"`
 	Type         string       `json:"type"`
 	SortOrder    int          `json:"sortOrder"`
+	Dividers     []Divider    `json:"dividers"`
+}
+
+type Divider struct {
+	ID          int          `json:"id"`
+	Title       string       `json:"title"`
+	RecipeID    int          `json:"recipe_id"`
+	Ingredients []Ingredient `json:"ingredients,omitempty"`
+	Methods     []Method     `json:"methods,omitempty"`
+	SortOrder   int          `json:"sortOrder"`
 }
 
 var recipes []Recipe
@@ -124,6 +134,7 @@ func getRecipes(w http.ResponseWriter, r *http.Request) {
 		recipe.Methods = getRecipeMethods(recipe.ID)
 		recipe.Portion = getRecipePortion(recipe.ID)
 		recipe.Image = getRecipeImage(recipe.ID)
+		recipe.Dividers = getRecipeDividers(recipe.ID)
 
 		recipes = append(recipes, recipe)
 	}
@@ -217,6 +228,7 @@ func getRecipeById(id int) Recipe {
 	recipe.Methods = getRecipeMethods(id)
 	recipe.Portion = getRecipePortion(id)
 	recipe.Image = getRecipeImage(id)
+	recipe.Dividers = getRecipeDividers(id)
 
 	return recipe
 }
@@ -302,6 +314,7 @@ func updateRecipe(w http.ResponseWriter, r *http.Request) {
 	recipe.Methods = getRecipeMethods(id)
 	recipe.Portion = getRecipePortion(id)
 	recipe.Image = getRecipeImage(id)
+	recipe.Dividers = getRecipeDividers(id)
 
 	json.NewEncoder(w).Encode(recipe)
 }
@@ -400,6 +413,7 @@ func getAllRecipes() []Recipe {
 		recipe.Methods = getRecipeMethods(recipe.ID)
 		recipe.Portion = getRecipePortion(recipe.ID)
 		recipe.Image = getRecipeImage(recipe.ID)
+		recipe.Dividers = getRecipeDividers(recipe.ID)
 
 		recipes = append(recipes, recipe)
 	}
@@ -735,6 +749,13 @@ func deleteIngredient(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Delete from divider_ingredients
+	_, err = db.Exec("DELETE FROM divider_ingredients WHERE ingredient_id = ?", id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	stmt, err := db.Prepare("DELETE FROM ingredients WHERE id = ?")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -988,6 +1009,13 @@ func deleteMethod(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Delete from divider_methods
+	_, err = db.Exec("DELETE FROM divider_methods WHERE method_id = ?", id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	stmt, err := db.Prepare("DELETE FROM methods WHERE id = ?")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -1114,6 +1142,180 @@ func getImages(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(images)
 }
 
+func getRecipeDividers(recipeId int) []Divider {
+	rows, err := db.Query("SELECT * FROM dividers WHERE recipe_id = ?", recipeId)
+	if err != nil {
+		return []Divider{}
+	}
+	defer rows.Close()
+
+	var dividers []Divider
+	for rows.Next() {
+		var divider Divider
+		if err := rows.Scan(&divider.ID, &divider.Title, &divider.RecipeID, &divider.SortOrder); err != nil {
+			return []Divider{}
+		}
+		// Populate ingredients for this divider
+		ingredientRows, err := db.Query("SELECT i.id, i.name, i.measurement, i.value, i.sortOrder, i.recipe_id FROM ingredients i JOIN divider_ingredients di ON i.id = di.ingredient_id WHERE di.divider_id = ?", divider.ID)
+		if err == nil {
+			var ingredients []Ingredient
+			for ingredientRows.Next() {
+				var ingredient Ingredient
+				ingredientRows.Scan(
+					&ingredient.ID,
+					&ingredient.Name,
+					&ingredient.Measurement,
+					&ingredient.Value,
+					&ingredient.SortOrder,
+					&ingredient.RecipeID,
+				)
+				ingredients = append(ingredients, ingredient)
+			}
+			divider.Ingredients = ingredients
+			ingredientRows.Close()
+		}
+		// Populate methods for this divider
+		methodRows, err := db.Query("SELECT m.id, m.value, m.sortOrder, m.recipe_id FROM methods m JOIN divider_methods dm ON m.id = dm.method_id WHERE dm.divider_id = ?", divider.ID)
+		if err == nil {
+			var methods []Method
+			for methodRows.Next() {
+				var method Method
+				methodRows.Scan(
+					&method.ID,
+					&method.Value,
+					&method.SortOrder,
+					&method.RecipeID,
+				)
+				methods = append(methods, method)
+			}
+			divider.Methods = methods
+			methodRows.Close()
+		}
+		dividers = append(dividers, divider)
+	}
+	return dividers
+}
+
+func getDividers(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	idStr, ok := params["recipe_id"]
+	if !ok {
+		http.Error(w, "Missing recipe_id parameter", http.StatusInternalServerError)
+		return
+	}
+
+	id, _ := strconv.Atoi(idStr)
+	dividers := getRecipeDividers(id)
+	json.NewEncoder(w).Encode(dividers)
+}
+
+func addIngredientsToDivider(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		IngredientIDs []int `json:"ingredients"`
+		DividerID     int   `json:"divider"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	for _, ingredientID := range req.IngredientIDs {
+		var exists int
+		err := db.QueryRow("SELECT 1 FROM divider_ingredients WHERE ingredient_id = ? AND divider_id = ?", ingredientID, req.DividerID).Scan(&exists)
+		if err == sql.ErrNoRows {
+			_, err := db.Exec("INSERT INTO divider_ingredients (ingredient_id, divider_id) VALUES (?, ?)", ingredientID, req.DividerID)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+		} else if err != nil && err != sql.ErrNoRows {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func addMethodsToDivider(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		MethodIDs []int `json:"method_ids"`
+		DividerID int   `json:"divider_id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	for _, methodID := range req.MethodIDs {
+		var exists int
+		err := db.QueryRow("SELECT 1 FROM divider_methods WHERE method_id = ? AND divider_id = ?", methodID, req.DividerID).Scan(&exists)
+		if err == sql.ErrNoRows {
+			_, err := db.Exec("INSERT INTO divider_methods (method_id, divider_id) VALUES (?, ?)", methodID, req.DividerID)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+		} else if err != nil && err != sql.ErrNoRows {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func addDividerToRecipe(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	idStr := params["recipe_id"]
+
+	recipeId, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, "Invalid recipe_id parameter", http.StatusInternalServerError)
+		return
+	}
+
+	recipe := getRecipeById(recipeId)
+
+	if recipe.ID == 0 {
+		json.NewEncoder(w).Encode(nil)
+		return
+	}
+
+	var existingDividers = getRecipeDividers(recipeId)
+	var passedDivider Divider
+	json.NewDecoder(r.Body).Decode(&passedDivider)
+	found := false
+	for existingDividerIndex, existingDivider := range existingDividers {
+		if passedDivider.ID == existingDivider.ID {
+			sortOrder := existingDividerIndex + 1
+
+			_, err := db.Exec("UPDATE dividers SET title = ?, sortOrder = ?, recipe_id = ? WHERE id = ?", passedDivider.Title, sortOrder, recipeId, passedDivider.ID)
+			if err != nil {
+				fmt.Println("Error updating divider:", err)
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			found = true
+			break
+		}
+	}
+	if !found {
+		sortOrder := 1 + len(existingDividers)
+
+		_, err := db.Exec("INSERT INTO dividers(title, sortOrder, recipe_id) VALUES(?,?,?)", passedDivider.Title, sortOrder, recipeId)
+		if err != nil {
+			fmt.Println("Error inserting divider:", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+
+	updateRecipeLastEdited(recipeId)
+
+	json.NewEncoder(w).Encode(getRecipeById(recipeId))
+}
+
 func main() {
 	var err error
 	db, err = sql.Open("sqlite3", "./database/database.db")
@@ -1150,6 +1352,12 @@ func main() {
 	// Image routes
 	router.HandleFunc("/image/{recipe_id}", updateImage).Methods("POST")
 	router.HandleFunc("/images", getImages).Methods("GET")
+
+	// Divider routes
+	router.HandleFunc("/dividers/{recipe_id}", getDividers).Methods("GET")
+	router.HandleFunc("/divider/{recipe_id}", addDividerToRecipe).Methods("POST")
+	router.HandleFunc("/divider/ingredients", addIngredientsToDivider).Methods("POST")
+	router.HandleFunc("/divider/methods", addMethodsToDivider).Methods("POST")
 
 	fmt.Println("Starting server on :1009...")
 	http.ListenAndServe(":1009", router)
