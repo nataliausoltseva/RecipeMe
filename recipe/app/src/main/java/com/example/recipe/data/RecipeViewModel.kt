@@ -111,7 +111,7 @@ class RecipeViewModel: ViewModel() {
                         ),
                         ingredients,
                         methods,
-                        null
+                        dividers = null
                     )
                 }
             } catch (e: Exception) {
@@ -157,7 +157,8 @@ class RecipeViewModel: ViewModel() {
         portion: Portion,
         ingredients: List<Ingredient>,
         methods: List<Method>,
-        imageBytes: ByteArray? = null
+        imageBytes: ByteArray? = null,
+        dividers: List<Divider>?
     ) {
         viewModelScope.launch {
             try {
@@ -181,6 +182,9 @@ class RecipeViewModel: ViewModel() {
                 }
 
                 recipeResponse = endpoints.getRecipe(recipeIdToUse)
+                if (recipeIdToUse != 0 && dividers != null) {
+//                    endpoints.addOrUpdateDividers(dividers, recipeIdToUse)
+                }
                 getRecipes()
             } catch (e: Exception) {
                 println("Error: ${e.message}")

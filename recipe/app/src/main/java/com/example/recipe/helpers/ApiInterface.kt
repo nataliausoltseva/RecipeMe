@@ -1,5 +1,6 @@
 package com.example.recipe.helpers
 
+import com.example.recipe.data.Divider
 import com.example.recipe.data.Ingredient
 import com.example.recipe.data.Method
 import com.example.recipe.data.Portion
@@ -21,6 +22,16 @@ data class RecipeRequest(
     var name: String,
     var type: String,
     var url: String,
+)
+
+data class DividerIngredientsRequest (
+    val divider: Int,
+    val ingredients: List<Int>
+)
+
+data class DividerMethodsRequest (
+    val divider: Int,
+    val methods: List<Int>
 )
 
 interface ApiInterface {
@@ -68,4 +79,14 @@ interface ApiInterface {
     @Multipart
     @POST("/image/{recipeId}")
     suspend fun uploadImage(@Path("recipeId") id: Int, @Part image: MultipartBody.Part): Response<Recipe>
+
+    // Divider endpoints
+    @POST("/divider/ingredients")
+    suspend fun addIngredientsToDivider(@Body request: DividerIngredientsRequest): Response<Void>
+
+    @POST("/divider/methods")
+    suspend fun addMethodsToDivider(@Body request: DividerMethodsRequest): Response<Void>
+
+    @POST("/divider/{recipeId}")
+    suspend fun addDivider(@Path("recipeId") id: Int, @Body request: Divider): Response<Recipe>
 }
