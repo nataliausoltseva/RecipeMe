@@ -1196,6 +1196,23 @@ func getRecipeDividers(recipeId int) []Divider {
 	return dividers
 }
 
+func getDividerById(dividerId int) Divider {
+	row := db.QueryRow(`
+		SELECT * FROM dividers WHERE id = ?
+	`, dividerId)
+
+	var divider Divider
+
+	row.Scan(
+		&divider.ID,
+		&divider.Title,
+		&divider.RecipeID,
+		&divider.SortOrder,
+	)
+
+	return divider
+}
+
 func getDividers(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	idStr, ok := params["recipe_id"]
@@ -1286,6 +1303,7 @@ func addDividerToRecipe(w http.ResponseWriter, r *http.Request) {
 	var passedDivider Divider
 	json.NewDecoder(r.Body).Decode(&passedDivider)
 	found := false
+	dividerId := 0
 	for existingDividerIndex, existingDivider := range existingDividers {
 		if passedDivider.ID == existingDivider.ID {
 			sortOrder := existingDividerIndex + 1
@@ -1296,6 +1314,7 @@ func addDividerToRecipe(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
+			dividerId = passedDivider.ID
 			found = true
 			break
 		}
@@ -1303,17 +1322,20 @@ func addDividerToRecipe(w http.ResponseWriter, r *http.Request) {
 	if !found {
 		sortOrder := 1 + len(existingDividers)
 
-		_, err := db.Exec("INSERT INTO dividers(title, sortOrder, recipe_id) VALUES(?,?,?)", passedDivider.Title, sortOrder, recipeId)
+		result, err := db.Exec("INSERT INTO dividers(title, sortOrder, recipe_id) VALUES(?,?,?)", passedDivider.Title, sortOrder, recipeId)
 		if err != nil {
 			fmt.Println("Error inserting divider:", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+
+		lastId, _ := result.LastInsertId()
+		dividerId = int(lastId)
 	}
 
 	updateRecipeLastEdited(recipeId)
 
-	json.NewEncoder(w).Encode(getRecipeById(recipeId))
+	json.NewEncoder(w).Encode(getDividerById(dividerId))
 }
 
 func main() {
