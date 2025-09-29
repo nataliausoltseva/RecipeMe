@@ -1,5 +1,6 @@
 package com.example.recipe.helpers
 
+import com.example.recipe.data.Divider
 import com.example.recipe.data.Ingredient
 import com.example.recipe.data.Method
 import com.example.recipe.data.Portion
@@ -140,6 +141,30 @@ class Endpoints {
             }
         } catch (e: Exception) {
             println("Exception error getRecipes: ${e.message}. ${e.printStackTrace()}")
+        }
+    }
+
+    suspend fun addDivider(recipeId: Int, body: Divider): Divider? {
+        try {
+            val response = apiInterface.addDivider(recipeId, body)
+            if (response.isSuccessful) {
+                val data = response.body()
+                return data
+            } else {
+                println("Response error: $response")
+                return null
+            }
+        } catch (e: Exception) {
+            println("Exception error addDivider: ${e.message}. ${e.printStackTrace()}")
+            return null
+        }
+    }
+
+    suspend fun addIngredientsToDivider(body: DividerIngredientsRequest) {
+        try {
+            apiInterface.addIngredientsToDivider(body)
+        } catch (e: Exception) {
+            println("Exception error addIngredientsToDivider: ${e.message}. ${e.printStackTrace()}")
         }
     }
 }

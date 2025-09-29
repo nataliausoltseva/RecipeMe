@@ -88,5 +88,5 @@ interface ApiInterface {
     suspend fun addMethodsToDivider(@Body request: DividerMethodsRequest): Response<Void>
 
     @POST("/divider/{recipeId}")
-    suspend fun addDivider(@Path("recipeId") id: Int, @Body request: Divider): Response<Recipe>
+    suspend fun addDivider(@Path("recipeId") id: Int, @Body request: Divider): Response<Divider>
 }

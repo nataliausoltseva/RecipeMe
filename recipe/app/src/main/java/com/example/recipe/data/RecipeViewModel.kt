@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.recipe.helpers.DividerIngredientsRequest
 import com.example.recipe.helpers.Endpoints
 import com.example.recipe.helpers.RecipeParser
 import com.example.recipe.helpers.RecipeRequest
@@ -181,9 +182,21 @@ class RecipeViewModel: ViewModel() {
                     )
                 }
 
-                recipeResponse = endpoints.getRecipe(recipeIdToUse)
-                if (recipeIdToUse != 0 && dividers != null) {
-//                    endpoints.addOrUpdateDividers(dividers, recipeIdToUse)
+                if (dividers != null) {
+                    for (divider in dividers) {
+                        val dividerResponse = endpoints.addDivider(recipe.id, divider)
+                        if (dividerResponse != null) {
+                            val dividerIngredients = divider.ingredients.orEmpty()
+                            if (dividerIngredients.isNotEmpty()) {
+                                val ingredientIds = dividerIngredients.map { it.id }
+                                val dividerIngredientsRequest = DividerIngredientsRequest(
+                                    divider = dividerResponse.id,
+                                    ingredients = ingredientIds
+                                )
+                                endpoints.addIngredientsToDivider(dividerIngredientsRequest)
+                            }
+                        }
+                    }
                 }
                 getRecipes()
             } catch (e: Exception) {
