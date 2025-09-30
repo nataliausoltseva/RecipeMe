@@ -1227,20 +1227,43 @@ func getDividers(w http.ResponseWriter, r *http.Request) {
 }
 
 func addIngredientsToDivider(w http.ResponseWriter, r *http.Request) {
-	var req struct {
-		IngredientIDs []int `json:"ingredients"`
-		DividerID     int   `json:"divider"`
+	params := mux.Vars(r)
+	recipeIDStr := params["recipe_id"]
+	dividerIDStr := params["divider_id"]
+
+	recipeID, err := strconv.Atoi(recipeIDStr)
+	if err != nil {
+		http.Error(w, "Invalid recipe_id parameter", http.StatusBadRequest)
+		return
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	dividerID, err := strconv.Atoi(dividerIDStr)
+	if err != nil {
+		http.Error(w, "Invalid divider_id parameter", http.StatusBadRequest)
+		return
+	}
+
+	var ingredients []Ingredient
+	if err := json.NewDecoder(r.Body).Decode(&ingredients); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	for _, ingredientID := range req.IngredientIDs {
+	for _, ingredient := range ingredients {
+		ingredientID := ingredient.ID
+		if ingredientID == 0 {
+			result, err := db.Exec("INSERT INTO ingredients(name, measurement, value, sortOrder, recipe_id) VALUES(?,?,?,?,?)", ingredient.Name, ingredient.Measurement, ingredient.Value, ingredient.SortOrder, recipeID)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			lastId, _ := result.LastInsertId()
+			ingredientID = int(lastId)
+		}
+
 		var exists int
-		err := db.QueryRow("SELECT 1 FROM divider_ingredients WHERE ingredient_id = ? AND divider_id = ?", ingredientID, req.DividerID).Scan(&exists)
+		err := db.QueryRow("SELECT 1 FROM divider_ingredients WHERE ingredient_id = ? AND divider_id = ?", ingredientID, dividerID).Scan(&exists)
 		if err == sql.ErrNoRows {
-			_, err := db.Exec("INSERT INTO divider_ingredients (ingredient_id, divider_id) VALUES (?, ?)", ingredientID, req.DividerID)
+			_, err := db.Exec("INSERT INTO divider_ingredients (ingredient_id, divider_id) VALUES (?, ?)", ingredientID, dividerID)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
@@ -1378,7 +1401,7 @@ func main() {
 	// Divider routes
 	router.HandleFunc("/dividers/{recipe_id}", getDividers).Methods("GET")
 	router.HandleFunc("/divider/{recipe_id}", addDividerToRecipe).Methods("POST")
-	router.HandleFunc("/divider/ingredients", addIngredientsToDivider).Methods("POST")
+	router.HandleFunc("/divider/{recipe_id}/{divider_id}/ingredients", addIngredientsToDivider).Methods("POST")
 	router.HandleFunc("/divider/methods", addMethodsToDivider).Methods("POST")
 
 	fmt.Println("Starting server on :1009...")
