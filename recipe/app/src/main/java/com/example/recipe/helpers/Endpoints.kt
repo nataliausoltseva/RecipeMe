@@ -160,9 +160,9 @@ class Endpoints {
         }
     }
 
-    suspend fun addIngredientsToDivider(body: DividerIngredientsRequest) {
+    suspend fun addIngredientsToDivider(recipeId: Int, dividerId: Int, body: List<Ingredient>) {
         try {
-            apiInterface.addIngredientsToDivider(body)
+            apiInterface.addIngredientsToDivider(recipeId, dividerId, body)
         } catch (e: Exception) {
             println("Exception error addIngredientsToDivider: ${e.message}. ${e.printStackTrace()}")
         }

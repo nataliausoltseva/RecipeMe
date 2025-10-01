@@ -26,7 +26,8 @@ data class RecipeRequest(
 
 data class DividerIngredientsRequest (
     val divider: Int,
-    val ingredients: List<Int>
+    val ingredients: List<Ingredient>,
+    val recipe: Int,
 )
 
 data class DividerMethodsRequest (
@@ -81,8 +82,8 @@ interface ApiInterface {
     suspend fun uploadImage(@Path("recipeId") id: Int, @Part image: MultipartBody.Part): Response<Recipe>
 
     // Divider endpoints
-    @POST("/divider/ingredients")
-    suspend fun addIngredientsToDivider(@Body request: DividerIngredientsRequest): Response<Void>
+    @POST("/divider/{recipeId}/{dividerId}/ingredients")
+    suspend fun addIngredientsToDivider(@Path("recipeId") recipeId: Int, @Path("dividerId") dividerId: Int, @Body request: List<Ingredient>): Response<Void>
 
     @POST("/divider/methods")
     suspend fun addMethodsToDivider(@Body request: DividerMethodsRequest): Response<Void>

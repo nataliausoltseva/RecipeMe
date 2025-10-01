@@ -301,7 +301,7 @@ fun RecipeModifyScreen(
                     }.mapIndexed { index, divider -> divider.copy(sortOrder = index) }
                 }
             ) { index, divider, isDragging ->
-                key(divider.id.toString() + divider.name + index) {
+                key(divider.id.toString() + divider.title + index) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -312,7 +312,7 @@ fun RecipeModifyScreen(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text(
-                                divider.name,
+                                divider.title ?: "",
                                 modifier = Modifier
                                     .weight(1f)
                                     .clickable {
@@ -556,8 +556,9 @@ fun RecipeModifyScreen(
                                 updatedDividers[dividerIdx] = updatedDividers[dividerIdx].copy(ingredients = updatedIngredients)
                             } else {
                                 // Add new ingredient to divider
-                                val updatedIngredients = updatedDividers[dividerIdx].ingredients?.toMutableList().apply {
-                                    this!!.add(confirmedIngredient)
+                                val currentIngredients = updatedDividers[dividerIdx].ingredients ?: emptyList()
+                                val updatedIngredients = currentIngredients.toMutableList().apply {
+                                    add(confirmedIngredient)
                                 }
                                 updatedDividers[dividerIdx] = updatedDividers[dividerIdx].copy(ingredients = updatedIngredients)
                             }
@@ -1037,7 +1038,7 @@ fun AddOrEditDividerDialog(
     onConfirmation: (divider: Divider) -> Unit,
     dialogTitle: String
 ) {
-    var name by remember(divider) { mutableStateOf(divider?.name ?: "") }
+    var name by remember(divider) { mutableStateOf(divider?.title ?: "") }
 
     AlertDialog(
         title = { Text(text = dialogTitle) },
@@ -1060,16 +1061,16 @@ fun AddOrEditDividerDialog(
             TextButton(
                 onClick = {
                     val confirmedDivider = divider?.copy(
-                        name = name.trim()
+                        title = name.trim()
                     ) ?: Divider(
                         id = 0,
-                        name = name.trim(),
+                        title = name.trim(),
                         recipeId = 0,
                         sortOrder = 0,
                         ingredients = emptyList(),
                         methods = emptyList() // Assuming Divider.methods is List<Method>?
                     )
-                    if (confirmedDivider.name.isNotBlank()) {
+                    if (confirmedDivider.title.isNotBlank()) {
                         onConfirmation(confirmedDivider)
                     }
                 }

@@ -188,13 +188,7 @@ class RecipeViewModel: ViewModel() {
                         if (dividerResponse != null) {
                             val dividerIngredients = divider.ingredients.orEmpty()
                             if (dividerIngredients.isNotEmpty()) {
-                                val ingredientIds = dividerIngredients.map { it.id }
-                                val dividerIngredientsRequest = DividerIngredientsRequest(
-                                    divider = dividerResponse.id,
-                                    ingredients = ingredientIds,
-                                    recipe = recipeIdToUse
-                                )
-                                endpoints.addIngredientsToDivider(dividerIngredientsRequest)
+                                endpoints.addIngredientsToDivider(recipeIdToUse, divider.id, dividerIngredients)
                             }
                         }
                     }
