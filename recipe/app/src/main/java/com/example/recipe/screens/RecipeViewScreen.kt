@@ -292,14 +292,79 @@ fun Recipe(
                 modifier = Modifier.padding(top = 20.dp)
             )
         }
-        if (!recipe.ingredients.isNullOrEmpty()) {
+
+        val allDividerIngredientNames = recipe.dividers?.flatMap {
+            it.ingredients?.map { ing -> ing.name } ?: emptyList()
+        }?.toSet() ?: emptySet()
+
+        if (!recipe.dividers.isNullOrEmpty()) {
+            recipe.dividers.forEach { divider ->
+                Text(
+                    text = divider.title,
+                    modifier = Modifier.padding(top = 20.dp, bottom = 5.dp),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+
+                if (!divider.ingredients.isNullOrEmpty()) {
+                    val chunkedDividerIngredients = divider.ingredients!!.toList().chunked((divider.ingredients!!.size + 1) / 2)
+                    Row(modifier = Modifier.fillMaxWidth()) {
+                        chunkedDividerIngredients.forEach { columnItems ->
+                            Column(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(end = 8.dp)
+                            ) {
+                                columnItems.forEach { item ->
+                                    val isChecked = item.name in checkedIngredients
+                                    val textDecoration = if (isChecked) TextDecoration.LineThrough else null
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(bottom = 5.dp)
+                                            .clickable {
+                                                if (isChecked) {
+                                                    checkedIngredients.remove(item.name)
+                                                } else {
+                                                    checkedIngredients.add(item.name)
+                                                }
+                                            },
+                                        verticalAlignment = Alignment.Top
+                                    ) {
+                                        Text(
+                                            text = item.name,
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .padding(end = 8.dp),
+                                            maxLines = 2,
+                                            overflow = TextOverflow.Ellipsis,
+                                            softWrap = true,
+                                            textDecoration = textDecoration
+                                        )
+                                        Text(
+                                            text = "${item.value} ${item.measurement}",
+                                            modifier = Modifier.align(Alignment.CenterVertically),
+                                            textAlign = TextAlign.End,
+                                            textDecoration = textDecoration
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        val mainIngredientsToDisplay = recipe.ingredients?.filterNot { it.name in allDividerIngredientNames }
+        if (!mainIngredientsToDisplay.isNullOrEmpty()) {
             Text(
-                text = "Ingredients:",
+                text = "Other Ingredients:",
                 modifier = Modifier.padding(top = 20.dp),
                 fontWeight = FontWeight.Bold
             )
 
-            val chunkedItems = recipe.ingredients.toList().chunked((recipe.ingredients.size + 1) / 2)
+            val chunkedItems = mainIngredientsToDisplay.toList().chunked((mainIngredientsToDisplay.size + 1) / 2)
 
             Row(modifier = Modifier.fillMaxWidth()) {
                 chunkedItems.forEach { columnItems ->
@@ -350,7 +415,8 @@ fun Recipe(
         if (!recipe.methods.isNullOrEmpty()) {
             Text(
                 text = "Methods:",
-                modifier = Modifier.padding(top = 20.dp)
+                modifier = Modifier.padding(top = 20.dp),
+                fontWeight = FontWeight.Bold // Added for consistency
             )
 
             recipe.methods.forEachIndexed { index, method ->
@@ -364,7 +430,8 @@ fun Recipe(
                                     checkedMethods.remove(index)
                                 } else {
                                     checkedMethods.add(index)
-                                    method.ingredients?.map { it.name }?.let { names ->
+                                    // Keep existing logic for checking parent method checks related ingredients
+                                    method.ingredients?.mapNotNull { recipe.ingredients?.find{ mainIng -> mainIng.name == it.name }?.name }?.let { names ->
                                         checkedIngredients.addAll(names.filterNot { it in checkedIngredients })
                                     }
                                 }
@@ -394,9 +461,9 @@ fun Recipe(
                     }
                     if (!method.ingredients.isNullOrEmpty()) {
                         Column(modifier = Modifier.padding(start = 28.dp, top = 4.dp, bottom = 4.dp)) {
-                            method.ingredients?.forEach { ingredient ->
-                                val linkedIngredient = recipe.ingredients?.find { it.name == ingredient.name }
-                                if (linkedIngredient != null) {
+                            method.ingredients?.forEach { ingredientInfo ->
+                                val linkedIngredient = recipe.ingredients?.find { it.name == ingredientInfo.name }
+                                if (linkedIngredient != null && linkedIngredient.name !in allDividerIngredientNames) { // Filtered here
                                     val isIngredientChecked =  linkedIngredient.name in checkedIngredients
                                     val ingredientTextDecoration = if (isIngredientChecked) TextDecoration.LineThrough else null
                                     Row(
@@ -406,7 +473,8 @@ fun Recipe(
                                             .clickable {
                                                 if (isIngredientChecked) {
                                                     checkedIngredients.remove(linkedIngredient.name)
-                                                    checkedMethods.remove(index)
+                                                    // If unchecking an ingredient unchecks the parent method step:
+                                                    // checkedMethods.remove(index) // This behavior can be complex
                                                 } else {
                                                     checkedIngredients.add(linkedIngredient.name)
                                                 }
@@ -432,6 +500,8 @@ fun Recipe(
                 }
             }
         }
+        // --- END MODIFIED MAIN METHODS SECTION ---
+
 
         if (recipe.url.isNotEmpty()) {
             val uriHandler = LocalUriHandler.current

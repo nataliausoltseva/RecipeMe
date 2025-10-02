@@ -386,6 +386,12 @@ fun RecipeModifyScreen(
                                     ) {
                                         Row(
                                             modifier = Modifier.weight(1f)
+                                                .clickable {
+                                                showIngredientModal = true
+                                                selectedIngredient.value = ingredient
+                                                selectedIngredientIndex.intValue = index
+                                                selectedDivider.value = divider
+                                            }
                                         ) {
                                             Text(ingredient.name)
                                             Text(" - ")
