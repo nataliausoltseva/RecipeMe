@@ -65,6 +65,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.example.recipe.data.byteArrayToBitmap
+import com.example.recipe.data.Divider
 import com.example.recipe.data.Image
 import com.example.recipe.data.Ingredient
 import com.example.recipe.data.Method
@@ -105,7 +106,6 @@ fun RecipeModifyScreen(
     }
 
     // ingredients handlers
-    // This is the master list of ingredients for the whole recipe
     var ingredients = remember { mutableStateOf<List<Ingredient>>(recipe?.ingredients ?: listOf()) }
     var showIngredientModal by remember { mutableStateOf(false) }
     val selectedIngredient = remember { mutableStateOf<Ingredient?>(null) }
@@ -116,6 +116,12 @@ fun RecipeModifyScreen(
     var showMethodModal by remember { mutableStateOf(false) }
     val selectedMethod = remember { mutableStateOf<Method?>(null) }
     val selectedMethodIndex = remember { mutableIntStateOf(0) }
+
+    // Divider handlers
+    var dividers = remember { mutableStateOf<List<Divider>>(recipe?.dividers ?: listOf()) }
+    var showDividerModal by remember { mutableStateOf(false) }
+    val selectedDivider = remember { mutableStateOf<Divider?>(null) }
+    val selectedDividerIndex = remember { mutableIntStateOf(0) }
 
     // State for LinkIngredientsDialog
     var showLinkIngredientsDialog by remember { mutableStateOf(false) }
@@ -157,6 +163,7 @@ fun RecipeModifyScreen(
                         ingredients.value,
                         methods.value,
                         imageBytes,
+                        dividers.value
                     )
                     onNavigateBack()
                 }
@@ -264,8 +271,201 @@ fun RecipeModifyScreen(
                 }
             }
 
+            Spacer(modifier = Modifier.height(16.dp))
+
+
+            // --- Dividers Section ---
             Row(
                 verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(top = 20.dp)
+            ) {
+                Text("Recipe Sections / Dividers")
+                Icon(
+                    imageVector = Icons.Filled.Add,
+                    contentDescription = "Add Divider",
+                    modifier = Modifier
+                        .padding(start = 20.dp)
+                        .size(20.dp)
+                        .clickable {
+                            selectedDivider.value = null
+                            showDividerModal = true
+                        }
+                )
+            }
+
+            ReorderableColumn(
+                list = dividers.value,
+                onSettle = { fromIndex, toIndex ->
+                    dividers.value = dividers.value.toMutableList().apply {
+                        add(toIndex, removeAt(fromIndex))
+                    }.mapIndexed { index, divider -> divider.copy(sortOrder = index) }
+                }
+            ) { index, divider, isDragging ->
+                key(divider.id.toString() + divider.title + index) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(8.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                divider.title ?: "",
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable {
+                                        selectedDivider.value = divider
+                                        selectedDividerIndex.intValue = index
+                                        showDividerModal = true
+                                    }
+                                    .padding(end = 8.dp)
+                            )
+                            Row {
+                                Icon(
+                                    imageVector = Icons.Default.Delete,
+                                    contentDescription = "Delete Divider",
+                                    modifier = Modifier
+                                        .size(24.dp)
+                                        .clickable {
+                                            dividers.value = dividers.value.toMutableList().apply {
+                                                removeAt(index)
+                                            }.mapIndexed { idx, d -> d.copy(sortOrder = idx) }
+                                        }
+                                )
+                                Icon(
+                                    imageVector = Icons.Default.DragHandle,
+                                    contentDescription = "Reorder Divider",
+                                    modifier = Modifier
+                                        .padding(start = 15.dp)
+                                        .draggableHandle(),
+                                )
+                            }
+                        }
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(start = 20.dp)
+                        ) {
+                            Text("Ingredients")
+                            Icon(
+                                imageVector = Icons.Filled.Add,
+                                contentDescription = "Add Ingredient to Divider",
+                                modifier = Modifier
+                                    .padding(start = 20.dp)
+                                    .size(20.dp)
+                                    .clickable {
+                                        showIngredientModal = true
+                                        selectedIngredient.value = null
+                                        selectedDivider.value = divider
+                                        selectedDividerIndex.intValue = index
+                                    }
+                            )
+                        }
+
+                        // Reorderable divider ingredients
+                        val dividerIngredients = divider.ingredients.orEmpty()
+                        if (dividerIngredients.isNotEmpty()) {
+                            ReorderableColumn(
+                                list = dividerIngredients,
+                                onSettle = { fromIndex, toIndex ->
+                                    val updatedDividers = dividers.value.toMutableList()
+                                    val updatedIngredients = dividerIngredients.toMutableList().apply {
+                                        add(toIndex, removeAt(fromIndex))
+                                    }
+                                    updatedDividers[index] = divider.copy(ingredients = updatedIngredients)
+                                    dividers.value = updatedDividers
+                                }
+                            ) { ingIndex, ingredient, isDragging ->
+                                key(ingredient.name + ingIndex) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.fillMaxWidth().padding(start = 40.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.weight(1f)
+                                                .clickable {
+                                                showIngredientModal = true
+                                                selectedIngredient.value = ingredient
+                                                selectedIngredientIndex.intValue = index
+                                                selectedDivider.value = divider
+                                            }
+                                        ) {
+                                            Text(ingredient.name)
+                                            Text(" - ")
+                                            Text(ingredient.value.toString())
+                                            Text(" ")
+                                            Text(ingredient.measurement)
+                                        }
+                                        Row {
+                                            Icon(
+                                                imageVector = Icons.Default.Delete,
+                                                contentDescription = "Delete ingredient from divider",
+                                                modifier = Modifier
+                                                    .size(20.dp)
+                                                    .clickable {
+                                                        val updatedDividers = dividers.value.toMutableList()
+                                                        val updatedIngredients = dividerIngredients.toMutableList().apply {
+                                                            remove(ingredient)
+                                                        }
+                                                        updatedDividers[index] = divider.copy(ingredients = updatedIngredients)
+                                                        dividers.value = updatedDividers
+                                                    }
+                                            )
+                                            Icon(
+                                                imageVector = Icons.Default.DragHandle,
+                                                contentDescription = "Reorder divider ingredient",
+                                                modifier = Modifier
+                                                    .padding(start = 15.dp)
+                                                    .draggableHandle(),
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (showDividerModal) {
+                AddOrEditDividerDialog(
+                    divider = selectedDivider.value,
+                    onConfirmation = { confirmedDivider ->
+                        val currentDividers = dividers.value.toMutableList()
+                        if (selectedDivider.value != null) { // Editing existing
+                            currentDividers[selectedDividerIndex.intValue] = confirmedDivider.copy(
+                                id = selectedDivider.value!!.id,
+                                recipeId = selectedDivider.value!!.recipeId,
+                                sortOrder = selectedDivider.value!!.sortOrder,
+                                ingredients = selectedDivider.value!!.ingredients,
+                                methods = selectedDivider.value!!.methods
+                            )
+                        } else { // Adding new
+                            currentDividers.add(confirmedDivider.copy(
+                                id = (dividers.value.maxOfOrNull { it.id } ?: 0) + 1, // Simple local ID
+                                recipeId = recipe?.id ?: 0,
+                                sortOrder = dividers.value.size
+                            ))
+                        }
+                        dividers.value = currentDividers.mapIndexed { index, d -> d.copy(sortOrder = index) }
+                        selectedDivider.value = null
+                        showDividerModal = false
+                    },
+                    onDismissRequest = {
+                        selectedDivider.value = null
+                        showDividerModal = false
+                    },
+                    dialogTitle = if (selectedDivider.value != null) "Edit Section Name" else "New Section Name"
+                )
+            }
+
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(top = 20.dp)
             ) {
                 Text("Ingredients")
                 Icon(
@@ -277,11 +477,15 @@ fun RecipeModifyScreen(
                         .clickable {
                             showIngredientModal = true
                             selectedIngredient.value = null
+                            selectedDivider.value = null // Add to main list, not divider
                         }
                 )
             }
+            // Exclude ingredients that are part of any divider
+            val dividerIngredientNames = dividers.value.flatMap { it.ingredients.orEmpty() }.map { it.name }.toSet()
+            val mainIngredients = ingredients.value.filter { it.name !in dividerIngredientNames }
             ReorderableColumn(
-                list = ingredients.value,
+                list = mainIngredients,
                 onSettle = { fromIndex, toIndex ->
                     ingredients.value = ingredients.value.toMutableList().apply {
                         add(toIndex, removeAt(fromIndex))
@@ -301,6 +505,7 @@ fun RecipeModifyScreen(
                                 showIngredientModal = true
                                 selectedIngredient.value = ingredient
                                 selectedIngredientIndex.intValue = index
+                                selectedDivider.value = null // Editing main ingredient
                             }
                         ) {
                             Text(ingredient.name)
@@ -339,32 +544,59 @@ fun RecipeModifyScreen(
                 }
             }
 
+
             if (showIngredientModal) {
                 AddOrEditIngredient(
                     ingredient = selectedIngredient.value,
                     onConfirmation = { confirmedIngredient ->
                         val oldIngredientName = selectedIngredient.value?.name
-                        if (selectedIngredient.value != null) {
-                            ingredients.value = ingredients.value.toMutableList().apply {
-                                this[selectedIngredientIndex.intValue] = confirmedIngredient
-                            }
-                            if (oldIngredientName != null && oldIngredientName != confirmedIngredient.name) {
-                                methods.value = methods.value.map { method ->
-                                    val updatedLinkedIngredients = method.ingredients?.map {
-                                        if (it.name == oldIngredientName) confirmedIngredient else it
-                                    }
-                                    method.copy(ingredients = updatedLinkedIngredients)
+                        if (selectedDivider.value != null) {
+                            // Add to divider
+                            val dividerIdx = selectedDividerIndex.intValue
+                            val updatedDividers = dividers.value.toMutableList()
+                            if (selectedIngredient.value != null) {
+                                // Edit existing ingredient in divider
+                                val updatedIngredients = updatedDividers[dividerIdx].ingredients?.toMutableList().apply {
+                                    this?.set(selectedIngredientIndex.intValue, confirmedIngredient)
                                 }
+                                updatedDividers[dividerIdx] = updatedDividers[dividerIdx].copy(ingredients = updatedIngredients)
+                            } else {
+                                // Add new ingredient to divider
+                                val currentIngredients = updatedDividers[dividerIdx].ingredients ?: emptyList()
+                                val updatedIngredients = currentIngredients.toMutableList().apply {
+                                    add(confirmedIngredient)
+                                }
+                                updatedDividers[dividerIdx] = updatedDividers[dividerIdx].copy(ingredients = updatedIngredients)
                             }
+                            dividers.value = updatedDividers
                         } else {
-                            ingredients.value = ingredients.value.toMutableList().apply {
-                                add(confirmedIngredient)
+                            // Add to main ingredient list
+                            if (selectedIngredient.value != null) {
+                                ingredients.value = ingredients.value.toMutableList().apply {
+                                    this[selectedIngredientIndex.intValue] = confirmedIngredient
+                                }
+                                if (oldIngredientName != null && oldIngredientName != confirmedIngredient.name) {
+                                    methods.value = methods.value.map { method ->
+                                        val updatedLinkedIngredients = method.ingredients?.map {
+                                            if (it.name == oldIngredientName) confirmedIngredient else it
+                                        }
+                                        method.copy(ingredients = updatedLinkedIngredients)
+                                    }
+                                }
+                            } else {
+                                ingredients.value = ingredients.value.toMutableList().apply {
+                                    add(confirmedIngredient)
+                                }
                             }
                         }
                         selectedIngredient.value = null
                         showIngredientModal = false
+                        selectedDivider.value = null
                     },
-                    onDismissRequest = { showIngredientModal = false },
+                    onDismissRequest = {
+                        showIngredientModal = false
+                        selectedDivider.value = null
+                    },
                     dialogTitle = if (selectedIngredient.value != null) "Edit ingredient" else "New ingredient"
                 )
             }
@@ -635,8 +867,8 @@ fun ImageUploader(
                     clipData?.let {
                         if (it.clipData.itemCount > 0) {
                             val uri = it.clipData.getItemAt(0).uri
-                            uri?.let { imageUri ->
-                                val inputStream = context.contentResolver.openInputStream(imageUri)
+                            uri?.let { imageUriValue -> // Renamed to avoid conflict
+                                val inputStream = context.contentResolver.openInputStream(imageUriValue)
                                 bitmapState = BitmapFactory.decodeStream(inputStream)
                                 val outputStream = ByteArrayOutputStream()
                                 bitmapState?.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
@@ -731,7 +963,7 @@ fun AddOrEditIngredient(
                     val finalAmount = amount.toFloatOrNull() ?: 1f
                     val confirmedIngredient = Ingredient(
                         id = ingredient?.id ?: 0,
-                        name = name.trim(), // Trim whitespace from name
+                        name = name.trim(),
                         value = finalAmount,
                         measurement = measurement,
                         sortOrder = ingredient?.sortOrder ?: 0
@@ -806,6 +1038,61 @@ fun AddOrEditMethodStep(
 }
 
 @Composable
+fun AddOrEditDividerDialog(
+    divider: Divider?,
+    onDismissRequest: () -> Unit,
+    onConfirmation: (divider: Divider) -> Unit,
+    dialogTitle: String
+) {
+    var name by remember(divider) { mutableStateOf(divider?.title ?: "") }
+
+    AlertDialog(
+        title = { Text(text = dialogTitle) },
+        text = {
+            Column {
+                TextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Section Name") },
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        onDismissRequest = onDismissRequest,
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    val confirmedDivider = divider?.copy(
+                        title = name.trim()
+                    ) ?: Divider(
+                        id = 0,
+                        title = name.trim(),
+                        recipeId = 0,
+                        sortOrder = 0,
+                        ingredients = emptyList(),
+                        methods = emptyList() // Assuming Divider.methods is List<Method>?
+                    )
+                    if (confirmedDivider.title.isNotBlank()) {
+                        onConfirmation(confirmedDivider)
+                    }
+                }
+            ) {
+                Text("Save")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismissRequest) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+@Composable
 fun LinkIngredientsDialog(
     allIngredients: List<Ingredient>,
     currentlyLinkedIngredientNames: List<String>,
@@ -865,9 +1152,6 @@ fun LinkIngredientsDialog(
                                     )
                                 }
                             }
-                            // If there's an odd number of ingredients, the last row will have one item.
-                            // Add a Spacer to fill the second column's space if needed for alignment,
-                            // or rely on weight(1f) to handle it.
                             if (rowIngredients.size == 1) {
                                 Spacer(modifier = Modifier.weight(1f))
                             }

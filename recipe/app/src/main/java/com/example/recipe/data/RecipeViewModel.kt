@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.recipe.helpers.DividerIngredientsRequest
 import com.example.recipe.helpers.Endpoints
 import com.example.recipe.helpers.RecipeParser
 import com.example.recipe.helpers.RecipeRequest
@@ -111,7 +112,7 @@ class RecipeViewModel: ViewModel() {
                         ),
                         ingredients,
                         methods,
-                        null
+                        dividers = null
                     )
                 }
             } catch (e: Exception) {
@@ -157,7 +158,8 @@ class RecipeViewModel: ViewModel() {
         portion: Portion,
         ingredients: List<Ingredient>,
         methods: List<Method>,
-        imageBytes: ByteArray? = null
+        imageBytes: ByteArray? = null,
+        dividers: List<Divider>?
     ) {
         viewModelScope.launch {
             try {
@@ -180,7 +182,17 @@ class RecipeViewModel: ViewModel() {
                     )
                 }
 
-                recipeResponse = endpoints.getRecipe(recipeIdToUse)
+                if (dividers != null) {
+                    for (divider in dividers) {
+                        val dividerResponse = endpoints.addDivider(recipeIdToUse, divider)
+                        if (dividerResponse != null) {
+                            val dividerIngredients = divider.ingredients.orEmpty()
+                            if (dividerIngredients.isNotEmpty()) {
+                                endpoints.addIngredientsToDivider(recipeIdToUse, divider.id, dividerIngredients)
+                            }
+                        }
+                    }
+                }
                 getRecipes()
             } catch (e: Exception) {
                 println("Error: ${e.message}")
