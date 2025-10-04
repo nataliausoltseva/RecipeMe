@@ -651,17 +651,28 @@ fun RecipeCard(
             )
         }
 
-        val allIngredients = remember(recipe.ingredients) { // Cache based on ingredients list
-            recipe.ingredients?.joinToString("") { "${it.name} ${it.value} ${it.measurement}" }
-        }
-
-        if (allIngredients != null) {
-            Text(
-                text = allIngredients,
-                overflow = TextOverflow.Ellipsis,
-                maxLines = 5,
-                modifier = Modifier.padding(start = 10.dp, end = 10.dp, bottom = 10.dp)
-            )
+        val ingredientsList = remember(recipe.ingredients) { recipe.ingredients ?: emptyList() }
+        if (ingredientsList.isNotEmpty()) {
+            Column(
+                modifier = Modifier
+                    .padding(start = 10.dp, end = 10.dp, bottom = 10.dp)
+            ) {
+                val maxLines = 5
+                ingredientsList.take(maxLines).forEach { ingredient ->
+                    Text(
+                        text = listOfNotNull(ingredient.name, ingredient.value, ingredient.measurement).joinToString(" ").trim(),
+                        overflow = TextOverflow.Ellipsis,
+                        maxLines = 1
+                    )
+                }
+                if (ingredientsList.size > maxLines) {
+                    Text(
+                        text = "...",
+                        fontStyle = FontStyle.Italic,
+                        color = Color.Gray
+                    )
+                }
+            }
         }
 
         Row(
@@ -688,20 +699,29 @@ fun RecipeCard(
             )
         }
 
-        val allMethods = remember(recipe.methods) { // Cache based on methods list
-            recipe.methods?.joinToString("") { method ->
-                val indicator = method.sortOrder ?: (recipe.methods.indexOf(method) + 1)
-                "$indicator. ${method.value}"
+        val methodsList = remember(recipe.methods) { recipe.methods ?: emptyList() }
+        if (methodsList.isNotEmpty()) {
+            Column(
+                modifier = Modifier
+                    .padding(start = 10.dp, end = 10.dp, bottom = 10.dp)
+            ) {
+                val maxLines = 5
+                methodsList.take(maxLines).forEachIndexed { idx, method ->
+                    val indicator = method.sortOrder ?: (idx + 1)
+                    Text(
+                        text = "$indicator. ${method.value}",
+                        overflow = TextOverflow.Ellipsis,
+                        maxLines = 1
+                    )
+                }
+                if (methodsList.size > maxLines) {
+                    Text(
+                        text = "...",
+                        fontStyle = FontStyle.Italic,
+                        color = Color.Gray
+                    )
+                }
             }
-        }
-
-        if (allMethods != null) {
-            Text(
-                text = allMethods,
-                overflow = TextOverflow.Ellipsis,
-                maxLines = 5,
-                modifier = Modifier.padding(start = 10.dp, end = 10.dp, bottom = 10.dp)
-            )
         }
     }
 }

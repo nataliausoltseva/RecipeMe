@@ -358,8 +358,9 @@ fun Recipe(
 
         val mainIngredientsToDisplay = recipe.ingredients?.filterNot { it.name in allDividerIngredientNames }
         if (!mainIngredientsToDisplay.isNullOrEmpty()) {
+            val hasDividers = !recipe.dividers.isNullOrEmpty()
             Text(
-                text = "Other Ingredients:",
+                text = if (hasDividers) "Other Ingredients:" else "Ingredients:",
                 modifier = Modifier.padding(top = 20.dp),
                 fontWeight = FontWeight.Bold
             )
