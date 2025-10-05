@@ -581,49 +581,49 @@ fun RecipeCard(
 
         Row(
             modifier = Modifier.padding(start = 10.dp, end = 10.dp, bottom = 10.dp, top = if (decodedImageBytes == null) 10.dp else 0.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            val currentHorizontalArrangement = if (recipe.type == "") {
-                Arrangement.SpaceBetween
-            } else {
-                Arrangement.Start
-            }
-
-            val rowModifier = if (recipe.type == "") { // Renamed to avoid conflict with parameter
-                Modifier.fillMaxWidth()
-            } else {
-                Modifier
-            }
-
-            Row (
-                modifier = rowModifier,
-                horizontalArrangement = currentHorizontalArrangement,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                val maxWidth = if (recipe.type != "") 170.dp else 230.dp
-                Text(
-                    text = recipe.name,
-                    textAlign = TextAlign.Center,
-                    fontWeight = FontWeight.Bold,
-                    overflow = TextOverflow.Visible,
-                    modifier = Modifier.widthIn(max = maxWidth)
-                )
-
-                if (recipe.portion != null) {
-                    Text(
-                        text = "(${recipe.portion.value} ${recipe.portion.measurement})", // Simplified string concat
-                        modifier = Modifier.padding(start = 5.dp),
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
-
             if (recipe.type != "") {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        text = recipe.name,
+                        textAlign = TextAlign.Start,
+                        fontWeight = FontWeight.Bold,
+                        overflow = TextOverflow.Visible
+                    )
+                    if (recipe.portion != null) {
+                        Text(
+                            text = " ${recipe.portion.value} ${recipe.portion.measurement}",
+                            modifier = Modifier.padding(start = 5.dp),
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
                 Text(
                     text = recipe.type,
                     fontStyle = FontStyle.Italic,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(start = 8.dp)
                 )
+            } else {
+                Text(
+                    text = recipe.name,
+                    textAlign = TextAlign.Start,
+                    fontWeight = FontWeight.Bold,
+                    overflow = TextOverflow.Visible,
+                    modifier = Modifier.weight(1f)
+                )
+                if (recipe.portion != null) {
+                    Text(
+                        text = "${recipe.portion.value} ${recipe.portion.measurement}",
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(start = 5.dp)
+                    )
+                }
             }
         }
 
