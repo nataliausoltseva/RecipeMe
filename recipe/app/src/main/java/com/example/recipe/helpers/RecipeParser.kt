@@ -25,13 +25,11 @@ class RecipeParser {
           "type": "object",
           "properties": {
             "url": { "type": "string", "format": "uri", "nullable": true, "description": "Optional URL of the recipe source." },
-            "methods": {
-              "type": "array",
-              "items": {
-                "type": "object",
-                "properties": {
-                  "value": { "type": "string", "description": "The instruction for this method step." }
-                }
+            "portion": {
+              "type": "object",
+              "properties": {
+                "value": { "type": "number", "description": "Numeric value of the portion (e.g., 4). This should be rounded to 2 decimals." },
+                "measurement": { "type": "string", "description": "Unit of measurement for the portion (e.g., servings, people)." }
               },
               "nullable": true
             },
@@ -47,11 +45,49 @@ class RecipeParser {
               },
               "nullable": true
             },
-            "portion": {
-              "type": "object",
-              "properties": {
-                "value": { "type": "number", "description": "Numeric value of the portion (e.g., 4). This should be rounded to 2 decimals." },
-                "measurement": { "type": "string", "description": "Unit of measurement for the portion (e.g., servings, people)." }
+            "methods": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "value": { "type": "string", "description": "The instruction for this method step." }
+                }
+              },
+              "nullable": true
+            },
+            "dividers": {
+              "type": "array",
+              "description": "Sections of the recipe, always before methods and above or under the Ingredients section. Each divider groups related ingredients and/or methods.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": { "type": "integer", "description": "Unique identifier for the divider." },
+                  "title": { "type": "string", "description": "Title of the divider section." },
+                  "recipeId": { "type": "integer", "description": "ID of the parent recipe." },
+                  "sortOrder": { "type": "integer", "description": "Order of the divider in the recipe." },
+                  "ingredients": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": { "type": "string", "description": "Name of the ingredient." },
+                        "value": { "type": "number", "description": "Quantity of the ingredient." },
+                        "measurement": { "type": "string", "description": "Unit of measurement for the quantity (e.g., grams, ml, cups). Allowed: bottle, can, item, g, kg, mL, L, tbsp, tsp, cup, to taste." }
+                      }
+                    },
+                    "nullable": true
+                  },
+                  "methods": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "value": { "type": "string", "description": "The instruction for this method step." }
+                      }
+                    },
+                    "nullable": true
+                  }
+                }
               },
               "nullable": true
             }

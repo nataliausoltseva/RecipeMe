@@ -112,7 +112,7 @@ class RecipeViewModel: ViewModel() {
                         ),
                         ingredients,
                         methods,
-                        dividers = null
+                        dividers = parsedRecipe.value?.dividers
                     )
                 }
             } catch (e: Exception) {
