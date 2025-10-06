@@ -8,6 +8,17 @@ data class RecipeParserInput(
     val methods: List<RecipeMethodInput>? = null,
     val ingredients: List<RecipeIngredientInput>? = null,
     val portion: RecipePortionInput? = null,
+    val dividers: List<Divider>? = null
+)
+
+@Serializable
+data class Divider(
+    val id: Int? = null,
+    val title: String? = null,
+    val recipeId: Int? = null,
+    val sortOrder: Int? = null,
+    val methods: List<RecipeMethodInput>? = null,
+    val ingredients: List<RecipeIngredientInput>? = null
 )
 
 @Serializable
