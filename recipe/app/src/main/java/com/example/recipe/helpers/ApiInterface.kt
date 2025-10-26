@@ -24,24 +24,10 @@ data class RecipeRequest(
     var url: String,
 )
 
-data class DividerIngredientsRequest (
-    val divider: Int,
-    val ingredients: List<Ingredient>,
-    val recipe: Int,
-)
-
-data class DividerMethodsRequest (
-    val divider: Int,
-    val methods: List<Int>
-)
-
 interface ApiInterface {
     // Recipe endpoints
     @GET("/recipes")
     suspend fun getRecipes(@Query("search") search: String? = null, @Query("ingredientNames") ingredientNames: String = "", @Query("sortKey") sortKey: String, @Query("sortDirection") sortDirection: String): Response<List<Recipe>>
-
-    @GET("/recipe/{id}")
-    suspend fun getRecipe(@Path("id") id: Int): Response<Recipe>
 
     @POST("/recipe")
     suspend fun createRecipe(@Body request: RecipeRequest): Response<Recipe>
@@ -84,9 +70,6 @@ interface ApiInterface {
     // Divider endpoints
     @POST("/divider/{recipeId}/{dividerId}/ingredients")
     suspend fun addIngredientsToDivider(@Path("recipeId") recipeId: Int, @Path("dividerId") dividerId: Int, @Body request: List<Ingredient>): Response<Void>
-
-    @POST("/divider/methods")
-    suspend fun addMethodsToDivider(@Body request: DividerMethodsRequest): Response<Void>
 
     @POST("/divider/{recipeId}")
     suspend fun addDivider(@Path("recipeId") id: Int, @Body request: Divider): Response<Divider>

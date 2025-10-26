@@ -26,22 +26,6 @@ class Endpoints {
         }
     }
 
-    suspend fun getRecipe(recipeId: Int): Recipe? {
-        try {
-            val response = apiInterface.getRecipe(recipeId)
-            if (response.isSuccessful) {
-                val data = response.body()
-                return data
-            } else {
-                println("Response error: $response")
-                return null
-            }
-        } catch (e: Exception) {
-            println("Exception error getRecipe: ${e.message}. ${e.printStackTrace()}")
-            return null
-        }
-    }
-
     suspend fun updateOrCreateRecipe(recipe: RecipeRequest): Recipe? {
         try {
             if (recipe.id == 0) {
