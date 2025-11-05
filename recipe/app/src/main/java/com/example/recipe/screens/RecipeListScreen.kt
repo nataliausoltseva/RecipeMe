@@ -39,6 +39,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.DragHandle
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
@@ -402,6 +403,8 @@ fun RecipeSplitList(
         listOf("breakfast", "lunch", "dinner", "dessert", "snack")
     }
 
+    var collapsedCategories by remember { mutableStateOf(setOf<String>()) }
+
     val groupedByType: Map<String, List<Recipe>> = remember(recipes) {
         recipes.groupBy { it.type.lowercase() }
     }
@@ -434,25 +437,49 @@ fun RecipeSplitList(
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 20.dp),
+                        .padding(bottom = 20.dp)
+                        .clickable {
+                            collapsedCategories = if (collapsedCategories.contains(type)) {
+                                collapsedCategories - type
+                            } else {
+                                collapsedCategories + type
+                            }
+                        },
                 ) {
-                    Text(
-                        text = if (type.isNotBlank()) type else "Uncategorized",
-                        modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp),
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 20.sp
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = if (type.isNotBlank()) type else "Uncategorized",
+                            modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 20.sp
+                        )
+                        val isCollapsed = collapsedCategories.contains(type)
+                        val rotationAngle by animateFloatAsState(targetValue = if (isCollapsed) 0f else 180f)
+                        Icon(
+                            imageVector = Icons.Default.KeyboardArrowDown,
+                            contentDescription = if (isCollapsed) "Expand" else "Collapse",
+                            modifier = Modifier
+                                .padding(end = 16.dp)
+                                .rotate(rotationAngle)
+                        )
+                    }
                 }
             }
-            items(
-                items = recipesOfType,
-                key = { recipe -> recipe.id }
-            ) { recipe ->
-                RecipeCard(
-                    recipe = recipe,
-                    onView = { onView(recipe) },
-                    modifier = Modifier.padding(vertical = 4.dp)
-                )
+            if (!collapsedCategories.contains(type)) {
+                items(
+                    items = recipesOfType,
+                    key = { recipe -> recipe.id }
+                ) { recipe ->
+                    RecipeCard(
+                        recipe = recipe,
+                        onView = { onView(recipe) },
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    )
+                }
             }
             if (index < orderedGroupedRecipes.size - 1) {
                 item {

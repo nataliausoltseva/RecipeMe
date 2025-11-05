@@ -5,6 +5,5 @@ data class Divider(
     var title: String,
     var recipeId: Int,
     var sortOrder: Int,
-    var methods: List<Ingredient>? = emptyList(),
     var ingredients: List<Ingredient>? = emptyList()
 )

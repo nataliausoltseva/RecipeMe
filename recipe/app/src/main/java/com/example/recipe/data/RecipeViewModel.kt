@@ -5,7 +5,6 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.recipe.helpers.DividerIngredientsRequest
 import com.example.recipe.helpers.Endpoints
 import com.example.recipe.helpers.RecipeParser
 import com.example.recipe.helpers.RecipeRequest
@@ -98,6 +97,32 @@ class RecipeViewModel: ViewModel() {
                         methods.add(method)
                     }
 
+                    val dividers = mutableListOf<Divider>()
+
+                    for (dividerInput in parsedRecipe.value?.dividers ?: listOf()) {
+                        val dividerIngredients = mutableListOf<Ingredient>()
+                        for (dividerIngredientInput in dividerInput.ingredients ?: listOf()) {
+                            val dividerIngredient = Ingredient(
+                                name = dividerIngredientInput.name ?: "",
+                                measurement = dividerIngredientInput.measurement ?: "",
+                                value = dividerIngredientInput.value ?: 1f,
+                                id = 0,
+                                sortOrder = 0,
+                            )
+                            dividerIngredients.add(dividerIngredient)
+                        }
+
+                        val divider = Divider(
+                            id = 0,
+                            title = dividerInput.title ?: "",
+                            sortOrder = 0,
+                            ingredients = dividerIngredients,
+                            recipeId = 0
+                        )
+                        dividers.add(divider)
+                    }
+
+
                     saveRecipe(
                         RecipeRequest(
                             id = 0,
@@ -112,7 +137,8 @@ class RecipeViewModel: ViewModel() {
                         ),
                         ingredients,
                         methods,
-                        dividers = parsedRecipe.value?.dividers
+                        null,
+                        dividers,
                     )
                 }
             } catch (e: Exception) {

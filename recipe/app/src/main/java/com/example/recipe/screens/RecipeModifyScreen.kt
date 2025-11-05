@@ -441,7 +441,6 @@ fun RecipeModifyScreen(
                                 recipeId = selectedDivider.value!!.recipeId,
                                 sortOrder = selectedDivider.value!!.sortOrder,
                                 ingredients = selectedDivider.value!!.ingredients,
-                                methods = selectedDivider.value!!.methods
                             )
                         } else { // Adding new
                             currentDividers.add(confirmedDivider.copy(
@@ -1074,7 +1073,6 @@ fun AddOrEditDividerDialog(
                         recipeId = 0,
                         sortOrder = 0,
                         ingredients = emptyList(),
-                        methods = emptyList() // Assuming Divider.methods is List<Method>?
                     )
                     if (confirmedDivider.title.isNotBlank()) {
                         onConfirmation(confirmedDivider)
