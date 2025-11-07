@@ -102,6 +102,37 @@ CREATE TABLE images (
 );
 ```
 </details>
+
+<details>
+    <summary>dividers</summary>
+
+```sqlite
+CREATE TABLE dividers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT,
+    recipe_id INTEGER NOT NULL,
+    sortOrder INTEGER,
+    FOREIGN KEY (recipe_id) REFERENCES reicpes(id) ON DELETE CASCADE
+);
+
+CREATE TABLE divider_ingredients (
+    ingredient_id INTEGER NOT NULL,
+    divider_id INTEGER NOT NULL,
+    FOREIGN KEY (divider_id) REFERENCES dividers(id) ON DELETE CASCADE ON UPDATE NO ACTION,
+    FOREIGN KEY (ingredient_id) REFERENCES ingredients(id) ON DELETE CASCADE ON UPDATE NO ACTION,
+    PRIMARY KEY (ingredient_id, divider_id)
+);
+
+CREATE TABLE divider_methods (
+    method_id INTEGER NOT NULL,
+    divider_id INTEGER NOT NULL,
+    PRIMARY KEY (method_id, divider_id),
+    FOREIGN KEY (divider_id) REFERENCES dividers(id) ON DELETE CASCADE ON UPDATE NO ACTION,
+    FOREIGN KEY (method_id) REFERENCES methods(id) ON DELETE CASCADE ON UPDATE NO ACTION
+);
+```
+
+</details>
 <br/>
 
 The **recipe** table has a relationsip `has_one` **portion**, **image**, and `has_many` **ingredient**s, **method**s.
@@ -140,6 +171,15 @@ The **recipe** table has a relationsip `has_one` **portion**, **image**, and `ha
 - DELETE: http://localhost/method/{id}
 </details>
 
+<details>
+    <summary>Divider</summary>
+
+- GET: http://localhost/dividers/{recipe_id}
+- POST: http://localhost/divider/{recipe_id}
+- POST http://localhost/divider/{recipe_id}/{divider_id}/ingredients
+- DELETE: http://localhost/divider/{divider_id}
+</details>
+
 ## Android application
 
 ### Navigation
@@ -154,12 +194,9 @@ The key should be stored in `local.properties`. See `local.defaults.properties`.
 The list of recipes can be viewed in 2 different modes: `all` and `categorized`. The `categorized` view offers users to see recipes based on types: `lunch`, `dinner`, `breakfast`, `dessert`, `snack`.
 
 ## Roadmap:
-- Implement and update the design of the application.
 - ~~Add functionality of increasing or decreasing the portion which results in the updated list of ingredients.~~
 - Make a companion watch app.
 - Look into Gemini integration so that when asking to look for a recipe, it looks through this app first.
-- Ability to have "Cooking mode" so that the phone screen does not turn off.
-    1. Look into this feature on the watch as well.
 <details>
     <summary><strong>Completed items</strong></summary>
 
@@ -227,5 +264,7 @@ example of possible data for API
 - Left swipe goes back to previous page instead of closing the app.
 - Reordering ingredients and methods should only be available through an icon.
 - Add reodering activation icon on recipe list screen.
+- Implement and update the design of the application.
+- Ability to have "Cooking mode" so that the phone screen does not turn off.
 
 </details>

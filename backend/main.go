@@ -1361,6 +1361,73 @@ func addDividerToRecipe(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(getDividerById(dividerId))
 }
 
+func deleteDivider(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	idStr, ok := params["id"]
+	if !ok {
+		http.Error(w, "Missing ID parameter", http.StatusInternalServerError)
+		return
+	}
+
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, "Invalid ID parameter", http.StatusInternalServerError)
+		return
+	}
+
+	divider := getDividerById(id)
+	if divider.ID == 0 {
+		http.Error(w, "Divider not found", http.StatusNotFound)
+		return
+	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	rows, err := tx.Query("SELECT ingredient_id FROM divider_ingredients WHERE divider_id = ?", id)
+	if err == nil {
+		var ingredientID int
+		for rows.Next() {
+			if err := rows.Scan(&ingredientID); err == nil {
+				// Update the ingredient's recipe_id to the divider's recipe
+				_, _ = tx.Exec("UPDATE ingredients SET recipe_id = ? WHERE id = ?", divider.RecipeID, ingredientID)
+			}
+		}
+		rows.Close()
+	}
+
+	if _, err := tx.Exec("DELETE FROM divider_ingredients WHERE divider_id = ?", id); err != nil {
+		tx.Rollback()
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if _, err := tx.Exec("DELETE FROM divider_methods WHERE divider_id = ?", id); err != nil {
+		tx.Rollback()
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if _, err := tx.Exec("DELETE FROM dividers WHERE id = ?", id); err != nil {
+		tx.Rollback()
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if err := tx.Commit(); err != nil {
+		tx.Rollback()
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	updateRecipeLastEdited(divider.RecipeID)
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func main() {
 	var err error
 	db, err = sql.Open("sqlite3", "./database/database.db")
@@ -1403,6 +1470,7 @@ func main() {
 	router.HandleFunc("/divider/{recipe_id}", addDividerToRecipe).Methods("POST")
 	router.HandleFunc("/divider/{recipe_id}/{divider_id}/ingredients", addIngredientsToDivider).Methods("POST")
 	router.HandleFunc("/divider/methods", addMethodsToDivider).Methods("POST")
+	router.HandleFunc("/divider/{id}", deleteDivider).Methods("DELETE")
 
 	fmt.Println("Starting server on :1009...")
 	http.ListenAndServe(":1009", router)
