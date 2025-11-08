@@ -124,7 +124,7 @@ class Endpoints {
                 println("Response error: $response")
             }
         } catch (e: Exception) {
-            println("Exception error getRecipes: ${e.message}. ${e.printStackTrace()}")
+            println("Exception error deleteRecipe: ${e.message}. ${e.printStackTrace()}")
         }
     }
 
@@ -149,6 +149,17 @@ class Endpoints {
             apiInterface.addIngredientsToDivider(recipeId, dividerId, body)
         } catch (e: Exception) {
             println("Exception error addIngredientsToDivider: ${e.message}. ${e.printStackTrace()}")
+        }
+    }
+
+    suspend fun deleteDividers(recipeId: Int) {
+        try {
+            val response = apiInterface.deleteDividers(recipeId)
+            if (!response.isSuccessful) {
+                println("Response error: $response")
+            }
+        } catch (e: Exception) {
+            println("Exception error deleteDividers: ${e.message}. ${e.printStackTrace()}")
         }
     }
 }

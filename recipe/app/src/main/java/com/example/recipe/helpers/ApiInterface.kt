@@ -73,4 +73,7 @@ interface ApiInterface {
 
     @POST("/divider/{recipeId}")
     suspend fun addDivider(@Path("recipeId") id: Int, @Body request: Divider): Response<Divider>
+
+    @DELETE("/dividers/{recipeId}")
+    suspend fun deleteDividers(@Path("id") id: Int): Response<Void>
 }

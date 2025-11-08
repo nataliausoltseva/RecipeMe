@@ -329,9 +329,26 @@ fun RecipeModifyScreen(
                                     modifier = Modifier
                                         .size(24.dp)
                                         .clickable {
-                                            dividers.value = dividers.value.toMutableList().apply {
+                                            // Preserve the divider and its ingredients before removing
+                                            val removedDivider = dividers.value.getOrNull(index)
+                                            val removedIngredients = removedDivider?.ingredients.orEmpty()
+
+                                            // Move removed divider's ingredients to main ingredients list (avoid duplicates by name)
+                                            if (removedIngredients.isNotEmpty()) {
+                                                val updatedMainIngredients = ingredients.value.toMutableList()
+                                                removedIngredients.forEach { ing ->
+                                                    if (updatedMainIngredients.none { it.name == ing.name }) {
+                                                        updatedMainIngredients.add(ing)
+                                                    }
+                                                }
+                                                ingredients.value = updatedMainIngredients
+                                            }
+
+                                            // Remove the divider and reindex sortOrder
+                                            val updatedDividers = dividers.value.toMutableList().apply {
                                                 removeAt(index)
                                             }.mapIndexed { idx, d -> d.copy(sortOrder = idx) }
+                                            dividers.value = updatedDividers
                                         }
                                 )
                                 Icon(
@@ -363,7 +380,6 @@ fun RecipeModifyScreen(
                                     }
                             )
                         }
-
                         // Reorderable divider ingredients
                         val dividerIngredients = divider.ingredients.orEmpty()
                         if (dividerIngredients.isNotEmpty()) {

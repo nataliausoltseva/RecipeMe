@@ -218,6 +218,9 @@ class RecipeViewModel: ViewModel() {
                             }
                         }
                     }
+                    if (dividers.isEmpty()) {
+                        endpoints.deleteDividers(recipeIdToUse)
+                    }
                 }
                 getRecipes()
             } catch (e: Exception) {

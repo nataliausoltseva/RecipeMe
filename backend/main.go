@@ -1361,23 +1361,24 @@ func addDividerToRecipe(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(getDividerById(dividerId))
 }
 
-func deleteDivider(w http.ResponseWriter, r *http.Request) {
+func deleteDividers(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
-	idStr, ok := params["id"]
+	idStr, ok := params["recipe_id"]
 	if !ok {
-		http.Error(w, "Missing ID parameter", http.StatusInternalServerError)
+		http.Error(w, "Missing recipe_id parameter", http.StatusInternalServerError)
 		return
 	}
 
-	id, err := strconv.Atoi(idStr)
+	recipeID, err := strconv.Atoi(idStr)
 	if err != nil {
-		http.Error(w, "Invalid ID parameter", http.StatusInternalServerError)
+		http.Error(w, "Invalid recipe_id parameter", http.StatusInternalServerError)
 		return
 	}
 
-	divider := getDividerById(id)
-	if divider.ID == 0 {
-		http.Error(w, "Divider not found", http.StatusNotFound)
+	dividers := getRecipeDividers(recipeID)
+	if len(dividers) == 0 {
+		// Nothing to delete
+		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 
@@ -1387,34 +1388,37 @@ func deleteDivider(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := tx.Query("SELECT ingredient_id FROM divider_ingredients WHERE divider_id = ?", id)
-	if err == nil {
-		var ingredientID int
-		for rows.Next() {
-			if err := rows.Scan(&ingredientID); err == nil {
-				// Update the ingredient's recipe_id to the divider's recipe
-				_, _ = tx.Exec("UPDATE ingredients SET recipe_id = ? WHERE id = ?", divider.RecipeID, ingredientID)
+	// Iterate through all dividers for the recipe and remove associations and the divider rows
+	for _, divider := range dividers {
+		// Reassign any ingredients associated with this divider back to the recipe (safe no-op if already set)
+		rows, err := tx.Query("SELECT ingredient_id FROM divider_ingredients WHERE divider_id = ?", divider.ID)
+		if err == nil {
+			var ingredientID int
+			for rows.Next() {
+				if err := rows.Scan(&ingredientID); err == nil {
+					_, _ = tx.Exec("UPDATE ingredients SET recipe_id = ? WHERE id = ?", recipeID, ingredientID)
+				}
 			}
+			rows.Close()
 		}
-		rows.Close()
-	}
 
-	if _, err := tx.Exec("DELETE FROM divider_ingredients WHERE divider_id = ?", id); err != nil {
-		tx.Rollback()
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+		if _, err := tx.Exec("DELETE FROM divider_ingredients WHERE divider_id = ?", divider.ID); err != nil {
+			tx.Rollback()
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 
-	if _, err := tx.Exec("DELETE FROM divider_methods WHERE divider_id = ?", id); err != nil {
-		tx.Rollback()
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+		if _, err := tx.Exec("DELETE FROM divider_methods WHERE divider_id = ?", divider.ID); err != nil {
+			tx.Rollback()
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 
-	if _, err := tx.Exec("DELETE FROM dividers WHERE id = ?", id); err != nil {
-		tx.Rollback()
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		if _, err := tx.Exec("DELETE FROM dividers WHERE id = ?", divider.ID); err != nil {
+			tx.Rollback()
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -1423,7 +1427,7 @@ func deleteDivider(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	updateRecipeLastEdited(divider.RecipeID)
+	updateRecipeLastEdited(recipeID)
 
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -1470,7 +1474,7 @@ func main() {
 	router.HandleFunc("/divider/{recipe_id}", addDividerToRecipe).Methods("POST")
 	router.HandleFunc("/divider/{recipe_id}/{divider_id}/ingredients", addIngredientsToDivider).Methods("POST")
 	router.HandleFunc("/divider/methods", addMethodsToDivider).Methods("POST")
-	router.HandleFunc("/divider/{id}", deleteDivider).Methods("DELETE")
+	router.HandleFunc("/dividers/{recipe_id}", deleteDividers).Methods("DELETE")
 
 	fmt.Println("Starting server on :1009...")
 	http.ListenAndServe(":1009", router)
