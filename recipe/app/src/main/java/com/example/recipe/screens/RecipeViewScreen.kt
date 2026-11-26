@@ -84,6 +84,7 @@ fun RecipeViewScreen(
 ) {
     val recipesUIState by recipeViewModel.uiState.collectAsState()
     val showDeleteModal = remember { mutableStateOf(false) }
+    val isDeleting = remember { mutableStateOf(false) }
 
     val showFullImage = remember { mutableStateOf(false) }
 
@@ -102,8 +103,12 @@ fun RecipeViewScreen(
         }
     }
 
-    if (recipe === null) {
-        onNavigateBack()
+    if (recipe == null) {
+        LaunchedEffect(itemId) {
+            if (!isDeleting.value) {
+                onNavigateBack()
+            }
+        }
         return
     }
 
@@ -204,6 +209,8 @@ fun RecipeViewScreen(
                 confirmButton = {
                     TextButton(
                         onClick = {
+                            isDeleting.value = true
+                            showDeleteModal.value = false
                             recipeViewModel.onDeleteRecipe(recipe)
                             onNavigateBack()
                         }
