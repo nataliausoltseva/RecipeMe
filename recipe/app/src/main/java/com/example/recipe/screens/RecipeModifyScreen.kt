@@ -1,5 +1,7 @@
 package com.example.recipe.screens
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
@@ -7,6 +9,9 @@ import android.util.Base64
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
+import java.io.File
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -64,6 +69,11 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.material3.FilterChip
+import com.example.recipe.data.Equipment
 import com.example.recipe.data.byteArrayToBitmap
 import com.example.recipe.data.Divider
 import com.example.recipe.data.Image
@@ -123,6 +133,10 @@ fun RecipeModifyScreen(
     val selectedDivider = remember { mutableStateOf<Divider?>(null) }
     val selectedDividerIndex = remember { mutableIntStateOf(0) }
 
+    // Equipment handlers
+    var equipments = remember { mutableStateOf<List<Equipment>>(recipe?.equipments ?: listOf()) }
+    var customEquipmentText by remember { mutableStateOf("") }
+
     // State for LinkIngredientsDialog
     var showLinkIngredientsDialog by remember { mutableStateOf(false) }
     var methodToLinkIngredients by remember { mutableStateOf<Method?>(null) }
@@ -163,7 +177,8 @@ fun RecipeModifyScreen(
                         ingredients.value,
                         methods.value,
                         imageBytes,
-                        dividers.value
+                        dividers.value,
+                        equipments.value
                     )
                     onNavigateBack()
                 }
@@ -273,6 +288,105 @@ fun RecipeModifyScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // --- Equipment Section ---
+            Text(
+                text = "Equipment Needed (Optional)",
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp
+            )
+            Text(
+                text = "Tap presets or enter custom equipment (e.g. baking tray with baking paper):",
+                fontSize = 12.sp,
+                color = Color.Gray
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+
+            val commonPresetEquipment = listOf(
+                "Baking tray with baking paper",
+                "Baking dish",
+                "Blender / Food processor",
+                "Whisk",
+                "Mixing bowl",
+                "Frying pan",
+                "Saucepan",
+                "Muffin tin",
+                "Rolling pin"
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                commonPresetEquipment.forEach { preset ->
+                    val isSelected = equipments.value.any { it.name.equals(preset, ignoreCase = true) }
+                    FilterChip(
+                        selected = isSelected,
+                        onClick = {
+                            if (isSelected) {
+                                equipments.value = equipments.value.filterNot { it.name.equals(preset, ignoreCase = true) }
+                            } else {
+                                equipments.value = equipments.value + Equipment(name = preset, sortOrder = equipments.value.size)
+                            }
+                        },
+                        label = { Text(preset) }
+                    )
+                }
+            }
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+            ) {
+                TextField(
+                    value = customEquipmentText,
+                    onValueChange = { customEquipmentText = it },
+                    label = { Text("Add custom equipment") },
+                    modifier = Modifier.weight(1f),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                    )
+                )
+                Button(
+                    onClick = {
+                        if (customEquipmentText.isNotBlank()) {
+                            val trimmed = customEquipmentText.trim()
+                            if (equipments.value.none { it.name.equals(trimmed, ignoreCase = true) }) {
+                                equipments.value = equipments.value + Equipment(name = trimmed, sortOrder = equipments.value.size)
+                            }
+                            customEquipmentText = ""
+                        }
+                    },
+                    modifier = Modifier.padding(start = 8.dp)
+                ) {
+                    Text("Add")
+                }
+            }
+
+            if (equipments.value.isNotEmpty()) {
+                Column(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+                    equipments.value.forEachIndexed { idx, eq ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                        ) {
+                            Text("• ${eq.name}", modifier = Modifier.weight(1f))
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = "Delete equipment",
+                                modifier = Modifier
+                                    .size(20.dp)
+                                    .clickable {
+                                        equipments.value = equipments.value.filterIndexed { i, _ -> i != idx }
+                                    }
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
 
             // --- Dividers Section ---
             Row(
@@ -301,65 +415,66 @@ fun RecipeModifyScreen(
                     }.mapIndexed { index, divider -> divider.copy(sortOrder = index) }
                 }
             ) { index, divider, isDragging ->
-                key(divider.id.toString() + divider.title + index) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(8.dp)
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
+                ReorderableItem {
+                    key(divider.id.toString() + divider.title + index) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(8.dp)
                         ) {
-                            Text(
-                                divider.title ?: "",
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .clickable {
-                                        selectedDivider.value = divider
-                                        selectedDividerIndex.intValue = index
-                                        showDividerModal = true
-                                    }
-                                    .padding(end = 8.dp)
-                            )
-                            Row {
-                                Icon(
-                                    imageVector = Icons.Default.Delete,
-                                    contentDescription = "Delete Divider",
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    divider.title ?: "",
                                     modifier = Modifier
-                                        .size(24.dp)
+                                        .weight(1f)
                                         .clickable {
-                                            // Preserve the divider and its ingredients before removing
-                                            val removedDivider = dividers.value.getOrNull(index)
-                                            val removedIngredients = removedDivider?.ingredients.orEmpty()
-
-                                            // Move removed divider's ingredients to main ingredients list (avoid duplicates by name)
-                                            if (removedIngredients.isNotEmpty()) {
-                                                val updatedMainIngredients = ingredients.value.toMutableList()
-                                                removedIngredients.forEach { ing ->
-                                                    if (updatedMainIngredients.none { it.name == ing.name }) {
-                                                        updatedMainIngredients.add(ing)
-                                                    }
-                                                }
-                                                ingredients.value = updatedMainIngredients
-                                            }
-
-                                            // Remove the divider and reindex sortOrder
-                                            val updatedDividers = dividers.value.toMutableList().apply {
-                                                removeAt(index)
-                                            }.mapIndexed { idx, d -> d.copy(sortOrder = idx) }
-                                            dividers.value = updatedDividers
+                                            selectedDivider.value = divider
+                                            selectedDividerIndex.intValue = index
+                                            showDividerModal = true
                                         }
+                                        .padding(end = 8.dp)
                                 )
-                                Icon(
-                                    imageVector = Icons.Default.DragHandle,
-                                    contentDescription = "Reorder Divider",
-                                    modifier = Modifier
-                                        .padding(start = 15.dp)
-                                        .draggableHandle(),
-                                )
+                                Row {
+                                    Icon(
+                                        imageVector = Icons.Default.Delete,
+                                        contentDescription = "Delete Divider",
+                                        modifier = Modifier
+                                            .size(24.dp)
+                                            .clickable {
+                                                // Preserve the divider and its ingredients before removing
+                                                val removedDivider = dividers.value.getOrNull(index)
+                                                val removedIngredients = removedDivider?.ingredients.orEmpty()
+
+                                                // Move removed divider's ingredients to main ingredients list (avoid duplicates by name)
+                                                if (removedIngredients.isNotEmpty()) {
+                                                    val updatedMainIngredients = ingredients.value.toMutableList()
+                                                    removedIngredients.forEach { ing ->
+                                                        if (updatedMainIngredients.none { it.name == ing.name }) {
+                                                            updatedMainIngredients.add(ing)
+                                                        }
+                                                    }
+                                                    ingredients.value = updatedMainIngredients
+                                                }
+
+                                                // Remove the divider and reindex sortOrder
+                                                val updatedDividers = dividers.value.toMutableList().apply {
+                                                    removeAt(index)
+                                                }.mapIndexed { idx, d -> d.copy(sortOrder = idx) }
+                                                dividers.value = updatedDividers
+                                            }
+                                    )
+                                    Icon(
+                                        imageVector = Icons.Default.DragHandle,
+                                        contentDescription = "Reorder Divider",
+                                        modifier = Modifier
+                                            .padding(start = 15.dp)
+                                            .draggableHandle(),
+                                    )
+                                }
                             }
-                        }
 
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -394,49 +509,51 @@ fun RecipeModifyScreen(
                                     dividers.value = updatedDividers
                                 }
                             ) { ingIndex, ingredient, isDragging ->
-                                key(ingredient.name + ingIndex) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        modifier = Modifier.fillMaxWidth().padding(start = 40.dp),
-                                        horizontalArrangement = Arrangement.SpaceBetween
-                                    ) {
+                                ReorderableItem {
+                                    key(ingredient.name + ingIndex) {
                                         Row(
-                                            modifier = Modifier.weight(1f)
-                                                .clickable {
-                                                showIngredientModal = true
-                                                selectedIngredient.value = ingredient
-                                                selectedIngredientIndex.intValue = index
-                                                selectedDivider.value = divider
-                                            }
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            modifier = Modifier.fillMaxWidth().padding(start = 40.dp),
+                                            horizontalArrangement = Arrangement.SpaceBetween
                                         ) {
-                                            Text(ingredient.name)
-                                            Text(" - ")
-                                            Text(ingredient.value.toString())
-                                            Text(" ")
-                                            Text(ingredient.measurement)
-                                        }
-                                        Row {
-                                            Icon(
-                                                imageVector = Icons.Default.Delete,
-                                                contentDescription = "Delete ingredient from divider",
-                                                modifier = Modifier
-                                                    .size(20.dp)
+                                            Row(
+                                                modifier = Modifier.weight(1f)
                                                     .clickable {
-                                                        val updatedDividers = dividers.value.toMutableList()
-                                                        val updatedIngredients = dividerIngredients.toMutableList().apply {
-                                                            remove(ingredient)
+                                                    showIngredientModal = true
+                                                    selectedIngredient.value = ingredient
+                                                    selectedIngredientIndex.intValue = index
+                                                    selectedDivider.value = divider
+                                                }
+                                            ) {
+                                                Text(ingredient.name)
+                                                Text(" - ")
+                                                Text(ingredient.value.toString())
+                                                Text(" ")
+                                                Text(ingredient.measurement)
+                                            }
+                                            Row {
+                                                Icon(
+                                                    imageVector = Icons.Default.Delete,
+                                                    contentDescription = "Delete ingredient from divider",
+                                                    modifier = Modifier
+                                                        .size(20.dp)
+                                                        .clickable {
+                                                            val updatedDividers = dividers.value.toMutableList()
+                                                            val updatedIngredients = dividerIngredients.toMutableList().apply {
+                                                                remove(ingredient)
+                                                            }
+                                                            updatedDividers[index] = divider.copy(ingredients = updatedIngredients)
+                                                            dividers.value = updatedDividers
                                                         }
-                                                        updatedDividers[index] = divider.copy(ingredients = updatedIngredients)
-                                                        dividers.value = updatedDividers
-                                                    }
-                                            )
-                                            Icon(
-                                                imageVector = Icons.Default.DragHandle,
-                                                contentDescription = "Reorder divider ingredient",
-                                                modifier = Modifier
-                                                    .padding(start = 15.dp)
-                                                    .draggableHandle(),
-                                            )
+                                                )
+                                                Icon(
+                                                    imageVector = Icons.Default.DragHandle,
+                                                    contentDescription = "Reorder divider ingredient",
+                                                    modifier = Modifier
+                                                        .padding(start = 15.dp)
+                                                        .draggableHandle(),
+                                                )
+                                            }
                                         }
                                     }
                                 }
@@ -445,6 +562,7 @@ fun RecipeModifyScreen(
                     }
                 }
             }
+        }
 
             if (showDividerModal) {
                 AddOrEditDividerDialog(
@@ -507,53 +625,55 @@ fun RecipeModifyScreen(
                     }
                 }
             ) { index, ingredient, isDragging ->
-                key(ingredient.name + index) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
+                ReorderableItem {
+                    key(ingredient.name + index) {
                         Row(
-                            modifier = Modifier.clickable {
-                                showIngredientModal = true
-                                selectedIngredient.value = ingredient
-                                selectedIngredientIndex.intValue = index
-                                selectedDivider.value = null // Editing main ingredient
-                            }
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text(ingredient.name)
-                            Text(" - ")
-                            Text(ingredient.value.toString())
-                            Text(" ")
-                            Text(ingredient.measurement)
-                        }
-                        Row {
-                            Icon(
-                                imageVector = Icons.Default.Delete,
-                                contentDescription = "Delete ingredient button",
-                                modifier = Modifier
-                                    .size(24.dp)
-                                    .clickable {
-                                        ingredients.value = ingredients.value
-                                            .toMutableList()
-                                            .apply {
-                                                remove(ingredient)
+                            Row(
+                                modifier = Modifier.clickable {
+                                    showIngredientModal = true
+                                    selectedIngredient.value = ingredient
+                                    selectedIngredientIndex.intValue = index
+                                    selectedDivider.value = null // Editing main ingredient
+                                }
+                            ) {
+                                Text(ingredient.name)
+                                Text(" - ")
+                                Text(ingredient.value.toString())
+                                Text(" ")
+                                Text(ingredient.measurement)
+                            }
+                            Row {
+                                Icon(
+                                    imageVector = Icons.Default.Delete,
+                                    contentDescription = "Delete ingredient button",
+                                    modifier = Modifier
+                                        .size(24.dp)
+                                        .clickable {
+                                            ingredients.value = ingredients.value
+                                                .toMutableList()
+                                                .apply {
+                                                    remove(ingredient)
+                                                }
+                                            methods.value = methods.value.map { method ->
+                                                val updatedLinkedIngredients = method.ingredients?.filter { it.name != ingredient.name }
+                                                method.copy(ingredients = updatedLinkedIngredients)
                                             }
-                                        methods.value = methods.value.map { method ->
-                                            val updatedLinkedIngredients = method.ingredients?.filter { it.name != ingredient.name }
-                                            method.copy(ingredients = updatedLinkedIngredients)
                                         }
-                                    }
-                            )
-                            Icon(
-                                imageVector = Icons.Default.DragHandle,
-                                contentDescription = "Reorder ingredient button",
-                                modifier = Modifier
-                                    .padding(start = 15.dp)
-                                    .draggableHandle(),
-                            )
+                                )
+                                Icon(
+                                    imageVector = Icons.Default.DragHandle,
+                                    contentDescription = "Reorder ingredient button",
+                                    modifier = Modifier
+                                        .padding(start = 15.dp)
+                                        .draggableHandle(),
+                                )
+                            }
                         }
                     }
                 }
@@ -642,67 +762,68 @@ fun RecipeModifyScreen(
                     }
                 }
             ) { index, method, isDragging ->
-                key(method.id.toString() + index) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp)
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
+                ReorderableItem {
+                    key(method.id.toString() + index) {
+                        Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 8.dp, vertical = 4.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween
+                                .padding(vertical = 4.dp)
                         ) {
-                            val methodDisplayNumber = (method.sortOrder ?: (index + 1)).toString()
-                            Text(
-                                "$methodDisplayNumber. ${method.value}",
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier
-                                    .clickable {
-                                        showMethodModal = true
-                                        selectedMethod.value = method
-                                        selectedMethodIndex.intValue = index
-                                    }
-                                    .weight(1f)
-                                    .padding(end = 8.dp)
-                            )
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    imageVector = Icons.Filled.Link,
-                                    contentDescription = "Link Ingredients",
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                val methodDisplayNumber = (method.sortOrder ?: (index + 1)).toString()
+                                Text(
+                                    "$methodDisplayNumber. ${method.value}",
                                     modifier = Modifier
-                                        .size(24.dp)
                                         .clickable {
-                                            methodToLinkIngredients = method
-                                            methodToLinkIngredientsIndex = index
-                                            showLinkIngredientsDialog = true
+                                            showMethodModal = true
+                                            selectedMethod.value = method
+                                            selectedMethodIndex.intValue = index
                                         }
-                                        .padding(end = 10.dp)
+                                        .weight(1f)
+                                        .padding(end = 8.dp)
                                 )
-                                Icon(
-                                    imageVector = Icons.Default.Delete,
-                                    contentDescription = "Delete method button",
-                                    modifier = Modifier
-                                        .size(24.dp)
-                                        .clickable {
-                                            methods.value = methods.value
-                                                .toMutableList()
-                                                .apply {
-                                                    remove(method)
-                                                }
-                                        }
-                                )
-                                Icon(
-                                    imageVector = Icons.Default.DragHandle,
-                                    contentDescription = "Reorder method button",
-                                    modifier = Modifier
-                                        .padding(start = 10.dp)
-                                        .draggableHandle(),
-                                )
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Link,
+                                        contentDescription = "Link Ingredients",
+                                        modifier = Modifier
+                                            .size(24.dp)
+                                            .clickable {
+                                                methodToLinkIngredients = method
+                                                methodToLinkIngredientsIndex = index
+                                                showLinkIngredientsDialog = true
+                                            }
+                                            .padding(end = 10.dp)
+                                    )
+                                    Icon(
+                                        imageVector = Icons.Default.Delete,
+                                        contentDescription = "Delete method button",
+                                        modifier = Modifier
+                                            .size(24.dp)
+                                            .clickable {
+                                                methods.value = methods.value
+                                                    .toMutableList()
+                                                    .apply {
+                                                        remove(method)
+                                                    }
+                                            }
+                                    )
+                                    Icon(
+                                        imageVector = Icons.Default.DragHandle,
+                                        contentDescription = "Reorder method button",
+                                        modifier = Modifier
+                                            .padding(start = 10.dp)
+                                            .draggableHandle(),
+                                    )
+                                }
                             }
-                        }
-                        if (method.ingredients?.isNotEmpty() == true) {
+                            if (method.ingredients?.isNotEmpty() == true) {
                             Spacer(modifier = Modifier.height(4.dp))
                             Column(
                                 modifier = Modifier
@@ -797,6 +918,7 @@ fun RecipeModifyScreen(
         }
     }
 }
+}
 
 @Composable
 fun ImageUploader(
@@ -806,9 +928,53 @@ fun ImageUploader(
     val context = LocalContext.current
     var imageUri by remember { mutableStateOf<Uri?>(null) }
     var bitmapState by remember { mutableStateOf<Bitmap?>(null) }
+    var tempPhotoUri by remember { mutableStateOf<Uri?>(null) }
     val scope = rememberCoroutineScope()
 
     val clipboardManager = LocalClipboardManager.current
+
+    val takePictureLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success: Boolean ->
+        if (success && tempPhotoUri != null) {
+            scope.launch(Dispatchers.IO) {
+                val resizedBitmap = getResizedBitmap(context, tempPhotoUri!!, 800, 800)
+                resizedBitmap?.let { bmp ->
+                    val outputStream = ByteArrayOutputStream()
+                    bmp.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
+                    withContext(Dispatchers.Main) {
+                        bitmapState = bmp
+                        onImageUpload(outputStream.toByteArray())
+                    }
+                }
+            }
+        }
+    }
+
+    val launchCamera = {
+        try {
+            val tempFile = File.createTempFile("recipe_modify_", ".jpg", context.cacheDir).apply {
+                deleteOnExit()
+            }
+            val uri = FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                tempFile
+            )
+            tempPhotoUri = uri
+            takePictureLauncher.launch(uri)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (isGranted) {
+            launchCamera()
+        }
+    }
 
     val pickImageLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent(),
@@ -870,10 +1036,27 @@ fun ImageUploader(
         ) {
             Button(
                 onClick = {
+                    val hasCameraPermission = ContextCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.CAMERA
+                    ) == PackageManager.PERMISSION_GRANTED
+
+                    if (hasCameraPermission) {
+                        launchCamera()
+                    } else {
+                        cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                    }
+                }
+            ) {
+                Text("Take Photo")
+            }
+
+            Button(
+                onClick = {
                     pickImageLauncher.launch("image/*")
                 }
             ) {
-                Text("Upload Image")
+                Text("Gallery")
             }
 
             Button(
@@ -883,17 +1066,18 @@ fun ImageUploader(
                         if (it.clipData.itemCount > 0) {
                             val uri = it.clipData.getItemAt(0).uri
                             uri?.let { imageUriValue -> // Renamed to avoid conflict
-                                val inputStream = context.contentResolver.openInputStream(imageUriValue)
-                                bitmapState = BitmapFactory.decodeStream(inputStream)
-                                val outputStream = ByteArrayOutputStream()
-                                bitmapState?.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
-                                onImageUpload(outputStream.toByteArray())
+                                bitmapState = getResizedBitmap(context, imageUriValue, 1024, 1024)
+                                bitmapState?.let { bmp ->
+                                    val outputStream = ByteArrayOutputStream()
+                                    bmp.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
+                                    onImageUpload(outputStream.toByteArray())
+                                }
                             }
                         }
                     }
                 }
             ) {
-                Text("Paste Image")
+                Text("Paste")
             }
         }
     }

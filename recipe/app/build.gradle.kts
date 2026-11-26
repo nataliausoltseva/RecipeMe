@@ -1,9 +1,21 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     kotlin("plugin.serialization") version "1.9.0"
-    id("com.google.android.libraries.mapsplatform.secrets-gradle-plugin")
 }
+
+val localProperties = Properties()
+val localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.inputStream().use { localProperties.load(it) }
+}
+
+val apiBase = System.getenv("API_BASE")
+    ?: localProperties.getProperty("API_BASE")
+    ?: "http://192.168.1.1:1009/"
+val formattedApiBase = if (apiBase.endsWith("/")) apiBase else "$apiBase/"
 
 android {
     namespace = "com.example.recipe"
@@ -16,6 +28,7 @@ android {
         versionCode = 1
         versionName = "1.0"
 
+        buildConfigField("String", "API_BASE", "\"$formattedApiBase\"")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -34,6 +47,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -58,11 +72,14 @@ dependencies {
     implementation(libs.converter.gson)
     implementation(libs.coil.compose)
     implementation(libs.reorderable)
-    implementation(libs.kotlinx.coroutines.android)
-    implementation(libs.androidx.core.ktx.v190)
     implementation(libs.kotlinx.serialization.json)
-    implementation(libs.generativeai)
+    implementation(libs.mlkitGenaiPrompt)
+    implementation(libs.mlkitTextRecognition)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.activity)
     implementation(libs.androidx.material.icons.extended)
+}
+
+tasks.matching { it.name.contains("AarMetadata") }.configureEach {
+    enabled = false
 }

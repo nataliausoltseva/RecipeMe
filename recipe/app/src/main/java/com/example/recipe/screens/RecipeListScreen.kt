@@ -1,12 +1,27 @@
 package com.example.recipe.screens
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.net.Uri
 import android.util.Base64
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
+import java.io.File
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,9 +51,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Camera
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.DragHandle
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Refresh
@@ -54,6 +71,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Surface
@@ -307,14 +325,15 @@ fun RecipeListScreen(
         }
 
         if (showGeminiTextField.value && parsedRecipe != null) {
-            recipeViewModel.onResetGeminiParsedRecipe()
+            recipeViewModel.onResetParsedRecipe()
             showGeminiTextField.value = false
         }
 
         if (showGeminiTextField.value || isLoading) {
-            var context = LocalContext.current
-            GeminiTextInput(
-                onSuccess = { title, text -> recipeViewModel.convertTextToRecipe(title, text, context)},
+            val context = LocalContext.current
+            RecipeImportDialog(
+                onTextImport = { title, text -> recipeViewModel.convertTextToRecipe(title, text, context) },
+                onImageImport = { title, bitmap -> recipeViewModel.convertImageToRecipe(title, bitmap, context) },
                 onClose = { showGeminiTextField.value = false },
                 isLoading = isLoading,
                 errorMessage = errorMessage
@@ -324,72 +343,226 @@ fun RecipeListScreen(
 }
 
 @Composable
-fun GeminiTextInput(
-    onSuccess: (String, String) -> Unit,
+fun RecipeImportDialog(
+    onTextImport: (String, String) -> Unit,
+    onImageImport: (String, Bitmap) -> Unit,
     onClose: () -> Unit,
     isLoading: Boolean,
     errorMessage: String?
 ) {
+    val context = LocalContext.current
+    var isImageMode by remember { mutableStateOf(false) }
     val title = remember { mutableStateOf("") }
     val text = remember { mutableStateOf("") }
+    var selectedBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    var tempPhotoUri by remember { mutableStateOf<Uri?>(null) }
+
+    val takePictureLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success: Boolean ->
+        if (success && tempPhotoUri != null) {
+            val bitmap = com.example.recipe.helpers.getResizedBitmap(context, tempPhotoUri!!, 1024, 1024)
+            if (bitmap != null) {
+                selectedBitmap = bitmap
+            }
+        }
+    }
+
+    val launchCamera = {
+        try {
+            val tempFile = File.createTempFile("recipe_cam_", ".jpg", context.cacheDir).apply {
+                deleteOnExit()
+            }
+            val uri = FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                tempFile
+            )
+            tempPhotoUri = uri
+            takePictureLauncher.launch(uri)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (isGranted) {
+            launchCamera()
+        }
+    }
+
+    val pickImageLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            try {
+                selectedBitmap = com.example.recipe.helpers.getResizedBitmap(context, it, 1024, 1024)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
 
     AlertDialog(
+        title = { Text("Import Recipe (On-Device AI)") },
         text = {
             Column(
-                modifier = Modifier.heightIn(min = 150.dp, max = 250.dp),
-                verticalArrangement = Arrangement.SpaceBetween
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 if (errorMessage != null) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .border(1.dp, Color.Red)
-                            .padding(16.dp)
+                            .border(1.dp, Color.Red, RoundedCornerShape(8.dp))
+                            .padding(12.dp)
                     ) {
-                        Text(errorMessage)
+                        Text(errorMessage, color = Color.Red, fontSize = 13.sp)
                     }
                 }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    Button(
+                        onClick = { isImageMode = false },
+                        colors = if (!isImageMode) ButtonDefaults.buttonColors() else ButtonDefaults.filledTonalButtonColors()
+                    ) {
+                        Text("Paste Text")
+                    }
+                    Button(
+                        onClick = { isImageMode = true },
+                        colors = if (isImageMode) ButtonDefaults.buttonColors() else ButtonDefaults.filledTonalButtonColors()
+                    ) {
+                        Text("Photo / Image")
+                    }
+                }
+
                 TextField(
                     value = title.value,
                     onValueChange = { title.value = it },
-                    label = { Text("Enter recipe title") },
+                    label = { Text("Recipe Title (Optional)") },
+                    modifier = Modifier.fillMaxWidth(),
                     colors = TextFieldDefaults.colors(
                         focusedContainerColor = Color.Transparent,
                         unfocusedContainerColor = Color.Transparent,
                     ),
                     enabled = !isLoading,
                 )
-                TextField(
-                    value = text.value,
-                    onValueChange = { text.value = it },
-                    label = { Text("Enter recipe") },
-                    colors = TextFieldDefaults.colors(
-                        focusedContainerColor = Color.Transparent,
-                        unfocusedContainerColor = Color.Transparent,
-                    ),
-                    maxLines = 10,
-                    enabled = !isLoading
-                )
-            }
-        },
-        onDismissRequest = {
-            onClose()
-        },
-        confirmButton = {
-            TextButton(
-                onClick = { onSuccess(title.value, text.value) },
-                enabled = !isLoading
-            ) {
-                if (isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
-                        color = Color.White
+
+                if (!isImageMode) {
+                    TextField(
+                        value = text.value,
+                        onValueChange = { text.value = it },
+                        label = { Text("Paste plain text recipe") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 120.dp, max = 220.dp),
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = Color.Transparent,
+                            unfocusedContainerColor = Color.Transparent,
+                        ),
+                        maxLines = 10,
+                        enabled = !isLoading
                     )
                 } else {
-                    Text("Apply")
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp)
+                    ) {
+                        if (selectedBitmap != null) {
+                            Image(
+                                bitmap = selectedBitmap!!.asImageBitmap(),
+                                contentDescription = "Selected Recipe Photo",
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(160.dp)
+                                    .clip(RoundedCornerShape(8.dp)),
+                                contentScale = ContentScale.Crop
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly
+                        ) {
+                            OutlinedButton(
+                                onClick = {
+                                    val hasCameraPermission = ContextCompat.checkSelfPermission(
+                                        context,
+                                        Manifest.permission.CAMERA
+                                    ) == PackageManager.PERMISSION_GRANTED
+
+                                    if (hasCameraPermission) {
+                                        launchCamera()
+                                    } else {
+                                        cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                                    }
+                                },
+                                enabled = !isLoading
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Camera,
+                                    contentDescription = "Take Photo",
+                                    modifier = Modifier.padding(end = 4.dp).size(18.dp)
+                                )
+                                Text("Take Photo")
+                            }
+
+                            OutlinedButton(
+                                onClick = { pickImageLauncher.launch("image/*") },
+                                enabled = !isLoading
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Image,
+                                    contentDescription = "Gallery",
+                                    modifier = Modifier.padding(end = 4.dp).size(18.dp)
+                                )
+                                Text("Gallery")
+                            }
+                        }
+                    }
                 }
             }
         },
+        onDismissRequest = { onClose() },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    if (isImageMode && selectedBitmap != null) {
+                        onImageImport(title.value, selectedBitmap!!)
+                    } else {
+                        onTextImport(title.value, text.value)
+                    }
+                },
+                enabled = !isLoading && (if (isImageMode) selectedBitmap != null else text.value.isNotBlank())
+            ) {
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                } else {
+                    Text("Import")
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = { onClose() },
+                enabled = !isLoading
+            ) {
+                Text("Cancel")
+            }
+        }
     )
 }
 

@@ -13,12 +13,19 @@ data class DividerParserInput(
 )
 
 @Serializable
+data class EquipmentInput(
+    var name: String?
+)
+
+@Serializable
 data class RecipeParserInput(
+    val title: String? = "",
     val url: String? = "",
     val methods: List<RecipeMethodInput>? = null,
     val ingredients: List<RecipeIngredientInput>? = null,
     val portion: RecipePortionInput? = null,
-    val dividers: List<DividerParserInput>? = null
+    val dividers: List<DividerParserInput>? = null,
+    val equipments: List<EquipmentInput>? = null
 )
 
 @Serializable

@@ -85,6 +85,14 @@ class Endpoints {
         }
     }
 
+    suspend fun addOrUpdateEquipment(equipments: List<com.example.recipe.data.Equipment>, recipeId: Int) {
+        try {
+            apiInterface.addOrUpdateEquipment(recipeId, equipments)
+        } catch (e: Exception) {
+            println("Exception error addOrUpdateEquipment: ${e.message}. ${e.printStackTrace()}")
+        }
+    }
+
     suspend fun getIngredients(): List<Ingredient>? {
         try {
             val response = apiInterface.getIngredients()

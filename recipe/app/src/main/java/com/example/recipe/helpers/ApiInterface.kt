@@ -76,4 +76,8 @@ interface ApiInterface {
 
     @DELETE("/dividers/{recipeId}")
     suspend fun deleteDividers(@Path("recipeId") id: Int): Response<Void>
+
+    // Equipment endpoint
+    @POST("/equipment/{recipeId}")
+    suspend fun addOrUpdateEquipment(@Path("recipeId") id: Int, @Body request: List<com.example.recipe.data.Equipment>): Response<Recipe>
 }

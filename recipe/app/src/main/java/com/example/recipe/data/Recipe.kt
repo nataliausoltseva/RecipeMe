@@ -12,5 +12,6 @@ data class Recipe (
     val type: String,
     val sortOrder: Int,
     val url: String,
-    val dividers: List<Divider>?
+    val dividers: List<Divider>?,
+    val equipments: List<Equipment>? = null
 )

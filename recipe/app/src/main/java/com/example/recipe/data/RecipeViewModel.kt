@@ -42,11 +42,35 @@ class RecipeViewModel: ViewModel() {
         ignoreUnknownKeys = true // Be flexible with extra fields, if any
         isLenient = true         // Allow some minor JSON format deviations if necessary
         prettyPrint = true       // For logging/debugging the JSON output
+        coerceInputValues = true // Coerce nulls or invalid types to defaults
+    }
+
+    fun convertImageToRecipe(title: String, bitmap: Bitmap, context: Context) {
+        viewModelScope.launch {
+            _isLoadingImport.value = true
+            try {
+                _parsedRecipe.value = null
+                _jsonOutput.value = null
+                _errorMessage.value = null
+
+                val parser = RecipeParser()
+                val result = parser.convertImageToRecipeJson(bitmap, context)
+
+                val outputStream = java.io.ByteArrayOutputStream()
+                bitmap.compress(Bitmap.CompressFormat.PNG, 90, outputStream)
+                val imageBytes = outputStream.toByteArray()
+
+                handleParserResult(title, result, imageBytes)
+            } catch (e: Exception) {
+                _errorMessage.value = "Error reading recipe from image: ${e.message}"
+            } finally {
+                _isLoadingImport.value = false
+            }
+        }
     }
 
     fun convertTextToRecipe(title: String, plainText: String, context: Context) {
         viewModelScope.launch {
-            // 1. Set loading to true at the very beginning
             _isLoadingImport.value = true
             try {
                 _parsedRecipe.value = null
@@ -56,100 +80,102 @@ class RecipeViewModel: ViewModel() {
                 val parser = RecipeParser()
                 val result = parser.convertTextToRecipeJson(plainText, context)
 
-                result.fold(
-                    onSuccess = { jsonString ->
-                        _jsonOutput.value = jsonString // Store the raw JSON output
-                        try {
-                            if (jsonString != "") {
-                                val recipe = jsonParser.decodeFromString<RecipeParserInput>(jsonString.trim())
-                                _parsedRecipe.value = recipe
-                            }
-                        } catch (e: Exception) {
-                            _errorMessage.value = "Failed to parse recipe from text. The model might have returned an unexpected format. Raw output: $jsonString"
-                        }
-                    },
-                    onFailure = { exception ->
-                        _errorMessage.value = "Error converting text: ${exception.message}"
-                    }
-                )
-                if (parsedRecipe.value != null) {
-                    val ingredients = mutableListOf<Ingredient>()
-
-                    for (ingredientInput in parsedRecipe.value?.ingredients ?: listOf()) {
-                        val ingredient = Ingredient(
-                            name = ingredientInput.name ?: "",
-                            measurement = ingredientInput.measurement ?: "",
-                            value = ingredientInput.value ?: 1f,
-                            id = 0,
-                            sortOrder = 0,
-                        )
-                        ingredients.add(ingredient)
-                    }
-
-                    val methods = mutableListOf<Method>()
-
-                    for (methodInput in parsedRecipe.value?.methods ?: listOf()) {
-                        val method = Method(
-                            value = methodInput.value ?: "",
-                            id = 0,
-                            sortOrder = 0,
-                        )
-                        methods.add(method)
-                    }
-
-                    val dividers = mutableListOf<Divider>()
-
-                    for (dividerInput in parsedRecipe.value?.dividers ?: listOf()) {
-                        val dividerIngredients = mutableListOf<Ingredient>()
-                        for (dividerIngredientInput in dividerInput.ingredients ?: listOf()) {
-                            val dividerIngredient = Ingredient(
-                                name = dividerIngredientInput.name ?: "",
-                                measurement = dividerIngredientInput.measurement ?: "",
-                                value = dividerIngredientInput.value ?: 1f,
-                                id = 0,
-                                sortOrder = 0,
-                            )
-                            dividerIngredients.add(dividerIngredient)
-                        }
-
-                        val divider = Divider(
-                            id = 0,
-                            title = dividerInput.title ?: "",
-                            sortOrder = 0,
-                            ingredients = dividerIngredients,
-                            recipeId = 0
-                        )
-                        dividers.add(divider)
-                    }
-
-
-                    saveRecipe(
-                        RecipeRequest(
-                            id = 0,
-                            name = title,
-                            type = "",
-                            url = parsedRecipe.value?.url ?: ""
-                        ),
-                        Portion(
-                            id = 0,
-                            value = parsedRecipe.value!!.portion?.value ?: 1f,
-                            measurement = "portion"
-                        ),
-                        ingredients,
-                        methods,
-                        null,
-                        dividers,
-                    )
-                }
+                handleParserResult(title, result, null)
             } catch (e: Exception) {
-                println("-------------ERROR MESSAGE-----------")
-                println(e.message)
-                println("--------------------------------------")
                 _errorMessage.value = "There was an error with processing this recipe. Try again later."
             } finally {
                 _isLoadingImport.value = false
             }
         }
+    }
+
+    private fun handleParserResult(userTitle: String, result: Result<String>, imageBytes: ByteArray? = null) {
+        result.fold(
+            onSuccess = { jsonString ->
+                _jsonOutput.value = jsonString
+                try {
+                    if (jsonString.isNotBlank()) {
+                        val recipe = jsonParser.decodeFromString<RecipeParserInput>(jsonString.trim())
+                        _parsedRecipe.value = recipe
+                        val recipeTitle = userTitle.ifBlank { recipe.title ?: "" }.ifBlank { "Imported Recipe" }
+                        saveParsedRecipe(recipeTitle, recipe, imageBytes)
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    _errorMessage.value = "Failed to parse recipe data. Unexpected format received."
+                }
+            },
+            onFailure = { exception ->
+                _errorMessage.value = exception.message ?: "Error converting recipe."
+            }
+        )
+    }
+
+    private fun saveParsedRecipe(title: String, parsed: RecipeParserInput, imageBytes: ByteArray? = null) {
+        val ingredients = parsed.ingredients.orEmpty().map { ingredientInput ->
+            Ingredient(
+                name = ingredientInput.name ?: "",
+                measurement = ingredientInput.measurement ?: "",
+                value = ingredientInput.value ?: 1f,
+                id = 0,
+                sortOrder = 0,
+            )
+        }
+
+        val methods = parsed.methods.orEmpty().map { methodInput ->
+            Method(
+                value = methodInput.value ?: "",
+                id = 0,
+                sortOrder = 0,
+            )
+        }
+
+        val dividers = parsed.dividers.orEmpty().map { dividerInput ->
+            val dividerIngredients = dividerInput.ingredients.orEmpty().map { dividerIngredientInput ->
+                Ingredient(
+                    name = dividerIngredientInput.name ?: "",
+                    measurement = dividerIngredientInput.measurement ?: "",
+                    value = dividerIngredientInput.value ?: 1f,
+                    id = 0,
+                    sortOrder = 0,
+                )
+            }
+
+            Divider(
+                id = 0,
+                title = dividerInput.title ?: "",
+                sortOrder = 0,
+                ingredients = dividerIngredients,
+                recipeId = 0
+            )
+        }
+
+        val equipments = parsed.equipments.orEmpty().mapIndexed { idx, eqInput ->
+            Equipment(
+                id = 0,
+                name = eqInput.name ?: "",
+                sortOrder = idx
+            )
+        }
+
+        saveRecipe(
+            RecipeRequest(
+                id = 0,
+                name = title.ifBlank { "Imported Recipe" },
+                type = "",
+                url = parsed.url ?: ""
+            ),
+            Portion(
+                id = 0,
+                value = parsed.portion?.value ?: 1f,
+                measurement = "portion"
+            ),
+            ingredients,
+            methods,
+            imageBytes,
+            dividers,
+            equipments
+        )
     }
 
     private fun getRecipes(search: String? = null) {
@@ -185,7 +211,8 @@ class RecipeViewModel: ViewModel() {
         ingredients: List<Ingredient>,
         methods: List<Method>,
         imageBytes: ByteArray? = null,
-        dividers: List<Divider>?
+        dividers: List<Divider>?,
+        equipments: List<Equipment>? = null
     ) {
         viewModelScope.launch {
             try {
@@ -201,6 +228,9 @@ class RecipeViewModel: ViewModel() {
                 endpoints.updateOrCreatePortion(portion, recipeIdToUse)
                 endpoints.addOrUpdateIngredients(ingredients, recipeIdToUse)
                 endpoints.addOrUpdateMethods(methods, recipeIdToUse)
+                if (!equipments.isNullOrEmpty()) {
+                    endpoints.addOrUpdateEquipment(equipments, recipeIdToUse)
+                }
                 if (imageBytes != null) {
                     endpoints.addImage(
                         createMultipartFromBytes(imageBytes, recipeIdToUse),
@@ -361,7 +391,7 @@ class RecipeViewModel: ViewModel() {
         }
     }
 
-    fun onResetGeminiParsedRecipe() {
+    fun onResetParsedRecipe() {
         _parsedRecipe.value = null
         _jsonOutput.value = null
         _errorMessage.value = null
@@ -373,5 +403,5 @@ class RecipeViewModel: ViewModel() {
 }
 
 fun byteArrayToBitmap(bytes: ByteArray): Bitmap {
-    return BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+    return com.example.recipe.helpers.decodeByteArraySafely(bytes, 1024) ?: Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)
 }

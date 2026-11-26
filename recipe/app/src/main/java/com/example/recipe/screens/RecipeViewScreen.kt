@@ -11,9 +11,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
@@ -23,12 +25,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Card
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -43,10 +48,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.mutableStateSetOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -225,8 +230,8 @@ fun Recipe(
     onImageClick: () -> Unit
 ) {
     val scrollState = rememberScrollState()
-    val checkedIngredients = remember { mutableStateSetOf<String>() }
-    val checkedMethods = remember { mutableStateSetOf<Int>() }
+    val checkedIngredients = remember { mutableStateListOf<String>() }
+    val checkedMethods = remember { mutableStateListOf<Int>() }
 
     Column(
         modifier = Modifier
@@ -291,6 +296,60 @@ fun Recipe(
                 text = "$portionValue $portionLabel",
                 modifier = Modifier.padding(top = 20.dp)
             )
+        }
+
+        val equipmentsList = recipe.equipments.orEmpty()
+        if (equipmentsList.isNotEmpty()) {
+            val checkedEquipments = remember { mutableStateListOf<String>() }
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Build,
+                            contentDescription = "Equipment Needed",
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Text(
+                            text = "Equipment Needed",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    equipmentsList.forEach { eq ->
+                        val isChecked = eq.name in checkedEquipments
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    if (isChecked) checkedEquipments.remove(eq.name)
+                                    else checkedEquipments.add(eq.name)
+                                }
+                                .padding(vertical = 4.dp)
+                        ) {
+                            Checkbox(
+                                checked = isChecked,
+                                onCheckedChange = { checked ->
+                                    if (checked) checkedEquipments.add(eq.name)
+                                    else checkedEquipments.remove(eq.name)
+                                }
+                            )
+                            Text(
+                                text = eq.name,
+                                textDecoration = if (isChecked) TextDecoration.LineThrough else null,
+                                modifier = Modifier.padding(start = 8.dp)
+                            )
+                        }
+                    }
+                }
+            }
         }
 
         val allDividerIngredientNames = recipe.dividers?.flatMap {
